@@ -1,0 +1,18 @@
+# All Canada <-> US routes with United service
+# Start with test routes, expand as we discover valid pairs
+# Format: ORIGIN DEST (3-letter IATA codes, space-separated)
+YYZ LAX
+YYZ SFO
+YYZ ORD
+YYZ JFK
+YYZ MIA
+YVR LAX
+YVR SFO
+YVR SEA
+YUL JFK
+YUL EWR
+YUL BOS
+YYC DEN
+YYC LAX
+YOW EWR
+YOW ORD

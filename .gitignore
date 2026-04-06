@@ -1,1 +1,38 @@
 logs/
+
+# HAR captures (contain session tokens and sensitive data)
+*.har
+docs/api-contract/har-captures/
+
+# MCP config (contains credentials)
+.mcp.json
+
+# Secrets and credentials
+*.env
+.env.*
+*.pem
+*.key
+*credentials*
+*secret*
+*token*
+
+# Experiment artifacts
+scripts/experiments/.env
+scripts/experiments/*.log
+scripts/experiments/__pycache__/
+
+# Browser profile (contains session cookies, login state)
+scripts/experiments/.browser-profile/
+
+# MFA handoff files
+scripts/experiments/.mfa_request
+scripts/experiments/.mfa_code
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Database
+pgdata/

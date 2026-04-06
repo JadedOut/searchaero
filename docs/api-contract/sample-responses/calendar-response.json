@@ -1,0 +1,4611 @@
+{
+  "data": {
+    "CalendarLengthOfStay": -1,
+    "CartId": "REDACTED-CART-ID",
+    "Characteristics": [
+      {
+        "Code": "AwardCalendarTxnId",
+        "Value": "REDACTED"
+      }
+    ],
+    "Timings": [
+      {
+        "Name": "SetCheapestFare",
+        "TimeMilliseconds": "0"
+      }
+    ],
+    "LangCode": "en-US",
+    "LastCallDateTime": "2026-04-01 09:18 AM",
+    "LastTripIndexRequested": 1,
+    "ServerName": "REDACTED",
+    "Status": 1,
+    "TripCount": 1,
+    "RecentSearchVersion": "-",
+    "Version": "",
+    "Calendar": {
+      "LoadedFromCache": false,
+      "LengthOfStay": 6,
+      "MaxLengthOfStay": 6,
+      "AdvancePurchase": 14,
+      "CalendarWindow": 30,
+      "Months": [
+        {
+          "ShowPreviousMonthIndicator": false,
+          "ShowNextMonthIndicator": false,
+          "Year": 2026,
+          "Month": 4,
+          "Weeks": [
+            {
+              "Year": 2026,
+              "Month": 4,
+              "Days": [
+                {
+                  "Year": 2026,
+                  "Month": 3,
+                  "Cheapest": false,
+                  "DateValue": "03/29/2026",
+                  "DayNotInThisMonth": true,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": []
+                },
+                {
+                  "Year": 2026,
+                  "Month": 3,
+                  "Cheapest": false,
+                  "DateValue": "03/30/2026",
+                  "DayNotInThisMonth": true,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": []
+                },
+                {
+                  "Year": 2026,
+                  "Month": 3,
+                  "Cheapest": false,
+                  "DateValue": "03/31/2026",
+                  "DayNotInThisMonth": true,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": []
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/01/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "oCmrSsjNnRHDZViZa0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/01/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 22500.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/01/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 80000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/01/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/01/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/02/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "FPkxxX7jybQXRboQE0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/02/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 80000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/02/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 40000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/02/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/02/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/03/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "E9yBv4tIqhyNIqG7t0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/03/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/03/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/03/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/03/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 75000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/03/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/04/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "0W12k1PGveCVavNpf0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/04/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/04/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/04/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 22500.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/04/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/04/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/04/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Year": 2026,
+              "Month": 4,
+              "Days": [
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/05/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "48DHVkyTYG5LQZIBb0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/05/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 80000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/05/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/05/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/05/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/06/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "rdj5Cwvwl6UyuVGRw0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/06/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 80000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/06/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/06/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/06/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/06/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/07/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "vPtFrF25Kuubbsq4a0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/07/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 80000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/07/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/07/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/07/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/08/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "XVzdF9BKAOwAVJekr0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/08/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/08/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/08/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 75000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/08/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/08/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/09/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "SV6q4iG6XS4eLTSxz0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/09/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 77900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/09/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/09/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/09/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/10/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "QVxO8m9gflheIJyVE0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/10/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 77900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/10/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/10/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/10/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/11/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "wwqK9Np2b3h172tLL0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/11/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/11/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/11/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 75000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/11/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/11/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Year": 2026,
+              "Month": 4,
+              "Days": [
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/12/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "pxzoKKEQOJLxToY780k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 77900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/12/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 77900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/12/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 25600.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/12/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/12/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/13/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "7GsFkSwQhQeftxOqZ0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/13/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 77900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/13/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/13/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/13/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/14/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "TTOh4ZJEmQcuL4KuE0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/14/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/14/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 15000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/14/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/14/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/14/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/15/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "HXnTfYevMuPdeynPn0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 65000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 66.21,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/15/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 95700.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/15/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/15/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/15/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/16/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "BxfaWYKtZMpdT71NF0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/16/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/16/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/16/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/16/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/17/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "lj4ltxwHS1SJTl2H40k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/17/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/17/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/17/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/17/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/18/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "5YvTNZmVdhJHiyE3D0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/18/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/18/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/18/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/18/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/18/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Year": 2026,
+              "Month": 4,
+              "Days": [
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/19/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "2P407DKKB6GeqailV0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/19/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/19/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 16700.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/19/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/19/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/20/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "KfCYGHUIBmxdukwBG0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/20/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/20/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/20/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/20/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/21/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "Z3siGjYvWcV2shqoY0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/21/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/21/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/21/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/21/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 75000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/21/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/22/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "stiCDQEcWR9CzXZMv0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/22/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/22/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/22/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/22/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/22/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/23/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "sRHAYkkRMOIMNfQ7g0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/23/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/23/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/23/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/23/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/24/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "fbFXx99EwDmQ6MUfX0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/24/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/24/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/24/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/24/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/25/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "AUx3EhP4uwwSSo6ox0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/25/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/25/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/25/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/25/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Year": 2026,
+              "Month": 4,
+              "Days": [
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/26/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "51rFB4tEfHVcpY0VL0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/26/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/26/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 16500.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/26/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/26/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/27/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "KZyjNSPGGqurl44E30k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/27/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/27/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/27/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/27/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/27/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/28/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "PdjgeOId9ESIs2Str0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/28/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/28/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/28/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-FIRST-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 30000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/28/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/28/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/29/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "CGainsucnkMssQqz20k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/29/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/29/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/29/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/29/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 4,
+                  "Cheapest": false,
+                  "CabinCount": 3,
+                  "DateValue": "04/30/2026",
+                  "DayNotInThisMonth": false,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "LastResultId": "3xA8LXhxRQEfU3Q9f0k8bO",
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": [
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/30/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 57900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/30/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Saver",
+                      "CabinType": "MIN-ECONOMY-SURP-OR-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 12900.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": true,
+                      "DateValue": "04/30/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    },
+                    {
+                      "AwardType": "Standard",
+                      "CabinType": "ECO-PREMIUM-DISP",
+                      "Prices": [
+                        {
+                          "Currency": "MILES",
+                          "Amount": 100000.0,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Award"
+                        },
+                        {
+                          "Currency": "USD",
+                          "Amount": 68.51,
+                          "AmountAllPax": 0.0,
+                          "AmountBase": 0.0,
+                          "AmountDiffPerPax": 0.0,
+                          "PricingType": "Tax"
+                        }
+                      ],
+                      "Cheapest": false,
+                      "DateValue": "04/30/2026",
+                      "DayNotInThisMonth": false,
+                      "Display": false,
+                      "DisplayFare": 0.0,
+                      "TravelDateRange": false,
+                      "DayFareInfos": []
+                    }
+                  ]
+                },
+                {
+                  "Year": 2026,
+                  "Month": 5,
+                  "Cheapest": false,
+                  "DateValue": "05/01/2026",
+                  "DayNotInThisMonth": true,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": []
+                },
+                {
+                  "Year": 2026,
+                  "Month": 5,
+                  "Cheapest": false,
+                  "DateValue": "05/02/2026",
+                  "DayNotInThisMonth": true,
+                  "Display": false,
+                  "DisplayFare": 0.0,
+                  "Economy": false,
+                  "First": false,
+                  "TravelDateRange": false,
+                  "DayFareInfos": [],
+                  "Solutions": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "Errors": [],
+    "ITAQueries": [],
+    "SpecialPricingInfo": {
+      "Description": "",
+      "DisplayName": "",
+      "ItaQueryType": "",
+      "LastValidityMessage": "",
+      "PIN": "",
+      "ProgYear": "",
+      "PromoAndPin": "",
+      "PromoCode": "",
+      "PromoCodeWithPaxIds": {},
+      "PromoDescription": "",
+      "PromoDisplayText": "",
+      "PromoID": "",
+      "AllowedPointsOfSale": [],
+      "AlternateSuggestions": [],
+      "BlackoutDatesDestination": [],
+      "BlackoutDatesOrigin": [],
+      "Carriers": [],
+      "ClassesOfService": [],
+      "Companions": [],
+      "DateValidationTypes": [],
+      "Discounts": [],
+      "DiversifyAnswers": [],
+      "DiversityStrategies": [],
+      "EffectiveTravelDates": [],
+      "GeoCodeRestrictions": [],
+      "HubRestrictions": [],
+      "PaxListDetails": {
+        "Passengers": []
+      },
+      "PromoFields": [],
+      "PromoTerms": [],
+      "PromoYears": [],
+      "RedeemableDates": [],
+      "RequiredPassengers": [],
+      "SearchMetrics": [],
+      "SearchTypes": [],
+      "ValidationErrors": [],
+      "ValidCardTypes": [],
+      "ValidDaysOfWeekRanges": [],
+      "ValidPartnerCodeTypes": []
+    },
+    "SpecialPricingInfoLst": [],
+    "Trips": [
+      {
+        "Destination": "LAX",
+        "Origin": "YYZ",
+        "DepartDate": "2026-04-02",
+        "Index": 1,
+        "TripIndex": 1,
+        "ITAQueries": [],
+        "SearchFiltersIn": {
+          "CabinCountMin": -1,
+          "CabinCountMax": -1,
+          "CarrierDefault": true,
+          "CarrierExpress": true,
+          "CarrierPartners": true,
+          "CarrierStar": true,
+          "DurationMin": -1,
+          "DurationMax": -1,
+          "DurationStopMin": -1,
+          "DurationStopMax": -1,
+          "FareFamily": "ECONOMY",
+          "PriceMin": -1.0,
+          "PriceMinCurrency": "USD",
+          "PriceMax": -1.0,
+          "PriceMaxCurrency": "USD",
+          "StopCountExcl": -1,
+          "StopCountMin": -1,
+          "StopCountMax": -1,
+          "AirportsDestinationList": [],
+          "AirportsOriginList": [],
+          "AirportsStopList": [],
+          "AirportsStopToAvoidList": [],
+          "CarriersMarketingList": [],
+          "CarriersOperatingList": [],
+          "EquipmentList": [],
+          "FareFamilyFilters": [],
+          "Warnings": [],
+          "ShopIndicators": {
+            "IsRefundableSelected": false,
+            "IsBESelected": false,
+            "IsMixedToggleSelected": false,
+            "IsTravelCreditsApplied": false,
+            "IsActiveMilitaryFareExists": false,
+            "IsV2Flow": false,
+            "IsMoneyAndMilesEligible": false,
+            "IsDoveFlow": false
+          }
+        },
+        "SearchFiltersOut": {
+          "CabinCountMin": -1,
+          "CabinCountMax": 3,
+          "CarrierDefault": true,
+          "CarrierExpress": true,
+          "CarrierPartners": true,
+          "CarrierStar": true,
+          "DurationMin": -1,
+          "DurationMax": -1,
+          "DurationStopMin": -1,
+          "DurationStopMax": -1,
+          "PriceMin": -1.0,
+          "PriceMinCurrency": "USD",
+          "PriceMax": -1.0,
+          "PriceMaxCurrency": "USD",
+          "StopCountExcl": -1,
+          "StopCountMin": -1,
+          "StopCountMax": -1,
+          "AirportsDestinationList": [],
+          "AirportsOriginList": [],
+          "AirportsStopList": [],
+          "AirportsStopToAvoidList": [],
+          "CarriersMarketingList": [],
+          "CarriersOperatingList": [],
+          "EquipmentList": [],
+          "FareFamilyFilters": [],
+          "Warnings": []
+        },
+        "Flights": [],
+        "ChangeType": 0,
+        "OriginalChangeType": 0,
+        "OriginalMileage": 0,
+        "OriginalMileageTotal": 0,
+        "OriginalTax": 0.0
+      }
+    ],
+    "UpgradeTypes": [],
+    "Upsells": []
+  }
+}

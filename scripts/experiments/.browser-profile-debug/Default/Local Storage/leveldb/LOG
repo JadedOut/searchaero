@@ -1,0 +1,5 @@
+2026/04/01-10:53:13.544 a934 Reusing MANIFEST C:\Users\jiami\local_workspace\seataero\scripts\experiments\.browser-profile-debug\Default\Local Storage\leveldb/MANIFEST-000001
+2026/04/01-10:53:13.551 a934 Recovering log #3
+2026/04/01-10:53:13.554 a934 Reusing old log C:\Users\jiami\local_workspace\seataero\scripts\experiments\.browser-profile-debug\Default\Local Storage\leveldb/000003.log 
+2026/04/01-10:54:11.270 a934 Level-0 table #5: started
+2026/04/01-10:54:11.276 a934 Level-0 table #5: 21600 bytes OK

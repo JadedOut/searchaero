@@ -54,15 +54,22 @@ Competitors like AwardFares, Point.me, Roame, and PointsYeah all struggle to kee
 
 ## Our project: what we're building
 
-A United-only award search tool covering US and Canada routes. Free, open source (framework public, scraper implementations private), self-hostable.
+A United-only award search tool starting with Canada routes, expanding to US later. Free, open source (framework public, scraper implementations private), self-hostable.
 
 ### Scope
 
+**Phase 1 (current): Canada routes only**
 - One airline program: United MileagePlus
-- Geographic coverage: US domestic (241 destinations) + Canada (9 destinations) = 250 airports
-- Estimated meaningful route pairs: ~20,000 (⚠️ unvalidated — 250 airports yields 62,250 directional pairs; "meaningful" needs a concrete definition, e.g., "routes where United operates at least one nonstop or single-connection flight," and a way to programmatically derive the list)
-- Refresh cadence: hourly for alert routes, daily full sweep
+- Geographic coverage: Routes where at least one endpoint is a Canadian airport (9 airports: YYZ, YVR, YUL, YYC, YOW, YEG, YWG, YHZ, YQB)
+- Estimated meaningful route pairs: ~1,000-2,000 (Canada↔US + Canada↔Canada, filtered to routes with United service)
+- Scrape volume: ~24,000 requests/day (2,000 routes × 12 monthly windows) — achievable with 1 account, no proxies, single worker
+- Refresh cadence: daily full sweep (low volume makes hourly feasible too)
 - Date coverage: full 337 days (United's maximum award booking window)
+
+**Phase 1b (after Canada is stable): Expand to US domestic**
+- Add US domestic routes (241 destinations), bringing total to ~20,000 meaningful route pairs
+- Scrape volume increases to ~240,000 requests/day — requires account pool, proxy strategy, tiered scheduling
+- All infrastructure from Phase 1 carries over; only scaling changes needed
 
 ### What we give away for free that Seats.aero charges for
 
@@ -71,6 +78,10 @@ A United-only award search tool covering US and Canada routes. Free, open source
 - All advanced filters (direct flights, cabin class, min seats, max miles)
 - No account required to search
 - Hourly cache freshness on monitored routes
+- Price history and trend charts (Seats.aero Pro feature)
+- Calendar heatmap view
+- CSV data export
+- Booking deeplinks to united.com
 
 ### What we can't match
 
@@ -92,7 +103,7 @@ As of 2026, United is rated 2/5 difficulty for scraping by Scraperly (https://sc
 
 **Session management:** Use Playwright with persistent browser contexts to save login state between runs. Sessions stay alive for hours; the hourly scrape cadence naturally keeps them warm. Re-authentication is only needed when sessions expire (roughly once per day).
 
-**Anti-bot evasion:** For direct HTTP (preferred for speed), curl_cffi with Chrome TLS fingerprint impersonation handles Cloudflare. For fallback, Playwright with stealth patches. Scraperly recommends starting with curl_cffi and escalating to Playwright only if you start seeing 403/429 responses.
+**Anti-bot evasion:** United uses dual-layer bot protection: Cloudflare (TLS fingerprinting at the edge) and Akamai Bot Manager (JavaScript sensor cookies). curl_cffi with Chrome TLS impersonation handles Cloudflare, but Akamai requires a real browser to generate and maintain `_abck` cookies. The proven approach is a hybrid architecture: Playwright runs in the background as a "cookie farm" keeping Akamai cookies fresh, while curl_cffi makes the actual API calls using those cookies. See `docs/findings/curl-cffi-feasibility.md` and `docs/findings/hybrid-architecture.md`.
 
 **Account pool:** 10-20 MileagePlus accounts (free to create) distributing searches. Each account does ~350-700 searches per hour, which looks like an active but not suspicious user.
 
@@ -110,16 +121,26 @@ The account pool is not a config value — it's a first-class subsystem that nee
 
 ### Scrape volume math
 
-Using the monthly calendar endpoint:
+**Verified**: The calendar endpoint (`/api/flight/FetchAwardCalendar`) returns 30 days of pricing per request, covering ALL cabin classes (economy, business, first, premium economy) and both saver/standard award types in a single response. See `docs/api-contract/united-calendar-api.md` for full API contract.
+
+**Phase 1 — Canada only (~2,000 routes):**
+
+- 2,000 routes × 12 monthly windows = 24,000 requests for a full year sweep
+- One full sweep per day: ~0.3 requests/second sustained
+- Single worker completes in ~2 hours (with 5-10s delays between requests)
+- No proxies needed, 1 MileagePlus account sufficient
+- Can run on a laptop or free VPS
+
+**Phase 1b — Full US+Canada (~20,000 routes):**
 
 - 20,000 routes x 12 monthly windows = 240,000 requests for a full year sweep
 - One full sweep per day: ~2.8 requests/second sustained
 - With 5 concurrent workers: completes in ~13 hours
 - Hourly refresh on 500 alert routes x 12 months = 6,000 requests/hour = 1.7/second
 
-**⚠️ Concurrency model (underspecified):** "5 concurrent workers" could mean threads, asyncio coroutines, multiprocessing, or Celery workers. Each has different implications for session management, database connection pooling, error isolation, and resource consumption. Playwright contexts are memory-heavy: 5 concurrent browsers consume 2-4 GB RAM. The choice should be deferred until empirical testing (Phase 1, step 5) reveals the real constraints. The system also needs a request orchestration layer — a job queue with priority scheduling that prevents two workers from scraping the same route and handles backpressure when error rates rise.
+**⚠️ Concurrency model (underspecified, deferred to Phase 1b):** "5 concurrent workers" could mean threads, asyncio coroutines, multiprocessing, or Celery workers. Each has different implications for session management, database connection pooling, error isolation, and resource consumption. Playwright contexts are memory-heavy: 5 concurrent browsers consume 2-4 GB RAM. The choice should be deferred until empirical testing reveals the real constraints. Not needed for Phase 1 Canada-only scope.
 
-A smarter tiered approach:
+Phase 1b tiered approach (when scaling to US):
 
 | Tier | What | Routes | Frequency | Daily searches |
 |------|------|--------|-----------|----------------|
@@ -158,7 +179,8 @@ CREATE INDEX idx_scraped ON availability(scraped_at);
 -- For alert matching (cabin + miles threshold queries)
 CREATE INDEX idx_alert_match ON availability(origin, destination, cabin, miles);
 
--- Alerts CREATE TABLE alerts (
+-- Alerts
+CREATE TABLE alerts (
     id SERIAL PRIMARY KEY,
     origin TEXT NOT NULL,
     destination TEXT NOT NULL,
@@ -174,7 +196,8 @@ CREATE INDEX idx_alert_match ON availability(origin, destination, cabin, miles);
     expires_at DATE                    -- auto-expire past-date alerts
 );
 
--- Scrape job tracking CREATE TABLE scrape_jobs (
+-- Scrape job tracking
+CREATE TABLE scrape_jobs (
     id SERIAL PRIMARY KEY,
     origin TEXT NOT NULL,
     destination TEXT NOT NULL,
@@ -200,7 +223,7 @@ CREATE INDEX idx_alert_match ON availability(origin, destination, cabin, miles);
 
 After each scrape cycle, compare new results against saved alert criteria. Notify via Telegram Bot API (free, instant) or email. Matching is a simple database query: "any new availability on this route, in this cabin, at or below this miles threshold, since last notification?"
 
-**Deduplication (missing from original brief):** Without dedup, users get re-notified every 2 hours for unchanged availability. The `alerts` table tracks `last_notified_at` and `last_notified_hash` (hash of the matching availability data). Only notify when the hash changes (new availability appeared, price dropped, or seats changed).
+**Deduplication:** Without dedup, users get re-notified every 2 hours for unchanged availability. The `alerts` table tracks `last_notified_at` and `last_notified_hash` (hash of the matching availability data). Only notify when the hash changes (new availability appeared, price dropped, or seats changed).
 
 **Alert evaluation timing:** "After each scrape cycle" is vague when there are 4 tiers with different cadences. Alert evaluation should run per-route immediately after that route is scraped, not as a batch after all routes complete. This gives the fastest notification latency for alert-tier routes.
 
@@ -297,10 +320,10 @@ These are the fare classes that show the lowest miles prices and that partner pr
 - **curl_cffi**: https://github.com/yifeikong/curl_cffi (browser TLS fingerprint impersonation for direct HTTP)
 - **mitmproxy**: https://mitmproxy.org (intercepting proxy for understanding auth flows)
 
-## Operational concerns 
+## Operational concerns
 ### This is an adversarial systems problem, not a data engineering problem
 
-The original brief spent ~70% of its space on data flow and storage, and ~5% on the problem that actually determines whether the project lives or dies: maintaining stable access to United's API against an actively hostile counterparty. The data storage and web serving components are straightforward; the scraping reliability system is where this project will succeed or fail.
+The data storage and web serving components are straightforward. The scraping reliability system — maintaining stable access to United's API against an actively hostile counterparty — is where this project will succeed or fail. Account management, detection evasion, and failure recovery deserve as much design attention as the data pipeline.
 
 ### Error handling taxonomy
 
@@ -349,16 +372,21 @@ Validation-first. Each step gates the next — if any step reveals a blocking pr
 
 | Step | What | Why | Time |
 |------|------|-----|------|
-| **0** | Reverse-engineer the calendar API via DevTools. Capture exact URL, headers, cookies, request body, response JSON schema, error formats. Save HAR files. | Everything downstream depends on this API contract. Verify what the endpoint actually returns (all cabins? flight details? price-only summary?). | 1-2 days |
-| **1** | Create 2-3 MileagePlus accounts. Hit the calendar endpoint at increasing rates: 10/hr, 50/hr, 100/hr, 500/hr. Record where captchas and locks start. | This single number determines if the project is feasible at the proposed scale. Every other architectural decision depends on it. | 3-5 days |
-| **2** | Test the curl_cffi direct HTTP path (no Playwright). Can you authenticate and fetch data without a headless browser? | If yes, resource requirements drop ~10x and the $7 VPS works. If no, the infrastructure plan needs revision — Playwright at 5 concurrent workers needs 8GB+ RAM. | 2-3 days |
-| **3** | Build minimal data path: PostgreSQL schema (with upsert), single-threaded scraper for 1 route, parser with validation, storage. Verify data matches united.com manually. | Validates API contract + parsing + storage end-to-end. No concurrency, no scheduling, no alerts. | 3-5 days |
-| **4** | Run step 3 continuously for 48+ hours. Observe: session expiry timing, error patterns, rate limit behavior, response consistency across different routes and dates. | Surfaces real-world constraints that the scaling model depends on. The burn-in test will reveal things the brief cannot anticipate. | 2 days (mostly waiting) |
-| **5** | Design concurrency model, scheduler, and account manager based on empirical data from steps 1+4. Choose: threads vs asyncio vs Celery. Define job queue, account rotation, health monitoring. | Now you have real numbers, not assumptions. Design around observed reality. | 2 days |
-| **6** | Scale to 50 routes. Run for 1+ week. Measure scrape success rate, account health, data freshness, disk usage, PostgreSQL performance. | Prove the core loop works before building anything on top of it. | 1-2 weeks |
+| **0** | ✅ DONE. Reverse-engineer the calendar API via DevTools. Capture exact URL, headers, cookies, request body, response JSON schema, error formats. Save HAR files. | Everything downstream depends on this API contract. Verified: calendar returns all cabins in one response, 30 days per request. See `docs/api-contract/`. | 1-2 days |
+| **~~1~~** | ~~Create 2-3 MileagePlus accounts. Hit the calendar endpoint at increasing rates.~~ **SKIPPED for now.** | At Canada-only scale (~24K req/day, ~300-400 req/hr from one account), rate limits are unlikely to be an issue. One account with human-like delays (5-10s between requests) should be fine. If we get locked out, we'll deal with it then — no point over-engineering for a problem that may not exist at this volume. Rate limit testing becomes relevant when scaling to US in Phase 1b. | — |
+| **1** | ✅ DONE. Build hybrid scraper: curl_cffi for API calls + Playwright cookie farm in background. Playwright maintains Akamai cookies (`_abck`) that burn every ~3-4 requests. curl_cffi pulls fresh cookies before each batch. Manual login via Playwright on first run (Gmail MFA). | curl_cffi alone fails — Akamai burns cookies after ~3-4 calls (see `docs/findings/curl-cffi-feasibility.md`). Pure Playwright works but is 10x slower. Hybrid gets curl_cffi speed with Playwright cookie freshness. See `docs/findings/hybrid-architecture.md`. | 2-3 days |
+| **2** | ✅ DONE. Build minimal data path: PostgreSQL schema (with upsert), single-threaded scraper for 1 route, parser with validation, storage. Verify data matches united.com manually. | Validates API contract + parsing + storage end-to-end. No concurrency, no scheduling, no alerts. 922 records stored, 60 tests passing (models, db, parser). | 3-5 days |
+| **3** | ✅ DONE. Burn-in test: 10-minute supervised run, then 1-hour run. Observe: session expiry timing, error patterns, rate limit behavior, response consistency across different routes and dates. 10 min: 4 routes, 48/48 windows (100%), 5,057 solutions, 0 errors. Data verified against united.com. 1 hour: stable, no issues. | Surfaces real-world constraints that the scaling model depends on. The supervised runs catch infrastructure issues (Playwright crashes, login failures) before committing to longer runs. | 2 days (mostly waiting) |
+| **4** | ✅ DONE. Web UI: Next.js + shadcn/ui frontend with FastAPI backend. Dark theme, seats.aero-style layout. Home page with origin/destination search, results page with availability table (Date, Last Seen, Program, Departs, Arrives, Economy, Premium, Business, First). Green badges for available, gray for not available. Info icon per row shows all offerings for that date. | Users need to visualize scraped data. Pull UI work forward since the data pipeline is proven. | 1 week |
+| **5** | ✅ DONE. **Latest run (2026-04-04): 100% success rate.** Ephemeral browser profile fix eliminated stale Akamai cookie poisoning. 15 routes, 180/180 windows OK (100%), 16,386 solutions found/stored, 0 rejected, 0 errors, 0 burns, 0 circuit breaks, 0 session expiries. 35 min scrape time. Default delay changed to 3s for sustained reliability. Key changes: fresh temp browser profile per session (no persistent `.browser-profile`), non-invasive cookie-only login polling, manual MFA handoff. Log: `logs/burn_in_20260404_161633.jsonl`. Previous run (2026-04-03): 99.5% (191/192 windows, 1 transient curl error). | Validates long-running stability before scaling to all Canada routes. 100% success rate across 15 routes confirms ephemeral profile approach is production-ready. | 1 day |
+| **6** | Scale to all Canada routes (~2,000). Run for 1+ week. Measure scrape success rate, data freshness, disk usage, PostgreSQL performance. **Validated aggressive timing settings** from Step 5b experiment: `refresh_interval=3, delay=1s, session_budget=9999` (100% success, 0 errors, 0 burns across 84 requests/7 routes -- see `docs/findings/aggressive-timing-experiment.md`). Use these as the default for the scale-up; they cut per-route duration by 60-70% vs conservative settings. | Prove the core loop works at Canada scale before building anything on top of it. No concurrency model or account pool needed at this volume — single worker, single account. | 1-2 weeks |
+| **6a** | Calendar view: month-view grid with price heatmap per cabin class. Green = saver available, yellow = standard only, gray = no availability. Click a date cell to see detail modal. Replaces scrolling through 337 rows. | Most impactful visual gap vs Seats.aero. Makes browsing a full year of data practical. The toggle placeholder already exists in the filter bar. | 3-5 days |
+| **6b** | Date range search + result sorting: functional date picker in search form (start/end date). Column sorting in results table (by date, miles, cabin). Server-side date range filter on /api/search endpoint. | Currently shows all 337 days in fixed date order. Users need to narrow by travel window and sort by price to find deals. | 2-3 days |
+| **6c** | Booking deeplinks: "Book on United" button on each result row/detail modal. Opens united.com award search pre-filled with origin, destination, date, and cabin. | Zero-friction path from finding availability to booking. Without this, users must manually re-search on united.com. Core UX gap. | 1 day |
+| **6d** | Price history tracking: new `availability_history` table that logs price snapshots over time (INSERT, not just upsert). Line chart in UI showing miles cost trend per route/cabin over days/weeks. | Seats.aero charges $10/mo for this. Shows "is this a good price?" via historical context. Enables future price-drop alerts. | 3-5 days |
+| **6e** | CSV data export: download button on search results page. Exports currently visible/filtered results as CSV (date, cabin, miles, taxes, direct, last_seen). | Power users want data in spreadsheets for analysis. Trivial to implement, high utility. | 1 day |
 | **7** | Alerts and Telegram notifications. | Low risk, straightforward once data pipeline is proven. | 3-5 days |
-| **8** | Minimal web UI for searching the cache. | Zero risk. Defer until the scraper is stable. | 3-5 days |
-| **9** | Gradually expand toward full US+Canada coverage. | Only after steps 0-8 are stable. | Ongoing |
+| **8** | Gradually expand toward full US+Canada coverage. | Only after prior steps are stable. | Ongoing |
 
 ## Phase 2: Aeroplan (harder, separate phase)
 

@@ -1,0 +1,18 @@
+# Canada-to-US burn-in test routes
+# Format: ORIGIN DEST (3-letter IATA codes, space-separated)
+# Lines starting with # are comments
+YYZ LAX
+YYZ SFO
+YYZ ORD
+YYZ JFK
+YYZ MIA
+YVR LAX
+YVR SFO
+YVR SEA
+YUL JFK
+YUL EWR
+YUL BOS
+YYC DEN
+YYC LAX
+YOW EWR
+YOW ORD

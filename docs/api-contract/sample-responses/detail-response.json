@@ -1,0 +1,2950 @@
+{
+  "data": {
+    "AnonymousSearch": true,
+    "ArrivalAirports": "LAX",
+    "CalendarLengthOfStay": -1,
+    "CallTimeBBX": "1964",
+    "CallTimeDomain": "2.26",
+    "CallTimeProvider": "1.98",
+    "CartId": "REDACTED-CART-ID",
+    "CountryCode": "US",
+    "Characteristics": [
+      {
+        "Code": "SHOP_INITIAL_REQUEST_DATETIME",
+        "Value": "04/01/2026 09:18:38"
+      },
+      {
+        "Code": "CLIENTIP"
+      },
+      {
+        "Code": "LOYALTYID",
+        "Value": "REDACTED"
+      },
+      {
+        "Code": "IsEquipDtlsUpdatethroughSEService",
+        "Value": "True"
+      },
+      {
+        "Code": "FareType",
+        "Value": "mixedtoggle"
+      }
+    ],
+    "DepartureAirports": "YYZ",
+    "EquipmentTypes": "319,739,738,32Q,E7W,7M8,7M9,753,752,73G,781,777,E75,223,789",
+    "Timings": [
+      {
+        "Name": "Boombox query time",
+        "TimeMilliseconds": "441"
+      },
+      {
+        "Name": "Award xmlreader solutionset read time",
+        "TimeMilliseconds": "0"
+      },
+      {
+        "Name": "Boombox query time - 2",
+        "TimeMilliseconds": "1498"
+      },
+      {
+        "Name": "XmlReader query time",
+        "TimeMilliseconds": "25"
+      },
+      {
+        "Name": "GetAirportInfoTotal",
+        "TimeMilliseconds": "000000.39",
+        "DTStart": "20260401_091838.050"
+      },
+      {
+        "Name": "GetCabinCountTotal",
+        "TimeMilliseconds": "000000.01",
+        "DTStart": "20260401_091838.051"
+      },
+      {
+        "Name": "GetCarrierInfoTotal",
+        "TimeMilliseconds": "000000.07",
+        "DTStart": "20260401_091838.050"
+      },
+      {
+        "Name": "GetEquipInfoTotal",
+        "TimeMilliseconds": "000000.47",
+        "DTStart": "20260401_091838.051"
+      },
+      {
+        "Name": "GetHashValuesTotal",
+        "TimeMilliseconds": "000000.00",
+        "DTStart": "20260401_091838.051"
+      },
+      {
+        "Name": "GetBasicEntilements",
+        "DTStart": "20260401_091838.048"
+      },
+      {
+        "Name": "FareMatrix",
+        "TimeMilliseconds": "000001.97",
+        "DTStart": "20260401_091838.051"
+      },
+      {
+        "Name": "GetCOSInfoProductsTotal",
+        "TimeMilliseconds": "000008.26",
+        "DTStart": "20260401_091838.053"
+      },
+      {
+        "Name": "MapMeals",
+        "TimeMilliseconds": "000002.04",
+        "DTStart": "20260401_091838.061"
+      },
+      {
+        "Name": "FlightWarnings",
+        "TimeMilliseconds": "000000.44",
+        "DTStart": "20260401_091838.064"
+      },
+      {
+        "Name": "RefDataOperatingCarrierMessage",
+        "TimeMilliseconds": "000000.01",
+        "DTStart": "20260401_091838.064"
+      },
+      {
+        "Name": "FormatOperatingCarrier",
+        "TimeMilliseconds": "000000.09",
+        "DTStart": "20260401_091838.064"
+      },
+      {
+        "Name": "GetCodeShareFlightStatus",
+        "DTStart": "20260401_091838.048"
+      },
+      {
+        "Name": "TimeGetAllCovidTestingFlightDetails",
+        "TimeMilliseconds": "000000.06",
+        "DTStart": "20260401_091838.066"
+      },
+      {
+        "Name": "SearchFilterDecodes",
+        "TimeMilliseconds": "000000.02",
+        "DTStart": "20260401_091838.065"
+      },
+      {
+        "Name": "PrepareSearchFilterOut",
+        "TimeMilliseconds": "000000.28",
+        "DTStart": "20260401_091838.065"
+      },
+      {
+        "Name": "RemoveProductsAndColumns",
+        "TimeMilliseconds": "000000.06",
+        "DTStart": "20260401_091838.065"
+      },
+      {
+        "Name": "GetAdditionalInfo",
+        "TimeMilliseconds": "000017.36",
+        "DTStart": "20260401_091838.048"
+      },
+      {
+        "Name": "NGRPRules",
+        "TimeMilliseconds": "000143.08",
+        "DTStart": "20260401_091838.124"
+      },
+      {
+        "Name": "UpgradeInformation",
+        "TimeMilliseconds": "000000.00",
+        "DTStart": "20260401_091838.267"
+      },
+      {
+        "Name": "Polaris Studio",
+        "TimeMilliseconds": "000006.91",
+        "DTStart": "20260401_091838.267"
+      },
+      {
+        "Name": "Update AirportsList",
+        "TimeMilliseconds": "000000.19",
+        "DTStart": "20260401_091838.274"
+      },
+      {
+        "Name": "DefaultFlightSortV2",
+        "TimeMilliseconds": "000004.63",
+        "DTStart": "20260401_091838.291"
+      },
+      {
+        "Name": "SortResultsV2",
+        "TimeMilliseconds": "000004.65",
+        "DTStart": "20260401_091838.291"
+      },
+      {
+        "Name": "SaveToPersist",
+        "TimeMilliseconds": "000030.87",
+        "DTStart": "20260401_091838.296"
+      },
+      {
+        "Name": "GetPersistedFileTryShopRequest0 (Success)",
+        "TimeMilliseconds": "000002.45",
+        "DTStart": "20260401_091836.067"
+      },
+      {
+        "Name": "GetPersistedFileTryShopResponse0 (Success)",
+        "TimeMilliseconds": "000001.67",
+        "DTStart": "20260401_091836.070"
+      },
+      {
+        "Name": "AdjustNegativePrices",
+        "TimeMilliseconds": "000000.04",
+        "DTStart": "20260401_091838.275"
+      },
+      {
+        "Name": "Get Recommended Airports",
+        "TimeMilliseconds": "000000.02",
+        "DTStart": "20260401_091836.071"
+      },
+      {
+        "Name": "Origin Destination Validation",
+        "TimeMilliseconds": "000000.03",
+        "DTStart": "20260401_091836.071"
+      },
+      {
+        "Name": "ShopRequest Validation",
+        "TimeMilliseconds": "000000.01",
+        "DTStart": "20260401_091836.071"
+      },
+      {
+        "Name": "UNMR Validation",
+        "TimeMilliseconds": "000000.01",
+        "DTStart": "20260401_091836.071"
+      },
+      {
+        "Name": "Young Adult Age Validation",
+        "TimeMilliseconds": "000000.00",
+        "DTStart": "20260401_091836.071"
+      },
+      {
+        "Name": "Input Validation",
+        "TimeMilliseconds": "000000.06",
+        "DTStart": "20260401_091836.071"
+      },
+      {
+        "Name": "RecentSearches",
+        "TimeMilliseconds": "000000.02",
+        "DTStart": "20260401_091836.071"
+      },
+      {
+        "Name": "TranslateTravelerType",
+        "TimeMilliseconds": "000000.02",
+        "DTStart": "20260401_091836.073"
+      },
+      {
+        "Name": "Shop - Total Call",
+        "TimeMilliseconds": "002259.69",
+        "DTStart": "20260401_091836.067"
+      },
+      {
+        "Name": "filterflightsbytoggle",
+        "TimeMilliseconds": "000000.01",
+        "DTStart": "20260401_091838.327"
+      },
+      {
+        "Name": "Flight Recommendation",
+        "TimeMilliseconds": "000000.14",
+        "DTStart": "20260401_091838.327"
+      }
+    ],
+    "LangCode": "en-US",
+    "LastBBXSolutionSetId": "0LXtN1ng1Pw8UgOJvRl3vz6",
+    "LastCallDateTime": "2026-04-01 09:18 AM",
+    "LastTripIndexRequested": 1,
+    "MarketingCarriers": "UA,AC",
+    "MidPoints": "DCA,DEN,EWR,IAD,IAH,LGA,ORD,PIT,SFO",
+    "OperatingCarriers": "UA,AC",
+    "PageCount": 1,
+    "PageCurrent": 1,
+    "QueryType": "bbx",
+    "ServerName": "REDACTED",
+    "ServiceType": 1,
+    "SessionId": "REDACTED",
+    "Status": 1,
+    "TripCount": 1,
+    "RecentSearchVersion": "2026_MARW4_production",
+    "Version": "1.4.380.0",
+    "Calendar": {
+      "LoadedFromCache": false,
+      "LengthOfStay": -1,
+      "MaxLengthOfStay": 6,
+      "AdvancePurchase": 14,
+      "CalendarWindow": 61,
+      "Months": []
+    },
+    "Errors": [],
+    "Warnings": [
+      {
+        "MajorCode": "20003.26",
+        "MajorDescription": "FlightShopping/ProviderBBX",
+        "MinorCode": "10051",
+        "MinorDescription": "ITAWaringMessage",
+        "Message": "I'm sorry, we could not find answers to your query. "
+      }
+    ],
+    "ITAQueries": [],
+    "SpecialPricingInfo": {
+      "Description": "",
+      "DisplayName": "",
+      "ItaQueryType": "",
+      "LastValidityMessage": "",
+      "PIN": "",
+      "ProgYear": "",
+      "PromoAndPin": "",
+      "PromoCode": "",
+      "PromoCodeWithPaxIds": {},
+      "PromoDescription": "",
+      "PromoDisplayText": "",
+      "PromoID": "",
+      "AllowedPointsOfSale": [],
+      "AlternateSuggestions": [],
+      "BlackoutDatesDestination": [],
+      "BlackoutDatesOrigin": [],
+      "Carriers": [],
+      "ClassesOfService": [],
+      "Companions": [],
+      "DateValidationTypes": [],
+      "Discounts": [],
+      "DiversifyAnswers": [],
+      "DiversityStrategies": [],
+      "EffectiveTravelDates": [],
+      "GeoCodeRestrictions": [],
+      "HubRestrictions": [],
+      "PaxListDetails": {
+        "Passengers": []
+      },
+      "PromoFields": [],
+      "PromoTerms": [],
+      "PromoYears": [],
+      "RedeemableDates": [],
+      "RequiredPassengers": [],
+      "SearchMetrics": [],
+      "SearchTypes": [],
+      "ValidationErrors": [],
+      "ValidCardTypes": [],
+      "ValidDaysOfWeekRanges": [],
+      "ValidPartnerCodeTypes": []
+    },
+    "SpecialPricingInfoLst": [],
+    "Trips": [
+      {
+        "Destination": "LAX",
+        "DestinationDecoded": "Los Angeles, CA, US (LAX)",
+        "InternationalCitiesExist": true,
+        "Origin": "YYZ",
+        "OriginDecoded": "Toronto, ON, CA (YYZ)",
+        "BBXSession": "REDACTED",
+        "BBXSolutionSetId": "0LXtN1ng1Pw8UgOJvRl3vz6",
+        "BBXCellIdSelected": "",
+        "ColumnInformation": {
+          "Columns": [
+            {
+              "DataSourceLabel": "Economy ",
+              "Description": "",
+              "Type": "MIN-ECONOMY-SURP-OR-DISP",
+              "SubType": "Reward",
+              "FareContentDescription": "<p>Our standard Economy fare:</p><ul class=\"fare-details-list\"><li>Seat selection at booking, if available</li><li>Enjoy other options for customizing your travel</li></ul>",
+              "MarketingText": "<span class=bundles-content>Book with our <br>Low Fare Guarantee</span>Find the lowest United fare online at united.com.<br><a target=_blank href=\"http://www.united.com/CMS/en-US/products/travelproducts/Pages/Lowfareguarantee.aspx\">Learn more</a>",
+              "DataSourceLabelStyle": "ECONOMY",
+              "FareFamilies": [
+                "ECONOMY",
+                "MIN-ECONOMY-SURP-OR-DISP"
+              ],
+              "Value": "0-3",
+              "FareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+              "DescriptionId": "3",
+              "MatrixId": 506,
+              "SortIndex": 10
+            },
+            {
+              "DataSourceLabel": "Premium Economy",
+              "Description": "",
+              "Type": "ECO-PREMIUM-DISP",
+              "SubType": "Reward",
+              "FareContentDescription": "Lowest Award",
+              "MarketingText": "<span class=bundles-content>Book with our <br>Low Fare Guarantee</span>Find the lowest United fare online at united.com.<br><a target=_blank href=\"http://www.united.com/CMS/en-US/products/travelproducts/Pages/Lowfareguarantee.aspx\">Learn more</a>",
+              "DataSourceLabelStyle": "ECONOMY",
+              "FareFamilies": [
+                "ECO-PREMIUM-DISP"
+              ],
+              "Value": "0-103",
+              "FareFamily": "ECO-PREMIUM-DISP",
+              "DescriptionId": "103",
+              "MatrixId": 506,
+              "SortIndex": 66
+            },
+            {
+              "DataSourceLabel": "Business/First",
+              "Description": "(lowest)",
+              "Type": "MIN-BUSINESS-SURP-OR-DISP",
+              "SubType": "Reward",
+              "FareContentDescription": "Lowest Award",
+              "MarketingText": "<span class=bundles-content>Book with our <br>Low Fare Guarantee</span>Find the lowest United fare online at united.com.<br><a target=_blank href=\"http://www.united.com/CMS/en-US/products/travelproducts/Pages/Lowfareguarantee.aspx\">Learn more</a>",
+              "DataSourceLabelStyle": "BUSINESS",
+              "FareFamilies": [
+                "MIN-BUSINESS-SURP-OR-DISP"
+              ],
+              "Value": "0-105",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+              "DescriptionId": "105",
+              "MatrixId": 506,
+              "SortIndex": 97
+            },
+            {
+              "DataSourceLabel": "Business/First",
+              "Description": "",
+              "Type": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+              "SubType": "Reward",
+              "FareContentDescription": "Not mixed",
+              "MarketingText": "<span class=bundles-content>Book with our <br>Low Fare Guarantee</span>Find the lowest United fare online at united.com.<br><a target=_blank href=\"http://www.united.com/CMS/en-US/products/travelproducts/Pages/Lowfareguarantee.aspx\">Learn more</a>",
+              "DataSourceLabelStyle": "BUSINESS",
+              "FareFamilies": [
+                "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED"
+              ],
+              "Value": "0-106",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+              "DescriptionId": "106",
+              "MatrixId": 506,
+              "SortIndex": 98
+            }
+          ]
+        },
+        "DepartDate": "2026-04-02",
+        "DepartTime": "06:10",
+        "Index": 1,
+        "OriginTriggeredAirport": true,
+        "TripIndex": 1,
+        "ITAQueries": [],
+        "SearchFiltersIn": {
+          "CabinCountMin": -1,
+          "CabinCountMax": -1,
+          "CarrierDefault": true,
+          "CarrierExpress": true,
+          "CarrierPartners": true,
+          "CarrierStar": true,
+          "DurationMin": -1,
+          "DurationMax": -1,
+          "DurationStopMin": -1,
+          "DurationStopMax": -1,
+          "FareFamily": "ECONOMY",
+          "PriceMin": -1.0,
+          "PriceMinCurrency": "USD",
+          "PriceMax": -1.0,
+          "PriceMaxCurrency": "USD",
+          "StopCountExcl": -1,
+          "StopCountMin": -1,
+          "StopCountMax": -1,
+          "AirportsDestinationList": [],
+          "AirportsOriginList": [],
+          "AirportsStopList": [],
+          "AirportsStopToAvoidList": [],
+          "CarriersMarketingList": [],
+          "CarriersOperatingList": [],
+          "EquipmentList": [],
+          "FareFamilyFilters": [],
+          "Warnings": [],
+          "ShopIndicators": {
+            "IsRefundableSelected": false,
+            "IsBESelected": false,
+            "IsMixedToggleSelected": false,
+            "IsTravelCreditsApplied": false,
+            "IsActiveMilitaryFareExists": false,
+            "IsV2Flow": false,
+            "IsMoneyAndMilesEligible": false,
+            "IsDoveFlow": true
+          }
+        },
+        "SearchFiltersOut": {
+          "AirportsOrigin": "YYZ",
+          "AirportsDestination": "LAX",
+          "AirportsStop": "DCA,DEN,EWR,IAD,IAH,LGA,ORD,PIT,SFO",
+          "CabinCountMin": 2,
+          "CabinCountMax": 3,
+          "CarrierDefault": true,
+          "CarrierExpress": true,
+          "CarrierPartners": true,
+          "CarrierStar": true,
+          "CarriersMarketing": "UA,AC",
+          "CarriersOperating": "UA,AC",
+          "DurationMin": 432,
+          "DurationMax": 872,
+          "DurationStopMin": -1,
+          "DurationStopMax": -1,
+          "EquipmentCodes": "223,319,32Q,738,739,73G,752,753,777,781,789,7M8,7M9,E75,E7W",
+          "EquipmentTypes": "319,739,738,32Q,E7W,7M8,7M9,753,752,73G,781,777,E75,223,789",
+          "MinDepDate": "04/02/2026 06:10:00",
+          "MaxDepDate": "04/02/2026 21:00:00",
+          "MinArrivalDate": "04/02/2026 11:48:00",
+          "MaxArrivalDate": "04/03/2026 01:26:00",
+          "PriceMin": 40000.0,
+          "PriceMinCurrency": "MILES",
+          "PriceMax": 200000.0,
+          "PriceMaxCurrency": "MILES",
+          "StopCountExcl": -1,
+          "StopCountMin": 1,
+          "StopCountMax": 2,
+          "TimeDepartMin": "06:10",
+          "TimeDepartMax": "21:00",
+          "TimeArrivalMin": "00:14",
+          "TimeArrivalMax": "23:44",
+          "AirportsDestinationList": [
+            {
+              "Code": "LAX",
+              "Description": "Los Angeles, CA, US",
+              "Currency": "MILES",
+              "Amount": "100000",
+              "FareFamily": "ECO-PREMIUM-DISP"
+            },
+            {
+              "Code": "LAX",
+              "Description": "Los Angeles, CA, US",
+              "Currency": "MILES",
+              "Amount": "0.00",
+              "FareFamily": "ECO-PREMIUM-DISP-STRIKETHROUGH"
+            },
+            {
+              "Code": "LAX",
+              "Description": "Los Angeles, CA, US",
+              "Currency": "MILES",
+              "Amount": "65000",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP"
+            },
+            {
+              "Code": "LAX",
+              "Description": "Los Angeles, CA, US",
+              "Currency": "MILES",
+              "Amount": "80000",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED"
+            },
+            {
+              "Code": "LAX",
+              "Description": "Los Angeles, CA, US",
+              "Currency": "MILES",
+              "Amount": "0.00",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED-STRIKETHROUGH"
+            },
+            {
+              "Code": "LAX",
+              "Description": "Los Angeles, CA, US",
+              "Currency": "MILES",
+              "Amount": "0.00",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH"
+            },
+            {
+              "Code": "LAX",
+              "Description": "Los Angeles, CA, US",
+              "Currency": "MILES",
+              "Amount": "40000",
+              "FareFamily": "MIN-ECONOMY-SURP-OR-DISP"
+            },
+            {
+              "Code": "LAX",
+              "Description": "Los Angeles, CA, US",
+              "Currency": "MILES",
+              "Amount": "0.00",
+              "FareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH"
+            }
+          ],
+          "AirportsOriginList": [
+            {
+              "Code": "YYZ",
+              "Description": "Toronto, ON, CA",
+              "Currency": "MILES",
+              "Amount": "100000",
+              "FareFamily": "ECO-PREMIUM-DISP"
+            },
+            {
+              "Code": "YYZ",
+              "Description": "Toronto, ON, CA",
+              "Currency": "MILES",
+              "Amount": "0.00",
+              "FareFamily": "ECO-PREMIUM-DISP-STRIKETHROUGH"
+            },
+            {
+              "Code": "YYZ",
+              "Description": "Toronto, ON, CA",
+              "Currency": "MILES",
+              "Amount": "65000",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP"
+            },
+            {
+              "Code": "YYZ",
+              "Description": "Toronto, ON, CA",
+              "Currency": "MILES",
+              "Amount": "80000",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED"
+            },
+            {
+              "Code": "YYZ",
+              "Description": "Toronto, ON, CA",
+              "Currency": "MILES",
+              "Amount": "0.00",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED-STRIKETHROUGH"
+            },
+            {
+              "Code": "YYZ",
+              "Description": "Toronto, ON, CA",
+              "Currency": "MILES",
+              "Amount": "0.00",
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH"
+            },
+            {
+              "Code": "YYZ",
+              "Description": "Toronto, ON, CA",
+              "Currency": "MILES",
+              "Amount": "40000",
+              "FareFamily": "MIN-ECONOMY-SURP-OR-DISP"
+            },
+            {
+              "Code": "YYZ",
+              "Description": "Toronto, ON, CA",
+              "Currency": "MILES",
+              "Amount": "0.00",
+              "FareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH"
+            }
+          ],
+          "AirportsStopList": [
+            {
+              "Code": "DCA",
+              "Description": "Washington, DC, US"
+            },
+            {
+              "Code": "DEN",
+              "Description": "Denver, CO, US"
+            },
+            {
+              "Code": "EWR",
+              "Description": "Newark, NJ/New York, NY, US"
+            },
+            {
+              "Code": "IAD",
+              "Description": "Washington, DC, US"
+            },
+            {
+              "Code": "IAH",
+              "Description": "Houston, TX, US"
+            },
+            {
+              "Code": "LGA",
+              "Description": "New York, NY, US"
+            },
+            {
+              "Code": "ORD",
+              "Description": "Chicago, IL, US"
+            },
+            {
+              "Code": "PIT",
+              "Description": "Pittsburgh, PA, US"
+            },
+            {
+              "Code": "SFO",
+              "Description": "San Francisco, CA, US"
+            }
+          ],
+          "AirportsStopToAvoidList": [],
+          "CarriersMarketingList": [
+            {
+              "Code": "AC",
+              "Description": "Air Canada"
+            },
+            {
+              "Code": "UA",
+              "Description": "United Airlines"
+            }
+          ],
+          "CarriersOperatingList": [
+            {
+              "Code": "AC"
+            },
+            {
+              "Code": "UA"
+            }
+          ],
+          "EquipmentList": [
+            {
+              "Code": "319",
+              "Description": "Airbus A319"
+            },
+            {
+              "Code": "739",
+              "Description": "Boeing 737-900"
+            },
+            {
+              "Code": "738",
+              "Description": "Boeing 737-800"
+            },
+            {
+              "Code": "32Q",
+              "Description": "Airbus A321neo"
+            },
+            {
+              "Code": "E7W",
+              "Description": "Embraer E175"
+            },
+            {
+              "Code": "7M8",
+              "Description": "Boeing 737 MAX 8"
+            },
+            {
+              "Code": "7M9",
+              "Description": "Boeing 737 MAX 9"
+            },
+            {
+              "Code": "753",
+              "Description": "Boeing 757-300"
+            },
+            {
+              "Code": "752",
+              "Description": "Boeing 757-200"
+            },
+            {
+              "Code": "73G",
+              "Description": "Boeing 737-700"
+            },
+            {
+              "Code": "781",
+              "Description": "Boeing 787-10 Dreamliner"
+            },
+            {
+              "Code": "777",
+              "Description": "Boeing 777-200"
+            },
+            {
+              "Code": "E75",
+              "Description": "Embraer E175"
+            },
+            {
+              "Code": "223",
+              "Description": "Airbus A220-300"
+            },
+            {
+              "Code": "789",
+              "Description": "Boeing 787-9 Dreamliner"
+            }
+          ],
+          "FareFamilyFilters": [
+            {
+              "FareFamily": "ECO-PREMIUM-DISP",
+              "FareFamilyInfo": {
+                "fareFamily": "ECO-PREMIUM-DISP",
+                "currencyCode": "MILES",
+                "maxMileage": 100000,
+                "maxPriceValue": 0.0,
+                "minMileage": 100000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              "SliceDestinations": [
+                {
+                  "currency": "MILES",
+                  "destination": "LAX",
+                  "fareFamily": "ECO-PREMIUM-DISP",
+                  "minMileage": "100000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceOrigins": [
+                {
+                  "currency": "MILES",
+                  "origin": "YYZ",
+                  "fareFamily": "ECO-PREMIUM-DISP",
+                  "minMileage": "100000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceStops": [
+                {
+                  "currency": "MILES",
+                  "fareFamily": "ECO-PREMIUM-DISP",
+                  "minMileage": "100000",
+                  "stopCount": "1",
+                  "minPriceValue": 100000.0,
+                  "minPriceInSummary": true
+                }
+              ]
+            },
+            {
+              "FareFamily": "ECO-PREMIUM-DISP-STRIKETHROUGH",
+              "FareFamilyInfo": {
+                "fareFamily": "ECO-PREMIUM-DISP-STRIKETHROUGH",
+                "currencyCode": "MILES",
+                "maxMileage": 100000,
+                "maxPriceValue": 0.0,
+                "minMileage": 100000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              "SliceDestinations": [
+                {
+                  "currency": "MILES",
+                  "destination": "LAX",
+                  "fareFamily": "ECO-PREMIUM-DISP-STRIKETHROUGH",
+                  "minMileage": "100000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceOrigins": [
+                {
+                  "currency": "MILES",
+                  "origin": "YYZ",
+                  "fareFamily": "ECO-PREMIUM-DISP-STRIKETHROUGH",
+                  "minMileage": "100000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceStops": [
+                {
+                  "currency": "MILES",
+                  "fareFamily": "ECO-PREMIUM-DISP-STRIKETHROUGH",
+                  "minMileage": "100000",
+                  "stopCount": "1",
+                  "minPriceValue": 100000.0,
+                  "minPriceInSummary": true
+                }
+              ]
+            },
+            {
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+              "FareFamilyInfo": {
+                "fareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                "currencyCode": "MILES",
+                "maxMileage": 200000,
+                "maxPriceValue": 0.0,
+                "minMileage": 65000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              "SliceDestinations": [
+                {
+                  "currency": "MILES",
+                  "destination": "LAX",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                  "minMileage": "65000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceOrigins": [
+                {
+                  "currency": "MILES",
+                  "origin": "YYZ",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                  "minMileage": "65000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceStops": [
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                  "minMileage": "65000",
+                  "stopCount": "1",
+                  "minPriceValue": 65000.0,
+                  "minPriceInSummary": true
+                },
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                  "minMileage": "200000",
+                  "stopCount": "2",
+                  "minPriceValue": 200000.0,
+                  "minPriceInSummary": true
+                }
+              ]
+            },
+            {
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+              "FareFamilyInfo": {
+                "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                "currencyCode": "MILES",
+                "maxMileage": 200000,
+                "maxPriceValue": 0.0,
+                "minMileage": 200000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              "SliceDestinations": [
+                {
+                  "currency": "MILES",
+                  "destination": "LAX",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                  "minMileage": "200000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceOrigins": [
+                {
+                  "currency": "MILES",
+                  "origin": "YYZ",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                  "minMileage": "200000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceStops": [
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                  "minMileage": "200000",
+                  "stopCount": "1",
+                  "minPriceValue": 200000.0,
+                  "minPriceInSummary": true
+                }
+              ]
+            },
+            {
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED-STRIKETHROUGH",
+              "FareFamilyInfo": {
+                "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED-STRIKETHROUGH",
+                "currencyCode": "MILES",
+                "maxMileage": 200000,
+                "maxPriceValue": 0.0,
+                "minMileage": 200000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              "SliceDestinations": [
+                {
+                  "currency": "MILES",
+                  "destination": "LAX",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED-STRIKETHROUGH",
+                  "minMileage": "200000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceOrigins": [
+                {
+                  "currency": "MILES",
+                  "origin": "YYZ",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED-STRIKETHROUGH",
+                  "minMileage": "200000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceStops": [
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED-STRIKETHROUGH",
+                  "minMileage": "200000",
+                  "stopCount": "1",
+                  "minPriceValue": 200000.0,
+                  "minPriceInSummary": true
+                }
+              ]
+            },
+            {
+              "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH",
+              "FareFamilyInfo": {
+                "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH",
+                "currencyCode": "MILES",
+                "maxMileage": 200000,
+                "maxPriceValue": 0.0,
+                "minMileage": 65000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              "SliceDestinations": [
+                {
+                  "currency": "MILES",
+                  "destination": "LAX",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH",
+                  "minMileage": "65000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceOrigins": [
+                {
+                  "currency": "MILES",
+                  "origin": "YYZ",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH",
+                  "minMileage": "65000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceStops": [
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH",
+                  "minMileage": "65000",
+                  "stopCount": "1",
+                  "minPriceValue": 65000.0,
+                  "minPriceInSummary": true
+                },
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH",
+                  "minMileage": "200000",
+                  "stopCount": "2",
+                  "minPriceValue": 200000.0,
+                  "minPriceInSummary": true
+                }
+              ]
+            },
+            {
+              "FareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+              "FareFamilyInfo": {
+                "fareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                "currencyCode": "MILES",
+                "maxMileage": 60000,
+                "maxPriceValue": 0.0,
+                "minMileage": 60000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              "SliceDestinations": [
+                {
+                  "currency": "MILES",
+                  "destination": "LAX",
+                  "fareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                  "minMileage": "60000",
+                  "minMileageInSummary": true,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceOrigins": [
+                {
+                  "currency": "MILES",
+                  "origin": "YYZ",
+                  "fareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                  "minMileage": "60000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceStops": [
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                  "minMileage": "60000",
+                  "stopCount": "1",
+                  "minPriceValue": 60000.0,
+                  "minPriceInSummary": true
+                },
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                  "minMileage": "60000",
+                  "stopCount": "2",
+                  "minPriceValue": 60000.0,
+                  "minPriceInSummary": true
+                }
+              ]
+            },
+            {
+              "FareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH",
+              "FareFamilyInfo": {
+                "fareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH",
+                "currencyCode": "MILES",
+                "maxMileage": 60000,
+                "maxPriceValue": 0.0,
+                "minMileage": 60000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              "SliceDestinations": [
+                {
+                  "currency": "MILES",
+                  "destination": "LAX",
+                  "fareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH",
+                  "minMileage": "60000",
+                  "minMileageInSummary": true,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceOrigins": [
+                {
+                  "currency": "MILES",
+                  "origin": "YYZ",
+                  "fareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH",
+                  "minMileage": "60000",
+                  "minMileageInSummary": false,
+                  "minPriceValue": 0.0,
+                  "minPriceInSummary": true
+                }
+              ],
+              "SliceStops": [
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH",
+                  "minMileage": "60000",
+                  "stopCount": "1",
+                  "minPriceValue": 60000.0,
+                  "minPriceInSummary": true
+                },
+                {
+                  "currency": "MILES",
+                  "fareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH",
+                  "minMileage": "60000",
+                  "stopCount": "2",
+                  "minPriceValue": 60000.0,
+                  "minPriceInSummary": true
+                }
+              ]
+            }
+          ],
+          "FareFamilies": {
+            "fareFamily": [
+              {
+                "fareFamily": "ECO-PREMIUM-DISP",
+                "currencyCode": "MILES",
+                "maxMileage": 100000,
+                "maxPriceValue": 0.0,
+                "minMileage": 100000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              {
+                "fareFamily": "ECO-PREMIUM-DISP-STRIKETHROUGH",
+                "currencyCode": "MILES",
+                "maxMileage": 100000,
+                "maxPriceValue": 0.0,
+                "minMileage": 100000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              {
+                "fareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                "currencyCode": "MILES",
+                "maxMileage": 200000,
+                "maxPriceValue": 0.0,
+                "minMileage": 65000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              {
+                "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                "currencyCode": "MILES",
+                "maxMileage": 200000,
+                "maxPriceValue": 0.0,
+                "minMileage": 200000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              {
+                "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED-STRIKETHROUGH",
+                "currencyCode": "MILES",
+                "maxMileage": 200000,
+                "maxPriceValue": 0.0,
+                "minMileage": 200000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              {
+                "fareFamily": "MIN-BUSINESS-SURP-OR-DISP-STRIKETHROUGH",
+                "currencyCode": "MILES",
+                "maxMileage": 200000,
+                "maxPriceValue": 0.0,
+                "minMileage": 65000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              {
+                "fareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                "currencyCode": "MILES",
+                "maxMileage": 60000,
+                "maxPriceValue": 0.0,
+                "minMileage": 60000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              },
+              {
+                "fareFamily": "MIN-ECONOMY-SURP-OR-DISP-STRIKETHROUGH",
+                "currencyCode": "MILES",
+                "maxMileage": 60000,
+                "maxPriceValue": 0.0,
+                "minMileage": 60000,
+                "minPriceValue": 0.0,
+                "minPriceInSummary": true,
+                "ColumnId": 0
+              }
+            ]
+          },
+          "StopPrices": [
+            {}
+          ],
+          "Warnings": [
+            "NON_PREFERRED_CABIN",
+            "CHANGE_OF_TERMINAL",
+            "RISKY_CONNECTION",
+            "ARRIVAL",
+            "LONG_LAYOVER",
+            "STOP",
+            "CHANGE_OF_AIRPORT_SLICE"
+          ],
+          "MaxConnectTimeMinutes": 240,
+          "MinConnectTimeMinutes": 40,
+          "ShopIndicators": {
+            "IsRefundableSelected": false,
+            "IsBESelected": false,
+            "IsMixedToggleSelected": false,
+            "IsTravelCreditsApplied": false,
+            "IsActiveMilitaryFareExists": false,
+            "IsV2Flow": false,
+            "IsMoneyAndMilesEligible": false,
+            "IsDoveFlow": false
+          }
+        },
+        "Flights": [
+          {
+            "DepartDateTime": "2026-04-02 10:45",
+            "BBXHash": "GzsLcMPi13UH367L",
+            "BBXSolutionSetId": "0LXtN1ng1Pw8UgOJvRl3vz6",
+            "BookingClassAvailability": "J1|JN1|C1|D1|Z1|ZN1|P1|PN0|PZ0|IN0|Y5|YN5|B5|M4|E4|U4|H4|HN4|Q3|V3|W3|S3|T2|L2|K2|G1|N5|XN0",
+            "CabinCount": 2,
+            "Destination": "DEN",
+            "DestinationCountryCode": "US",
+            "DestinationDateTime": "2026-04-02 12:40",
+            "DestinationDescription": "Denver, CO, US (DEN)",
+            "DestinationStateCode": "CO",
+            "OriginTerminal": "1",
+            "DestinationTimezoneOffset": -6,
+            "DestTimezoneOffset": -6.0,
+            "FlightNumber": "1944",
+            "International": true,
+            "MarketingCarrier": "UA",
+            "MarketingCarrierDescription": "United Airlines",
+            "MileageActual": 1311,
+            "OperatingCarrier": "UA",
+            "OperatingCarrierDescription": "United Airlines",
+            "OperatingCarrierDescSource": "Domain-GetCarrierInfo",
+            "Origin": "YYZ",
+            "OriginCountryCode": "CA",
+            "OriginDescription": "Toronto, ON, CA (YYZ)",
+            "OriginStateCode": "ON",
+            "OriginTimezoneOffset": -4,
+            "OrgTimezoneOffset": -4.0,
+            "OriginalFlightNumber": "1944",
+            "PageIndex": 1,
+            "ParentFlightNumber": "",
+            "ServiceClassCountLowest": -1,
+            "TravelMinutesTotal": 434,
+            "TravelMinutes": 235,
+            "TripIndex": 1,
+            "Connections": [
+              {
+                "DepartDateTime": "2026-04-02 13:25",
+                "BBXHash": "GeIduRDst7kWcpD1",
+                "BookingClassAvailability": "J1|JN1|C1|D1|Z1|ZN1|P1|PN0|PZ0|IN0|Y5|YN5|B5|M4|E4|U4|H4|HN4|Q3|V3|W3|S3|T2|L2|K2|G1|N5|XN0",
+                "CabinCount": 2,
+                "ConnectTimeMinutes": 45,
+                "Destination": "LAX",
+                "DestinationCountryCode": "US",
+                "DestinationDateTime": "2026-04-02 14:59",
+                "DestinationDescription": "Los Angeles, CA, US (LAX)",
+                "DestinationStateCode": "CA",
+                "DestinationTerminal": "7",
+                "DestinationTimezoneOffset": -7,
+                "DestTimezoneOffset": -7.0,
+                "FlightNumber": "774",
+                "IsConnection": true,
+                "MarketingCarrier": "UA",
+                "MarketingCarrierDescription": "United Airlines",
+                "MileageActual": 860,
+                "OperatingCarrier": "UA",
+                "OperatingCarrierDescription": "United Airlines",
+                "OperatingCarrierDescSource": "Domain-GetCarrierInfo",
+                "Origin": "DEN",
+                "OriginCountryCode": "US",
+                "OriginDescription": "Denver, CO, US (DEN)",
+                "OriginStateCode": "CO",
+                "OriginTimezoneOffset": -6,
+                "OrgTimezoneOffset": -6.0,
+                "OriginalFlightNumber": "774",
+                "ParentFlightNumber": "1944",
+                "ServiceClassCountLowest": -1,
+                "TravelMinutes": 154,
+                "TripIndex": 1,
+                "Connections": [],
+                "Messages": [],
+                "Products": [
+                  {
+                    "BookingCode": "YN",
+                    "BookingClassAvailability": "J1|JN1|C1|D1|Z1|ZN1|P1|PN0|PZ0|IN0|Y5|YN5|B5|M4|E4|U4|H4|HN4|Q3|V3|W3|S3|T2|L2|K2|G1|N5|XN0",
+                    "CabinTypeText": "",
+                    "CabinType": "Coach",
+                    "Description": "United Economy",
+                    "Mileage": 860,
+                    "ProductId": "A4vebNEV3iGPLHpox5AfkU002",
+                    "ProductPath": "Award",
+                    "ProductSubtype": "DISPLACEMENT",
+                    "ProductType": "MIN-ECONOMY-SURP-OR-DISP",
+                    "SolutionId": "A4vebNEV3iGPLHpox5AfkU002",
+                    "Prices": [],
+                    "MealDescription": "Snacks for Purchase",
+                    "CabinTypeCode": "UE",
+                    "DisplayOrder": 0,
+                    "ColumnId": 3,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 10,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "",
+                    "CabinTypeText": "",
+                    "ProductPath": "Reward",
+                    "ProductSubtype": "NonExistingProductPlaceHolder",
+                    "ProductType": "ECO-PREMIUM-DISP",
+                    "Prices": [],
+                    "DisplayOrder": 0,
+                    "ColumnId": 103,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "ECO-PREMIUM-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 66,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "JN",
+                    "BookingClassAvailability": "J1|JN1|C1|D1|Z1|ZN1|P1|PN0|PZ0|IN0|Y5|YN5|B5|M4|E4|U4|H4|HN4|Q3|V3|W3|S3|T2|L2|K2|G1|N5|XN0",
+                    "CabinTypeText": "(lowest)",
+                    "CabinType": "First",
+                    "Description": "United First",
+                    "Mileage": 860,
+                    "ProductId": "A4vebNEV3iGPLHpox5AfkU00n",
+                    "ProductPath": "Award",
+                    "ProductSubtype": "DISPLACEMENT",
+                    "ProductType": "MIN-BUSINESS-SURP-OR-DISP",
+                    "SolutionId": "A4vebNEV3iGPLHpox5AfkU00n",
+                    "Prices": [],
+                    "MealDescription": "Snack",
+                    "CabinTypeCode": "UF",
+                    "DisplayOrder": 0,
+                    "ColumnId": 105,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 97,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "JN",
+                    "BookingClassAvailability": "J1|JN1|C1|D1|Z1|ZN1|P1|PN0|PZ0|IN0|Y5|YN5|B5|M4|E4|U4|H4|HN4|Q3|V3|W3|S3|T2|L2|K2|G1|N5|XN0",
+                    "CabinTypeText": "",
+                    "CabinType": "First",
+                    "Description": "United First",
+                    "Mileage": 860,
+                    "ProductId": "1J26fkemUiKO25vguZa4sI006",
+                    "ProductPath": "Award",
+                    "ProductSubtype": "DISPLACEMENT",
+                    "ProductType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                    "SolutionId": "1J26fkemUiKO25vguZa4sI006",
+                    "Prices": [],
+                    "MealDescription": "Snack",
+                    "CabinTypeCode": "UF",
+                    "DisplayOrder": 0,
+                    "ColumnId": 106,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 98,
+                    "MerchPriceTotal": 0.0
+                  }
+                ],
+                "StopInfos": [],
+                "Warnings": [],
+                "EquipmentDisclosures": {
+                  "EquipmentType": "739",
+                  "EquipmentDescription": "Boeing 737-900ER",
+                  "IsSingleCabin": false,
+                  "NoBoardingAssistance": false,
+                  "NonJetEquipment": false,
+                  "WheelchairsNotAllowed": false,
+                  "AircraftDoorHeight": "32",
+                  "AircraftDoorWidth": "45",
+                  "AircraftDoorHeightInCm": "81.28",
+                  "AircraftDoorWidthInCm": "114.3"
+                },
+                "FlightInfo": {
+                  "EstimatedArrivalDateTime": "2026-04-02 14:59",
+                  "EstimatedDepartureDateTime": "2026-04-02 13:25",
+                  "ScheduledArrivalDateTime": "2026-04-02 14:59",
+                  "ScheduledDepartureDateTime": "2026-04-02 13:25"
+                },
+                "Aircraft": {},
+                "Amenities": [],
+                "Hash": "92-774-UA",
+                "MerchIndex": "F12"
+              }
+            ],
+            "Messages": [],
+            "Products": [
+              {
+                "BookingCode": "YN",
+                "BookingClassAvailability": "J1|JN1|C1|D1|Z1|ZN1|P1|PN0|PZ0|IN0|Y5|YN5|B5|M4|E4|U4|H4|HN4|Q3|V3|W3|S3|T2|L2|K2|G1|N5|XN0",
+                "CabinTypeText": "",
+                "CabinType": "Coach",
+                "Description": "United Economy",
+                "Mileage": 1311,
+                "ProductId": "A4vebNEV3iGPLHpox5AfkU002",
+                "Fares": [
+                  {
+                    "FareBasisCode": "XC03VO"
+                  },
+                  {
+                    "FareBasisCode": "XC03VO"
+                  }
+                ],
+                "ProductPath": "Award",
+                "ProductSubtype": "DISPLACEMENT",
+                "ProductType": "MIN-ECONOMY-SURP-OR-DISP",
+                "SolutionId": "A4vebNEV3iGPLHpox5AfkU002",
+                "Context": {
+                  "RefFareBookingCode": "U",
+                  "ReferenceFare": {
+                    "Amount": 419.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "ID": "KbG0m1DIQGJUwAWc8xLE9H001"
+                  },
+                  "ItaMiles": "60000",
+                  "NgrpMiles": "40000",
+                  "NGRP": true,
+                  "DynamicCode": "E40K-U-Y",
+                  "FareFlavour": "displacement",
+                  "PriceDesignator": "$REFFARE",
+                  "DiagnosticId": "ARP:AM247/CAM247/RUP1/RUP",
+                  "Rank": 140853.0,
+                  "PaxPrices": [
+                    {
+                      "PaxType": "ADT",
+                      "Miles": 40000.0,
+                      "Amount": 0.0,
+                      "DynamicCode": "E40K-U-Y"
+                    }
+                  ],
+                  "PercentageSavings": "0",
+                  "StrikeThroughPricing": {
+                    "PaxPrice": {
+                      "PaxType": "ADT",
+                      "Miles": 40000.0,
+                      "Amount": 0.0
+                    },
+                    "Type": "NCH",
+                    "AwardType": "Standard",
+                    "ItaMiles": "60000",
+                    "MemberPricing": 40000.0
+                  }
+                },
+                "Prices": [
+                  {
+                    "Currency": "MILES",
+                    "Amount": 40000.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Award"
+                  },
+                  {
+                    "Currency": "USD",
+                    "Amount": 68.51,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Tax"
+                  }
+                ],
+                "MealDescription": "Meals for purchase",
+                "AwardType": "Standard",
+                "CabinTypeCode": "UE",
+                "DisplayOrder": 0,
+                "ColumnId": 3,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                "FareFlavour": "displacement",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 10,
+                "IsFareInBudget": true,
+                "IsCabinInPolicy": true,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "",
+                "CabinTypeText": "",
+                "ProductPath": "Reward",
+                "BestMatchSortOrder": 5,
+                "ProductSubtype": "NonExistingProductPlaceHolder",
+                "ProductType": "ECO-PREMIUM-DISP",
+                "Prices": [],
+                "DisplayOrder": 0,
+                "ColumnId": 103,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "ECO-PREMIUM-DISP",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 66,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "JN",
+                "BookingClassAvailability": "J1|JN1|C1|D1|Z1|ZN1|P1|PN0|PZ0|IN0|Y5|YN5|B5|M4|E4|U4|H4|HN4|Q3|V3|W3|S3|T2|L2|K2|G1|N5|XN0",
+                "CabinTypeText": "(lowest)",
+                "CabinType": "First",
+                "Description": "United First",
+                "Mileage": 1311,
+                "ProductId": "A4vebNEV3iGPLHpox5AfkU00n",
+                "Fares": [
+                  {
+                    "FareBasisCode": "XB03VO"
+                  },
+                  {
+                    "FareBasisCode": "XB03VO"
+                  }
+                ],
+                "ProductPath": "Award",
+                "BestMatchSortOrder": 11,
+                "ProductSubtype": "DISPLACEMENT",
+                "ProductType": "MIN-BUSINESS-SURP-OR-DISP",
+                "SolutionId": "A4vebNEV3iGPLHpox5AfkU00n",
+                "Context": {
+                  "RefFareBookingCode": "C",
+                  "ReferenceFare": {
+                    "Amount": 1351.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "ID": "KbG0m1DIQGJUwAWc8xLE9H005"
+                  },
+                  "ItaMiles": "200000",
+                  "NgrpMiles": "80000",
+                  "NGRP": true,
+                  "DynamicCode": "E80K-C-Y",
+                  "FareFlavour": "displacement",
+                  "PriceDesignator": "$REFFARE",
+                  "DiagnosticId": "ARP:AM267/CAM267/RUP1/RUP",
+                  "Rank": 181785.0,
+                  "PaxPrices": [
+                    {
+                      "PaxType": "ADT",
+                      "Miles": 80000.0,
+                      "Amount": 0.0,
+                      "DynamicCode": "E80K-C-Y"
+                    }
+                  ],
+                  "PercentageSavings": "0",
+                  "StrikeThroughPricing": {
+                    "PaxPrice": {
+                      "PaxType": "ADT",
+                      "Miles": 80000.0,
+                      "Amount": 0.0
+                    },
+                    "Type": "NCH",
+                    "AwardType": "Standard",
+                    "ItaMiles": "200000",
+                    "MemberPricing": 80000.0
+                  }
+                },
+                "Prices": [
+                  {
+                    "Currency": "MILES",
+                    "Amount": 80000.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Award"
+                  },
+                  {
+                    "Currency": "USD",
+                    "Amount": 68.51,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Tax"
+                  }
+                ],
+                "MealDescription": "Meal",
+                "AwardType": "Standard",
+                "CabinTypeCode": "UF",
+                "DisplayOrder": 0,
+                "ColumnId": 105,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                "FareFlavour": "displacement",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 97,
+                "IsFareInBudget": true,
+                "IsCabinInPolicy": true,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "JN",
+                "BookingClassAvailability": "J1|JN1|C1|D1|Z1|ZN1|P1|PN0|PZ0|IN0|Y5|YN5|B5|M4|E4|U4|H4|HN4|Q3|V3|W3|S3|T2|L2|K2|G1|N5|XN0",
+                "CabinTypeText": "",
+                "CabinType": "First",
+                "Description": "United First",
+                "Mileage": 1311,
+                "ProductId": "1J26fkemUiKO25vguZa4sI006",
+                "Fares": [
+                  {
+                    "FareBasisCode": "XB03VO"
+                  },
+                  {
+                    "FareBasisCode": "XB03VO"
+                  }
+                ],
+                "ProductPath": "Award",
+                "BestMatchSortOrder": 10,
+                "ProductSubtype": "DISPLACEMENT",
+                "ProductType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                "SolutionId": "1J26fkemUiKO25vguZa4sI006",
+                "Context": {
+                  "RefFareBookingCode": "C",
+                  "ReferenceFare": {
+                    "Amount": 1351.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "ID": "KbG0m1DIQGJUwAWc8xLE9H005"
+                  },
+                  "ItaMiles": "200000",
+                  "NgrpMiles": "80000",
+                  "NGRP": true,
+                  "DynamicCode": "E80K-C-Y",
+                  "FareFlavour": "displacement",
+                  "PriceDesignator": "$REFFARE",
+                  "DiagnosticId": "ARP:AM267/CAM267/RUP1/RUP",
+                  "Rank": 181785.0,
+                  "PaxPrices": [
+                    {
+                      "PaxType": "ADT",
+                      "Miles": 80000.0,
+                      "Amount": 0.0,
+                      "DynamicCode": "E80K-C-Y"
+                    }
+                  ],
+                  "PercentageSavings": "0",
+                  "StrikeThroughPricing": {
+                    "PaxPrice": {
+                      "PaxType": "ADT",
+                      "Miles": 80000.0,
+                      "Amount": 0.0
+                    },
+                    "Type": "NCH",
+                    "AwardType": "Standard",
+                    "ItaMiles": "200000",
+                    "MemberPricing": 80000.0
+                  }
+                },
+                "Prices": [
+                  {
+                    "Currency": "MILES",
+                    "Amount": 80000.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Award"
+                  },
+                  {
+                    "Currency": "USD",
+                    "Amount": 68.51,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Tax"
+                  }
+                ],
+                "MealDescription": "Meal",
+                "AwardType": "Standard",
+                "CabinTypeCode": "UF",
+                "DisplayOrder": 0,
+                "ColumnId": 106,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                "FareFlavour": "displacement",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 98,
+                "IsFareInBudget": true,
+                "IsCabinInPolicy": true,
+                "MerchPriceTotal": 0.0
+              }
+            ],
+            "StopInfos": [],
+            "Warnings": [],
+            "EquipmentDisclosures": {
+              "EquipmentType": "319",
+              "EquipmentDescription": "Airbus A319",
+              "IsSingleCabin": false,
+              "NoBoardingAssistance": false,
+              "NonJetEquipment": false,
+              "WheelchairsNotAllowed": false,
+              "AircraftDoorHeight": "46",
+              "AircraftDoorWidth": "69",
+              "AircraftDoorHeightInCm": "116.84",
+              "AircraftDoorWidthInCm": "175.26"
+            },
+            "FlightInfo": {
+              "EstimatedArrivalDateTime": "2026-04-02 12:40",
+              "EstimatedDepartureDateTime": "2026-04-02 10:45",
+              "ScheduledArrivalDateTime": "2026-04-02 12:40",
+              "ScheduledDepartureDateTime": "2026-04-02 10:45"
+            },
+            "Aircraft": {},
+            "Amenities": [],
+            "Hash": "92-1944|774-UA",
+            "MerchIndex": "F11"
+          },
+          {
+            "DepartDateTime": "2026-04-02 13:00",
+            "BBXHash": "GpYttmrtEtzWSuE4",
+            "BBXSolutionSetId": "0LXtN1ng1Pw8UgOJvRl3vz6",
+            "BookingClassAvailability": "J0|JN0|C0|D0|Z0|ZN0|P0|PN0|PZ0|IN0|I0|Y4|YN4|B4|M3|E2|U2|H2|HN3|Q2|V2|W2|S0|T0|L0|K0|G0|N4|XN0|X0",
+            "CabinCount": 2,
+            "Destination": "ORD",
+            "DestinationCountryCode": "US",
+            "DestinationDateTime": "2026-04-02 14:00",
+            "DestinationDescription": "Chicago, IL, US (ORD)",
+            "DestinationStateCode": "IL",
+            "OriginTerminal": "1",
+            "DestinationTerminal": "1",
+            "DestinationTimezoneOffset": -5,
+            "DestTimezoneOffset": -5.0,
+            "FlightNumber": "1297",
+            "International": true,
+            "MarketingCarrier": "UA",
+            "MarketingCarrierDescription": "United Airlines",
+            "MileageActual": 435,
+            "OperatingCarrier": "UA",
+            "OperatingCarrierDescription": "United Airlines",
+            "OperatingCarrierDescSource": "Domain-GetCarrierInfo",
+            "OrderIndex": 1,
+            "PreSortIndex": 1,
+            "Origin": "YYZ",
+            "OriginCountryCode": "CA",
+            "OriginDescription": "Toronto, ON, CA (YYZ)",
+            "OriginStateCode": "ON",
+            "OriginTimezoneOffset": -4,
+            "OrgTimezoneOffset": -4.0,
+            "OriginalFlightNumber": "1297",
+            "PageIndex": 1,
+            "ParentFlightNumber": "",
+            "ServiceClassCountLowest": -1,
+            "TravelMinutesTotal": 443,
+            "TravelMinutes": 120,
+            "TripIndex": 1,
+            "Connections": [
+              {
+                "DepartDateTime": "2026-04-02 14:40",
+                "BBXHash": "G1RANrd26xOqKC91",
+                "BookingClassAvailability": "J1|JN1|C0|D0|Z0|ZN0|P0|PN0|PZ0|IN0|I0|Y9|YN9|B9|M9|E9|U9|H9|HN9|Q9|V9|W9|S9|T9|L9|K9|G0|N9|XN9|X0",
+                "CabinCount": 2,
+                "ConnectTimeMinutes": 40,
+                "Destination": "LAX",
+                "DestinationCountryCode": "US",
+                "DestinationDateTime": "2026-04-02 17:23",
+                "DestinationDescription": "Los Angeles, CA, US (LAX)",
+                "DestinationStateCode": "CA",
+                "OriginTerminal": "1",
+                "DestinationTerminal": "7",
+                "DestinationTimezoneOffset": -7,
+                "DestTimezoneOffset": -7.0,
+                "FlightNumber": "374",
+                "IsConnection": true,
+                "MarketingCarrier": "UA",
+                "MarketingCarrierDescription": "United Airlines",
+                "MileageActual": 1740,
+                "OperatingCarrier": "UA",
+                "OperatingCarrierDescription": "United Airlines",
+                "OperatingCarrierDescSource": "Domain-GetCarrierInfo",
+                "Origin": "ORD",
+                "OriginCountryCode": "US",
+                "OriginDescription": "Chicago, IL, US (ORD)",
+                "OriginStateCode": "IL",
+                "OriginTimezoneOffset": -5,
+                "OrgTimezoneOffset": -5.0,
+                "OriginalFlightNumber": "374",
+                "ParentFlightNumber": "1297",
+                "ServiceClassCountLowest": -1,
+                "TravelMinutes": 283,
+                "TripIndex": 1,
+                "Connections": [],
+                "Messages": [],
+                "Products": [
+                  {
+                    "BookingCode": "YN",
+                    "BookingClassAvailability": "J0|JN0|C0|D0|Z0|ZN0|P0|PN0|PZ0|IN0|Y4|YN4|B4|M3|E3|U3|H2|HN3|Q2|V2|W2|S1|T1|L1|K0|G0|N4|XN0",
+                    "CabinTypeText": "",
+                    "CabinType": "Coach",
+                    "Description": "United Economy",
+                    "Mileage": 1740,
+                    "ProductId": "A4vebNEV3iGPLHpox5AfkU003",
+                    "ProductPath": "Award",
+                    "ProductSubtype": "DISPLACEMENT",
+                    "ProductType": "MIN-ECONOMY-SURP-OR-DISP",
+                    "SolutionId": "A4vebNEV3iGPLHpox5AfkU003",
+                    "Prices": [],
+                    "MealDescription": "Meals for purchase",
+                    "CabinTypeCode": "UE",
+                    "DisplayOrder": 0,
+                    "ColumnId": 3,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 10,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "",
+                    "CabinTypeText": "",
+                    "ProductPath": "Reward",
+                    "ProductSubtype": "NonExistingProductPlaceHolder",
+                    "ProductType": "ECO-PREMIUM-DISP",
+                    "Prices": [],
+                    "DisplayOrder": 0,
+                    "ColumnId": 103,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "ECO-PREMIUM-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 66,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "JN",
+                    "BookingClassAvailability": "J1|JN1|C0|D0|Z0|ZN0|P0|PN0|PZ0|IN0|I0|Y9|YN9|B9|M9|E9|U9|H9|HN9|Q9|V9|W9|S9|T9|L9|K9|G0|N9|XN9|X0",
+                    "CabinTypeText": "(lowest)",
+                    "CabinType": "First",
+                    "CrossCabinMessaging": "COACH",
+                    "Description": "United First",
+                    "Mileage": 1740,
+                    "ProductId": "A4vebNEV3iGPLHpox5AfkU01I",
+                    "ProductPath": "Award",
+                    "ProductSubtype": "DISPLACEMENT",
+                    "ProductType": "MIN-BUSINESS-SURP-OR-DISP",
+                    "SolutionId": "A4vebNEV3iGPLHpox5AfkU01I",
+                    "Prices": [],
+                    "MealDescription": "Meal",
+                    "CabinTypeCode": "UF",
+                    "DisplayOrder": 0,
+                    "ColumnId": 105,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 1,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 97,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "",
+                    "CabinTypeText": "",
+                    "ProductPath": "Reward",
+                    "ProductSubtype": "NonExistingProductPlaceHolder",
+                    "ProductType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                    "Prices": [],
+                    "DisplayOrder": 0,
+                    "ColumnId": 106,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 98,
+                    "MerchPriceTotal": 0.0
+                  }
+                ],
+                "StopInfos": [],
+                "Warnings": [
+                  {
+                    "Title": "Non Preferred Cabin",
+                    "Key": "NON_PREFERRED_CABIN",
+                    "Hidden": true,
+                    "Messages": [
+                      "NON_PREFERRED_CABIN"
+                    ],
+                    "SDLContent": {
+                      "Key": "WARNING_NON_PREFERRED_CABIN"
+                    },
+                    "SDLMessages": [
+                      {
+                        "Key": "WARNING_NON_PREFERRED_CABIN_DESCRIPTION"
+                      }
+                    ],
+                    "IsFlightBlockLevel": false
+                  }
+                ],
+                "EquipmentDisclosures": {
+                  "EquipmentType": "32Q",
+                  "EquipmentDescription": "Airbus A321neo",
+                  "IsSingleCabin": false,
+                  "NoBoardingAssistance": false,
+                  "NonJetEquipment": false,
+                  "WheelchairsNotAllowed": false,
+                  "AircraftDoorHeight": "46",
+                  "AircraftDoorWidth": "69",
+                  "AircraftDoorHeightInCm": "116.84",
+                  "AircraftDoorWidthInCm": "175.26"
+                },
+                "FlightInfo": {
+                  "EstimatedArrivalDateTime": "2026-04-02 17:23",
+                  "EstimatedDepartureDateTime": "2026-04-02 14:40",
+                  "ScheduledArrivalDateTime": "2026-04-02 17:23",
+                  "ScheduledDepartureDateTime": "2026-04-02 14:40"
+                },
+                "Aircraft": {},
+                "Amenities": [],
+                "Hash": "92-374-UA",
+                "MerchIndex": "F14"
+              }
+            ],
+            "Messages": [],
+            "Products": [
+              {
+                "BookingCode": "YN",
+                "BookingClassAvailability": "J0|JN0|C0|D0|Z0|ZN0|P0|PN0|PZ0|IN0|Y4|YN4|B4|M3|E3|U3|H2|HN3|Q2|V2|W2|S1|T1|L1|K0|G0|N4|XN0",
+                "CabinTypeText": "",
+                "CabinType": "Coach",
+                "Description": "United Economy",
+                "Mileage": 435,
+                "ProductId": "A4vebNEV3iGPLHpox5AfkU003",
+                "Fares": [
+                  {
+                    "FareBasisCode": "XC03VO"
+                  },
+                  {
+                    "FareBasisCode": "XC03VO"
+                  }
+                ],
+                "ProductPath": "Award",
+                "BestMatchSortOrder": 1,
+                "ProductSubtype": "DISPLACEMENT",
+                "ProductType": "MIN-ECONOMY-SURP-OR-DISP",
+                "SolutionId": "A4vebNEV3iGPLHpox5AfkU003",
+                "Context": {
+                  "RefFareBookingCode": "U",
+                  "ReferenceFare": {
+                    "Amount": 419.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "ID": "1bu9eLp0sXGT5DhKeYH9G1001"
+                  },
+                  "ItaMiles": "60000",
+                  "NgrpMiles": "40000",
+                  "NGRP": true,
+                  "DynamicCode": "E40K-U-Y",
+                  "FareFlavour": "displacement",
+                  "PriceDesignator": "$REFFARE",
+                  "DiagnosticId": "ARP:AM247/CAM247/RUP1/RUP",
+                  "Rank": 140862.0,
+                  "PaxPrices": [
+                    {
+                      "PaxType": "ADT",
+                      "Miles": 40000.0,
+                      "Amount": 0.0,
+                      "DynamicCode": "E40K-U-Y"
+                    }
+                  ],
+                  "PercentageSavings": "0",
+                  "StrikeThroughPricing": {
+                    "PaxPrice": {
+                      "PaxType": "ADT",
+                      "Miles": 40000.0,
+                      "Amount": 0.0
+                    },
+                    "Type": "NCH",
+                    "AwardType": "Standard",
+                    "ItaMiles": "60000",
+                    "MemberPricing": 40000.0
+                  }
+                },
+                "Prices": [
+                  {
+                    "Currency": "MILES",
+                    "Amount": 40000.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Award"
+                  },
+                  {
+                    "Currency": "USD",
+                    "Amount": 68.51,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Tax"
+                  }
+                ],
+                "MealDescription": "Meals are not offered for this flight",
+                "AwardType": "Standard",
+                "CabinTypeCode": "UE",
+                "DisplayOrder": 0,
+                "ColumnId": 3,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                "FareFlavour": "displacement",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 10,
+                "IsFareInBudget": true,
+                "IsCabinInPolicy": true,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "",
+                "CabinTypeText": "",
+                "ProductPath": "Reward",
+                "BestMatchSortOrder": 6,
+                "ProductSubtype": "NonExistingProductPlaceHolder",
+                "ProductType": "ECO-PREMIUM-DISP",
+                "Prices": [],
+                "DisplayOrder": 0,
+                "ColumnId": 103,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "ECO-PREMIUM-DISP",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 66,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "YN",
+                "BookingClassAvailability": "J0|JN0|C0|D0|Z0|ZN0|P0|PN0|PZ0|IN0|I0|Y4|YN4|B4|M3|E2|U2|H2|HN3|Q2|V2|W2|S0|T0|L0|K0|G0|N4|XN0|X0",
+                "CabinTypeText": "(lowest)",
+                "CabinType": "Coach",
+                "CrossCabinMessaging": "COACH",
+                "Description": "United Economy",
+                "Mileage": 435,
+                "ProductId": "A4vebNEV3iGPLHpox5AfkU01I",
+                "Fares": [
+                  {
+                    "FareBasisCode": "XB03VO"
+                  },
+                  {
+                    "FareBasisCode": "XB03VO"
+                  }
+                ],
+                "ProductPath": "Award",
+                "BestMatchSortOrder": 35,
+                "ProductSubtype": "DISPLACEMENT",
+                "ProductType": "MIN-BUSINESS-SURP-OR-DISP",
+                "SolutionId": "A4vebNEV3iGPLHpox5AfkU01I",
+                "Context": {
+                  "RefFareBookingCode": "Y",
+                  "ReferenceFare": {
+                    "Amount": 1898.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "ID": "1bu9eLp0sXGT5DhKeYH9G100l"
+                  },
+                  "ItaMiles": "200000",
+                  "NgrpMiles": "100000",
+                  "NGRP": true,
+                  "DynamicCode": "E100K-Y-Y",
+                  "FareFlavour": "displacement",
+                  "PriceDesignator": "$REFFARE",
+                  "DiagnosticId": "ARP:AM259/CAM259/RUP1/RUP",
+                  "Rank": 202341.0,
+                  "PaxPrices": [
+                    {
+                      "PaxType": "ADT",
+                      "Miles": 100000.0,
+                      "Amount": 0.0,
+                      "DynamicCode": "E100K-Y-Y"
+                    }
+                  ],
+                  "PercentageSavings": "0",
+                  "StrikeThroughPricing": {
+                    "PaxPrice": {
+                      "PaxType": "ADT",
+                      "Miles": 100000.0,
+                      "Amount": 0.0
+                    },
+                    "Type": "NCH",
+                    "AwardType": "Standard",
+                    "ItaMiles": "200000",
+                    "MemberPricing": 100000.0
+                  }
+                },
+                "Prices": [
+                  {
+                    "Currency": "MILES",
+                    "Amount": 100000.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Award"
+                  },
+                  {
+                    "Currency": "USD",
+                    "Amount": 68.51,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Tax"
+                  }
+                ],
+                "MealDescription": "Meals are not offered for this flight",
+                "AwardType": "Standard",
+                "CabinTypeCode": "UE",
+                "DisplayOrder": 0,
+                "ColumnId": 105,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                "FareFlavour": "displacement",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 97,
+                "IsFareInBudget": true,
+                "IsCabinInPolicy": true,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "",
+                "CabinTypeText": "",
+                "ProductPath": "Reward",
+                "BestMatchSortOrder": 36,
+                "ProductSubtype": "NonExistingProductPlaceHolder",
+                "ProductType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                "Prices": [],
+                "DisplayOrder": 0,
+                "ColumnId": 106,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 98,
+                "MerchPriceTotal": 0.0
+              }
+            ],
+            "StopInfos": [],
+            "Warnings": [
+              {
+                "Title": "Non Preferred Cabin",
+                "Key": "NON_PREFERRED_CABIN",
+                "Hidden": true,
+                "Messages": [
+                  "NON_PREFERRED_CABIN"
+                ],
+                "SDLContent": {
+                  "Key": "WARNING_NON_PREFERRED_CABIN"
+                },
+                "SDLMessages": [
+                  {
+                    "Key": "WARNING_NON_PREFERRED_CABIN_DESCRIPTION"
+                  }
+                ],
+                "IsFlightBlockLevel": false
+              }
+            ],
+            "EquipmentDisclosures": {
+              "EquipmentType": "738",
+              "EquipmentDescription": "Boeing 737-800",
+              "IsSingleCabin": false,
+              "NoBoardingAssistance": false,
+              "NonJetEquipment": false,
+              "WheelchairsNotAllowed": false,
+              "AircraftDoorHeight": "32",
+              "AircraftDoorWidth": "45",
+              "AircraftDoorHeightInCm": "81.28",
+              "AircraftDoorWidthInCm": "114.3"
+            },
+            "FlightInfo": {
+              "EstimatedArrivalDateTime": "2026-04-02 14:00",
+              "EstimatedDepartureDateTime": "2026-04-02 13:00",
+              "ScheduledArrivalDateTime": "2026-04-02 14:00",
+              "ScheduledDepartureDateTime": "2026-04-02 13:00"
+            },
+            "Aircraft": {},
+            "Amenities": [],
+            "Hash": "92-1297|374-UA",
+            "MerchIndex": "F13"
+          },
+          {
+            "DepartDateTime": "2026-04-02 21:00",
+            "BBXHash": "GNf6eosmqFYEQ-x8",
+            "BBXSolutionSetId": "0LXtN1ng1Pw8UgOJvRl3vz6",
+            "BookingClassAvailability": "J5|JN5|C5|D5|Z5|ZN5|P5|PN5|PZ0|IN0|Y3|YN3|B3|M3|E2|U2|H1|HN3|Q0|V0|W0|S0|T0|L0|K0|G0|N3|XN0",
+            "CabinCount": 2,
+            "Destination": "ORD",
+            "DestinationCountryCode": "US",
+            "DestinationDateTime": "2026-04-02 22:03",
+            "DestinationDescription": "Chicago, IL, US (ORD)",
+            "DestinationStateCode": "IL",
+            "OriginTerminal": "1",
+            "DestinationTerminal": "2",
+            "DestinationTimezoneOffset": -5,
+            "DestTimezoneOffset": -5.0,
+            "FlightNumber": "3535",
+            "International": true,
+            "MarketingCarrier": "UA",
+            "MarketingCarrierDescription": "United Airlines",
+            "MileageActual": 435,
+            "OperatingCarrier": "UA",
+            "OperatingCarrierDescription": "REPUBLIC AIRWAYS DBA UNITED EXPRESS",
+            "OperatingCarrierMessage": "Operated by Republic Airways dba United Express",
+            "OperatingCarrierShort": "Republic Airways dba United Express",
+            "OperatingCarrierDescSource": "ITA",
+            "OrderIndex": 2,
+            "PreSortIndex": 2,
+            "Origin": "YYZ",
+            "OriginCountryCode": "CA",
+            "OriginDescription": "Toronto, ON, CA (YYZ)",
+            "OriginStateCode": "ON",
+            "OriginTimezoneOffset": -4,
+            "OrgTimezoneOffset": -4.0,
+            "OriginalFlightNumber": "3535",
+            "PageIndex": 1,
+            "ParentFlightNumber": "",
+            "ServiceClassCountLowest": -1,
+            "TravelMinutesTotal": 446,
+            "TravelMinutes": 123,
+            "TripIndex": 1,
+            "Connections": [
+              {
+                "DepartDateTime": "2026-04-02 22:45",
+                "BBXHash": "GXP4xrl6t7rZx3qO",
+                "BookingClassAvailability": "J5|JN5|C5|D5|Z5|ZN5|P5|PN8|PZ4|IN0|Y3|YN3|B3|M3|E2|U2|H1|HN3|Q0|V0|W0|S0|T0|L0|K0|G0|N3|XN0",
+                "CabinCount": 2,
+                "ConnectTimeMinutes": 42,
+                "Destination": "LAX",
+                "DestinationCountryCode": "US",
+                "DestinationDateTime": "2026-04-03 01:26",
+                "DestinationDescription": "Los Angeles, CA, US (LAX)",
+                "DestinationStateCode": "CA",
+                "OriginTerminal": "1",
+                "DestinationTerminal": "7",
+                "DestinationTimezoneOffset": -7,
+                "DestTimezoneOffset": -7.0,
+                "FlightNumber": "517",
+                "IsConnection": true,
+                "MarketingCarrier": "UA",
+                "MarketingCarrierDescription": "United Airlines",
+                "MileageActual": 1740,
+                "OperatingCarrier": "UA",
+                "OperatingCarrierDescription": "United Airlines",
+                "OperatingCarrierDescSource": "Domain-GetCarrierInfo",
+                "Origin": "ORD",
+                "OriginCountryCode": "US",
+                "OriginDescription": "Chicago, IL, US (ORD)",
+                "OriginStateCode": "IL",
+                "OriginTimezoneOffset": -5,
+                "OrgTimezoneOffset": -5.0,
+                "OriginalFlightNumber": "517",
+                "ParentFlightNumber": "3535",
+                "ServiceClassCountLowest": -1,
+                "TravelMinutes": 281,
+                "TripIndex": 1,
+                "Connections": [],
+                "Messages": [],
+                "Products": [
+                  {
+                    "BookingCode": "YN",
+                    "BookingClassAvailability": "J5|JN5|C5|D5|Z5|ZN5|P5|PN8|PZ4|IN0|Y3|YN3|B3|M3|E2|U2|H1|HN3|Q0|V0|W0|S0|T0|L0|K0|G0|N3|XN0",
+                    "CabinTypeText": "",
+                    "CabinType": "Coach",
+                    "Description": "United Economy",
+                    "Mileage": 1740,
+                    "ProductId": "A4vebNEV3iGPLHpox5AfkU004",
+                    "ProductPath": "Award",
+                    "ProductSubtype": "DISPLACEMENT",
+                    "ProductType": "MIN-ECONOMY-SURP-OR-DISP",
+                    "SolutionId": "A4vebNEV3iGPLHpox5AfkU004",
+                    "Prices": [],
+                    "MealDescription": "Snacks for Purchase",
+                    "CabinTypeCode": "UE",
+                    "DisplayOrder": 0,
+                    "ColumnId": 3,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 10,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "",
+                    "CabinTypeText": "",
+                    "ProductPath": "Reward",
+                    "ProductSubtype": "NonExistingProductPlaceHolder",
+                    "ProductType": "ECO-PREMIUM-DISP",
+                    "Prices": [],
+                    "DisplayOrder": 0,
+                    "ColumnId": 103,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "ECO-PREMIUM-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 66,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "JN",
+                    "BookingClassAvailability": "J5|JN5|C5|D5|Z5|ZN5|P5|PN8|PZ4|IN0|Y3|YN3|B3|M3|E2|U2|H1|HN3|Q0|V0|W0|S0|T0|L0|K0|G0|N3|XN0",
+                    "CabinTypeText": "(lowest)",
+                    "CabinType": "First",
+                    "Description": "United First",
+                    "Mileage": 1740,
+                    "ProductId": "A4vebNEV3iGPLHpox5AfkU00o",
+                    "ProductPath": "Award",
+                    "ProductSubtype": "DISPLACEMENT",
+                    "ProductType": "MIN-BUSINESS-SURP-OR-DISP",
+                    "SolutionId": "A4vebNEV3iGPLHpox5AfkU00o",
+                    "Prices": [],
+                    "MealDescription": "Meal",
+                    "CabinTypeCode": "UF",
+                    "DisplayOrder": 0,
+                    "ColumnId": 105,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 97,
+                    "MerchPriceTotal": 0.0
+                  },
+                  {
+                    "BookingCode": "JN",
+                    "BookingClassAvailability": "J5|JN5|C5|D5|Z5|ZN5|P5|PN8|PZ4|IN0|Y3|YN3|B3|M3|E2|U2|H1|HN3|Q0|V0|W0|S0|T0|L0|K0|G0|N3|XN0",
+                    "CabinTypeText": "",
+                    "CabinType": "First",
+                    "Description": "United First",
+                    "Mileage": 1740,
+                    "ProductId": "1J26fkemUiKO25vguZa4sI007",
+                    "ProductPath": "Award",
+                    "ProductSubtype": "DISPLACEMENT",
+                    "ProductType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                    "SolutionId": "1J26fkemUiKO25vguZa4sI007",
+                    "Prices": [],
+                    "MealDescription": "Meal",
+                    "CabinTypeCode": "UF",
+                    "DisplayOrder": 0,
+                    "ColumnId": 106,
+                    "NumberOfPassengers": 0,
+                    "TripIndex": 0,
+                    "SegmentNumber": 0,
+                    "IsOverBooked": 0,
+                    "Selected": false,
+                    "MarriedSegmentIndex": 0,
+                    "IsProductUpdatedForOverBooking": false,
+                    "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                    "IsDynamicallyPriced": 0,
+                    "SortIndex": 98,
+                    "MerchPriceTotal": 0.0
+                  }
+                ],
+                "StopInfos": [],
+                "Warnings": [
+                  {
+                    "Title": "Change of Terminal",
+                    "Key": "CHANGE_OF_TERMINAL",
+                    "Hidden": false,
+                    "Messages": [
+                      "Terminal change"
+                    ],
+                    "SDLContent": {
+                      "Key": "WARNING_CHANGE_OF_TERMINAL"
+                    },
+                    "SDLMessages": [
+                      {
+                        "Key": "WARNING_CHANGE_OF_TERMINAL_DESCRIPTION"
+                      }
+                    ],
+                    "IsFlightBlockLevel": false
+                  },
+                  {
+                    "Title": "Risky Connection",
+                    "Key": "RISKY_CONNECTION",
+                    "Hidden": false,
+                    "Messages": [
+                      "Risky connection"
+                    ],
+                    "SDLContent": {
+                      "Key": "WARNING_RISKY_CONNECTION"
+                    },
+                    "SDLMessages": [
+                      {
+                        "Key": "WARNING_RISKY_CONNECTION_DESCRIPTION"
+                      }
+                    ],
+                    "IsFlightBlockLevel": false
+                  },
+                  {
+                    "Title": "+1 day arrival",
+                    "Key": "ARRIVAL",
+                    "Hidden": false,
+                    "Messages": [
+                      "Depart ORD: Thu, Apr 2 ",
+                      "Arrive LAX: Fri, Apr 3"
+                    ],
+                    "SDLContent": {
+                      "Key": "WARNING_ARRIVAL_NEXTDAY",
+                      "Params": {
+                        "FlightDurationDays": "1"
+                      }
+                    },
+                    "SDLMessages": [
+                      {
+                        "Key": "WARNING_ARRIVAL_DEPART_DESCRIPTION",
+                        "Params": {
+                          "DepartAirportCode": "ORD",
+                          "DepartDate": "2026-04-02 22:45"
+                        }
+                      },
+                      {
+                        "Key": "WARNING_ARRIVAL_ARRIVE_DESCRIPTION",
+                        "Params": {
+                          "ArriveAirportCode": "LAX",
+                          "ArriveDate": "2026-04-03 01:26"
+                        }
+                      }
+                    ],
+                    "IsFlightBlockLevel": false
+                  }
+                ],
+                "EquipmentDisclosures": {
+                  "EquipmentType": "739",
+                  "EquipmentDescription": "Boeing 737-900",
+                  "IsSingleCabin": false,
+                  "NoBoardingAssistance": false,
+                  "NonJetEquipment": false,
+                  "WheelchairsNotAllowed": false,
+                  "AircraftDoorHeight": "32",
+                  "AircraftDoorWidth": "45",
+                  "AircraftDoorHeightInCm": "81.28",
+                  "AircraftDoorWidthInCm": "114.3"
+                },
+                "FlightInfo": {
+                  "EstimatedArrivalDateTime": "2026-04-03 01:26",
+                  "EstimatedDepartureDateTime": "2026-04-02 22:45",
+                  "ScheduledArrivalDateTime": "2026-04-03 01:26",
+                  "ScheduledDepartureDateTime": "2026-04-02 22:45"
+                },
+                "Aircraft": {},
+                "Amenities": [],
+                "Hash": "92-517-UA",
+                "MerchIndex": "F16"
+              }
+            ],
+            "Messages": [],
+            "Products": [
+              {
+                "BookingCode": "YN",
+                "BookingClassAvailability": "J5|JN5|C5|D5|Z5|ZN5|P5|PN5|PZ0|IN0|Y3|YN3|B3|M3|E2|U2|H1|HN3|Q0|V0|W0|S0|T0|L0|K0|G0|N3|XN0",
+                "CabinTypeText": "",
+                "CabinType": "Coach",
+                "Description": "United Economy",
+                "Mileage": 435,
+                "ProductId": "A4vebNEV3iGPLHpox5AfkU004",
+                "Fares": [
+                  {
+                    "FareBasisCode": "XC03VO"
+                  },
+                  {
+                    "FareBasisCode": "XC03VO"
+                  }
+                ],
+                "ProductPath": "Award",
+                "BestMatchSortOrder": 2,
+                "ProductSubtype": "DISPLACEMENT",
+                "ProductType": "MIN-ECONOMY-SURP-OR-DISP",
+                "SolutionId": "A4vebNEV3iGPLHpox5AfkU004",
+                "Context": {
+                  "RefFareBookingCode": "U",
+                  "ReferenceFare": {
+                    "Amount": 419.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "ID": "1bu9eLp0sXGT5DhKeYH9G1002"
+                  },
+                  "ItaMiles": "60000",
+                  "NgrpMiles": "40000",
+                  "NGRP": true,
+                  "DynamicCode": "E40K-U-Y",
+                  "FareFlavour": "displacement",
+                  "PriceDesignator": "$REFFARE",
+                  "DiagnosticId": "ARP:AM247/CAM247/RUP1/RUP",
+                  "Rank": 140865.0,
+                  "PaxPrices": [
+                    {
+                      "PaxType": "ADT",
+                      "Miles": 40000.0,
+                      "Amount": 0.0,
+                      "DynamicCode": "E40K-U-Y"
+                    }
+                  ],
+                  "PercentageSavings": "0",
+                  "StrikeThroughPricing": {
+                    "PaxPrice": {
+                      "PaxType": "ADT",
+                      "Miles": 40000.0,
+                      "Amount": 0.0
+                    },
+                    "Type": "NCH",
+                    "AwardType": "Standard",
+                    "ItaMiles": "60000",
+                    "MemberPricing": 40000.0
+                  }
+                },
+                "Prices": [
+                  {
+                    "Currency": "MILES",
+                    "Amount": 40000.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Award"
+                  },
+                  {
+                    "Currency": "USD",
+                    "Amount": 68.51,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Tax"
+                  }
+                ],
+                "MealDescription": "Meals are not offered for this flight",
+                "AwardType": "Standard",
+                "CabinTypeCode": "UE",
+                "DisplayOrder": 0,
+                "ColumnId": 3,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-ECONOMY-SURP-OR-DISP",
+                "FareFlavour": "displacement",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 10,
+                "IsFareInBudget": true,
+                "IsCabinInPolicy": true,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "",
+                "CabinTypeText": "",
+                "ProductPath": "Reward",
+                "BestMatchSortOrder": 7,
+                "ProductSubtype": "NonExistingProductPlaceHolder",
+                "ProductType": "ECO-PREMIUM-DISP",
+                "Prices": [],
+                "DisplayOrder": 0,
+                "ColumnId": 103,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "ECO-PREMIUM-DISP",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 66,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "JN",
+                "BookingClassAvailability": "J5|JN5|C5|D5|Z5|ZN5|P5|PN5|PZ0|IN0|Y3|YN3|B3|M3|E2|U2|H1|HN3|Q0|V0|W0|S0|T0|L0|K0|G0|N3|XN0",
+                "CabinTypeText": "(lowest)",
+                "CabinType": "First",
+                "Description": "United First",
+                "Mileage": 435,
+                "ProductId": "A4vebNEV3iGPLHpox5AfkU00o",
+                "Fares": [
+                  {
+                    "FareBasisCode": "XB03VO"
+                  },
+                  {
+                    "FareBasisCode": "XB03VO"
+                  }
+                ],
+                "ProductPath": "Award",
+                "BestMatchSortOrder": 1,
+                "ProductSubtype": "DISPLACEMENT",
+                "ProductType": "MIN-BUSINESS-SURP-OR-DISP",
+                "SolutionId": "A4vebNEV3iGPLHpox5AfkU00o",
+                "Context": {
+                  "RefFareBookingCode": "D",
+                  "ReferenceFare": {
+                    "Amount": 1152.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "ID": "1bu9eLp0sXGT5DhKeYH9G100H"
+                  },
+                  "ItaMiles": "200000",
+                  "NgrpMiles": "80000",
+                  "NGRP": true,
+                  "DynamicCode": "E80K-D-Y",
+                  "FareFlavour": "displacement",
+                  "PriceDesignator": "$REFFARE",
+                  "DiagnosticId": "ARP:AM267/CAM267/RUP1/RUP",
+                  "Rank": 181598.0,
+                  "PaxPrices": [
+                    {
+                      "PaxType": "ADT",
+                      "Miles": 80000.0,
+                      "Amount": 0.0,
+                      "DynamicCode": "E80K-D-Y"
+                    }
+                  ],
+                  "PercentageSavings": "0",
+                  "StrikeThroughPricing": {
+                    "PaxPrice": {
+                      "PaxType": "ADT",
+                      "Miles": 80000.0,
+                      "Amount": 0.0
+                    },
+                    "Type": "NCH",
+                    "AwardType": "Standard",
+                    "ItaMiles": "200000",
+                    "MemberPricing": 80000.0
+                  }
+                },
+                "Prices": [
+                  {
+                    "Currency": "MILES",
+                    "Amount": 80000.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Award"
+                  },
+                  {
+                    "Currency": "USD",
+                    "Amount": 68.51,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Tax"
+                  }
+                ],
+                "MealDescription": "Snack",
+                "AwardType": "Standard",
+                "CabinTypeCode": "UF",
+                "DisplayOrder": 0,
+                "ColumnId": 105,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-BUSINESS-SURP-OR-DISP",
+                "FareFlavour": "displacement",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 97,
+                "IsFareInBudget": true,
+                "IsCabinInPolicy": true,
+                "MerchPriceTotal": 0.0
+              },
+              {
+                "BookingCode": "JN",
+                "BookingClassAvailability": "J5|JN5|C5|D5|Z5|ZN5|P5|PN5|PZ0|IN0|Y3|YN3|B3|M3|E2|U2|H1|HN3|Q0|V0|W0|S0|T0|L0|K0|G0|N3|XN0",
+                "CabinTypeText": "",
+                "CabinType": "First",
+                "Description": "United First",
+                "Mileage": 435,
+                "ProductId": "1J26fkemUiKO25vguZa4sI007",
+                "Fares": [
+                  {
+                    "FareBasisCode": "XB03VO"
+                  },
+                  {
+                    "FareBasisCode": "XB03VO"
+                  }
+                ],
+                "ProductPath": "Award",
+                "ProductSubtype": "DISPLACEMENT",
+                "ProductType": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                "SolutionId": "1J26fkemUiKO25vguZa4sI007",
+                "Context": {
+                  "RefFareBookingCode": "D",
+                  "ReferenceFare": {
+                    "Amount": 1152.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "ID": "1bu9eLp0sXGT5DhKeYH9G100H"
+                  },
+                  "ItaMiles": "200000",
+                  "NgrpMiles": "80000",
+                  "NGRP": true,
+                  "DynamicCode": "E80K-D-Y",
+                  "FareFlavour": "displacement",
+                  "PriceDesignator": "$REFFARE",
+                  "DiagnosticId": "ARP:AM267/CAM267/RUP1/RUP",
+                  "Rank": 181598.0,
+                  "PaxPrices": [
+                    {
+                      "PaxType": "ADT",
+                      "Miles": 80000.0,
+                      "Amount": 0.0,
+                      "DynamicCode": "E80K-D-Y"
+                    }
+                  ],
+                  "PercentageSavings": "0",
+                  "StrikeThroughPricing": {
+                    "PaxPrice": {
+                      "PaxType": "ADT",
+                      "Miles": 80000.0,
+                      "Amount": 0.0
+                    },
+                    "Type": "NCH",
+                    "AwardType": "Standard",
+                    "ItaMiles": "200000",
+                    "MemberPricing": 80000.0
+                  }
+                },
+                "Prices": [
+                  {
+                    "Currency": "MILES",
+                    "Amount": 80000.0,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Award"
+                  },
+                  {
+                    "Currency": "USD",
+                    "Amount": 68.51,
+                    "AmountAllPax": 0.0,
+                    "AmountBase": 0.0,
+                    "AmountDiffPerPax": 0.0,
+                    "PricingType": "Tax"
+                  }
+                ],
+                "MealDescription": "Snack",
+                "AwardType": "Standard",
+                "CabinTypeCode": "UF",
+                "DisplayOrder": 0,
+                "ColumnId": 106,
+                "NumberOfPassengers": 0,
+                "TripIndex": 0,
+                "SegmentNumber": 0,
+                "IsOverBooked": 0,
+                "Selected": false,
+                "MarriedSegmentIndex": 0,
+                "IsProductUpdatedForOverBooking": false,
+                "FareFamily": "MIN-BUSINESS-SURP-OR-DISP-NOT-MIXED",
+                "FareFlavour": "displacement",
+                "IsDynamicallyPriced": 0,
+                "SortIndex": 98,
+                "IsFareInBudget": true,
+                "IsCabinInPolicy": true,
+                "MerchPriceTotal": 0.0
+              }
+            ],
+            "StopInfos": [],
+            "Warnings": [
+              {
+                "Title": "Change of Terminal",
+                "Key": "CHANGE_OF_TERMINAL",
+                "Hidden": false,
+                "Messages": [
+                  "Terminal change"
+                ],
+                "SDLContent": {
+                  "Key": "WARNING_CHANGE_OF_TERMINAL"
+                },
+                "SDLMessages": [
+                  {
+                    "Key": "WARNING_CHANGE_OF_TERMINAL_DESCRIPTION"
+                  }
+                ],
+                "IsFlightBlockLevel": false
+              },
+              {
+                "Title": "Risky Connection",
+                "Key": "RISKY_CONNECTION",
+                "Hidden": false,
+                "Messages": [
+                  "Risky connection"
+                ],
+                "SDLContent": {
+                  "Key": "WARNING_RISKY_CONNECTION"
+                },
+                "SDLMessages": [
+                  {
+                    "Key": "WARNING_RISKY_CONNECTION_DESCRIPTION"
+                  }
+                ],
+                "IsFlightBlockLevel": false
+              }
+            ],
+            "EquipmentDisclosures": {
+              "EquipmentType": "E7W",
+              "EquipmentDescription": "Embraer E175",
+              "IsSingleCabin": false,
+              "NoBoardingAssistance": false,
+              "NonJetEquipment": false,
+              "WheelchairsNotAllowed": false,
+              "AircraftDoorHeight": "32",
+              "AircraftDoorWidth": "40",
+              "AircraftDoorHeightInCm": "81.28",
+              "AircraftDoorWidthInCm": "101.6"
+            },
+            "FlightInfo": {
+              "EstimatedArrivalDateTime": "2026-04-02 22:03",
+              "EstimatedDepartureDateTime": "2026-04-02 21:00",
+              "ScheduledArrivalDateTime": "2026-04-02 22:03",
+              "ScheduledDepartureDateTime": "2026-04-02 21:00"
+            },
+            "Aircraft": {},
+            "Amenities": [],
+            "Hash": "92-3535|517-UA",
+            "IsUnitedExpress": true,
+            "MerchIndex": "F15"
+          }
+        ],
+        "FlightCount": 3,
+        "ChangeType": 0,
+        "OriginalChangeType": 0,
+        "OriginalMileage": 0,
+        "OriginalMileageTotal": 0,
+        "OriginalTax": 0.0
+      }
+    ],
+    "UpgradeTypes": [],
+    "Upsells": [],
+    "LastResultId": "9jMSjJdQdTWQTZWHy0k8bO",
+    "TotalShopTime": "Boombox query time:441,Award xmlreader solutionset read time:0,Boombox query time - 2:1498,XmlReader query time:25,GetAirportInfoTotal:000000.39,GetCabinCountTotal:000000.01,GetCarrierInfoTotal:000000.07,GetEquipInfoTotal:000000.47,GetHashValuesTotal:000000.00,GetBasicEntilements:,FareMatrix:000001.97,GetCOSInfoProductsTotal:000008.26,MapMeals:000002.04,FlightWarnings:000000.44,RefDataOperatingCarrierMessage:000000.01,FormatOperatingCarrier:000000.09,GetCodeShareFlightStatus:,TimeGetAllCovidTestingFlightDetails:000000.06,SearchFilterDecodes:000000.02,PrepareSearchFilterOut:000000.28,RemoveProductsAndColumns:000000.06,GetAdditionalInfo:000017.36,NGRPRules:000143.08,UpgradeInformation:000000.00,Polaris Studio:000006.91,Update AirportsList:000000.19,DefaultFlightSortV2:000004.63,SortResultsV2:000004.65,SaveToPersist:000030.87,GetPersistedFileTryShopRequest0 (Success):000002.45,GetPersistedFileTryShopResponse0 (Success):000001.67,AdjustNegativePrices:000000.04",
+    "TravellerCount": 1,
+    "IsMoneyAndMilesEligible": true
+  }
+}

@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-surface: #131313;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container: #201f1f;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  
+  --color-primary: #ffb690;
+  --color-primary-container: #f97316;
+  --color-on-primary-container: #582200;
+  
+  --color-secondary: #62df7d;
+  --color-secondary-container: #1ca64d;
+  
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #e0c0b1;
+  --color-outline: #a78b7d;
+  --color-outline-variant: #584237;
+}
+
+@layer base {
+  body {
+    @apply bg-surface-container-lowest text-on-surface font-sans antialiased;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0e0e0e;
+}
+::-webkit-scrollbar-thumb {
+  background: #353534;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f97316;
+}
+
+.glass-nav {
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(20px);
+}
+
+.glass-card {
+  background: rgba(28, 27, 27, 0.7);
+  backdrop-filter: blur(20px);
+}
+
+.aviation-gradient {
+  background: linear-gradient(135deg, #ffb690 0%, #f97316 100%);
+}
