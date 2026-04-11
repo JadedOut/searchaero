@@ -202,6 +202,22 @@ Any MCP-compatible client discovers typed tool schemas automatically — paramet
 
 For agents without MCP support, `seataero schema` returns the same information as JSON, and all commands support `--json` for structured output.
 
+### Codespace scraping (IP rotation)
+
+Running Playwright from the user's home IP poisons Akamai IP reputation, eventually blocking even manual browsing on united.com (HTTP 428). Research confirms Akamai's ban is **IP + TLS fingerprint**, not account-level — the same MileagePlus account works fine from a fresh IP.
+
+GitHub Codespaces provides a fresh Azure IP on every creation, 60 free hours/month (2-core), and full CLI automation via `gh codespace`. The setup includes:
+
+- `.devcontainer/devcontainer.json` — Auto-installs Python, project deps, Playwright+Chromium. `--shm-size=1gb` prevents Chromium OOM in containers.
+- `scripts/codespace_scrape.sh` — Local wrapper: create Codespace → scrape → copy DB → merge → delete. EXIT trap prevents orphaned Codespaces. `--retention-period 1h` as safety net.
+- `scripts/merge_remote_db.py` — Merges remote `data.db` into local via SQLite ATTACH + INSERT OR REPLACE.
+
+United credentials (`UNITED_EMAIL`, `UNITED_PASSWORD`) are stored as GitHub Codespace secrets, injected as env vars automatically.
+
+**Next step:** Wire the MCP server's `search_route` tool to scrape via Codespace instead of local Playwright, so the user's IP is never exposed to united.com during agent-driven scrapes.
+
+**Caveat:** Codespace IPs are Azure datacenter IPs, which Akamai gives lower trust than residential. Request delays between windows are still necessary. MFA handling in unattended Codespace scrapes is not yet solved — if MFA triggers, that scrape fails.
+
 ### Infrastructure and cost
 
 Runs on your local machine. No VPS, no domain, no Docker, no hosted infrastructure.
@@ -210,6 +226,7 @@ Runs on your local machine. No VPS, no domain, no Docker, no hosted infrastructu
 |-----------|------|-------------|
 | Local machine | Your laptop/desktop (needs ~2GB RAM for Playwright) | $0 |
 | SQLite | Just a file — zero setup | $0 |
+| GitHub Codespaces | 2-core, 60 free hours/month (optional, for IP rotation) | $0 |
 | **Total** | | **$0/month** |
 
 ## Operational notes
@@ -260,6 +277,8 @@ Build the `seataero` CLI as the primary interface. Each step gates the next.
 | **16** | **~~Live agent loop test (round 1).~~** Done (2026-04-10). First test revealed agent bypassed all MCP tools and used Bash with raw Python/SQL imports. Root causes: (1) `query_flights` returned flat JSON identical to Bash+SQL — no differentiation, (2) tool descriptions said what tools do, not when to use them, (3) each `search_route` spawned a fresh subprocess — no session reuse. Fix shipped same day: enriched `query_flights` with `_summary`/`_display_hint`/`_format_suggestions`, added FastMCP `instructions` with decision flow, added `ToolAnnotations`, replaced subprocess with persistent in-process CookieFarm, added `stop_session` tool. Re-test confirmed agent used `query_flights` → `search_route` → `submit_mfa` → `query_flights` correctly. Identified token waste: final `query_flights` returned ~10.4k tokens (91 rows) when agent only needed the ~150-token summary. Led to step 16b. | ~~Features that aren't tested from the agent's perspective will have invisible UX bugs.~~ |
 | **16b** | **~~Token-efficient toolkit.~~** Done (2026-04-10). Refactored `query_flights` to summary-only (~150-300 tokens, no raw rows). Added 3 new MCP tools: `get_flight_details` (paginated rows, default 15, max 50, sort by cheapest), `get_price_trend` (per-date cheapest miles time series for graphing), `find_deals` (server-side cross-route deal discovery via SQL CTEs in `find_deals_query()` in `core/db.py`). Updated FastMCP `instructions` with new tool selection flow. Tool count: 7 → 10. 35 MCP tests (was 22). 389 tests passing. | Token waste from `query_flights` returning full row arrays (~10.4k tokens) when agents only needed the summary (~150 tokens). Summary/detail split prevents context window blowup. |
 | **16c** | **Live re-test (token-efficient toolkit).** Repeat step 16 test protocol with the summary/detail split in place. Verify: (1) agent uses `query_flights` and gets ~150-300 token summary, not ~10.4k, (2) agent calls `get_flight_details` only when user asks for a table, (3) `get_price_trend` and `find_deals` work when prompted, (4) multi-turn conversation stays well under context limits. | Confirm the token reduction works in practice from the agent's perspective. |
+| **16d** | **~~Codespace scraper infrastructure.~~** Done (2026-04-10). `.devcontainer/devcontainer.json` (Python 3.12, Playwright+Chromium, `--shm-size=1gb`, sshd), `scripts/codespace_scrape.sh` (lifecycle wrapper with EXIT trap), `scripts/merge_remote_db.py` (ATTACH + INSERT OR REPLACE). United credentials via Codespace secrets. Research confirmed Akamai ban is IP+fingerprint, not account-level. | Home IP gets poisoned by Akamai after repeated scraping. Codespaces provide disposable Azure IPs. |
+| **16e** | **MCP search_route via Codespace.** Wire `search_route` in `mcp_server.py` to scrape via Codespace (`gh codespace create/ssh/cp/delete`) instead of local Playwright. User's home IP never touches united.com during agent-driven scrapes. Handle MFA by prompting user in chat and piping code to Codespace via SSH. | The whole point of Codespace infrastructure — protect the user's IP during the interactive MCP flow, not just batch runs. |
 | **17** | **Alert → notification workflow.** Close the loop: a scheduled job runs `seataero alert check --json`, and an agent or hook surfaces matches to the user (terminal notification, message, etc.). The CLI already outputs structured alert matches — this step wires a consumer. | Alerts are useless if nobody reads them. |
 
 ## Testing strategy
