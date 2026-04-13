@@ -1,6 +1,0 @@
-2026/04/01-10:55:25.402 b3e8 Reusing MANIFEST C:\Users\jiami\local_workspace\seataero\scripts\experiments\.browser-profile\Default\Local Storage\leveldb/MANIFEST-000001
-2026/04/01-10:55:25.409 b3e8 Recovering log #33
-2026/04/01-10:55:25.413 b3e8 Reusing old log C:\Users\jiami\local_workspace\seataero\scripts\experiments\.browser-profile\Default\Local Storage\leveldb/000033.log 
-2026/04/01-10:55:37.021 bf88 Level-0 table #37: started
-2026/04/01-10:55:37.030 bf88 Level-0 table #37: 19886 bytes OK
-2026/04/01-10:55:37.031 bf88 Delete type=0 #33
