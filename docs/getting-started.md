@@ -11,20 +11,15 @@ A step-by-step walkthrough from zero to your first award flight query.
 ## Step 1: Install
 
 ```bash
+pip install seataero
+```
+
+Or install from source:
+
+```bash
 git clone https://github.com/JadedOut/seatsaero.git
 cd seatsaero
-
-python -m venv .venv
-
-# Activate the virtual environment:
-# Linux/macOS:
-source .venv/bin/activate
-# Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-# Windows (Git Bash):
-source .venv/Scripts/activate
-
-pip install -e .
+pip install .
 ```
 
 ## Step 2: Set up credentials and verify
@@ -121,7 +116,7 @@ claude mcp add seataero -- seataero-mcp
 Then try asking things like:
 
 - *"What's the cheapest business class from Toronto to London in July?"*
-- *"Find deals from any Canadian airport under 30K miles"*
+- *"Find deals under 30K miles from any airport I've scraped"*
 - *"Show me a price chart for YYZ to LAX"*
 - *"Set up a watch for YYZ-LHR business under 70K miles"*
 - *"Scrape fresh data for Vancouver to Tokyo"*
@@ -160,16 +155,16 @@ For push notifications to your phone, set up ntfy (see the README's "Push notifi
 
 - **Scrape more routes:** `seataero search --file routes/canada_test.txt` (15 test routes)
 - **Check data coverage:** `seataero status`
-- **Find deals across all routes:** Use your agent: *"Find the cheapest deals from any Canadian airport"*
+- **Find deals across all routes:** Use your agent: *"Find the cheapest deals across all scraped routes"*
 - **Run diagnostics:** `seataero doctor` (checks database, credentials, Playwright, ntfy)
 - **Browse help topics:** `seataero help mfa`, `seataero help proxy`, `seataero help watches`
 
 ## Common gotchas
 
 1. **SMS code expired?** Re-run the search — United sends a new code each time.
-2. **Akamai blocked your IP?** Wait 10 minutes and retry. For heavy scraping, use GitHub Codespaces.
+2. **Akamai blocked your IP?** Wait 10 minutes and retry.
 3. **Data looks stale?** Data doesn't auto-refresh. Re-scrape with `seataero search` or use `seataero query --refresh`.
-4. **Only Canada routes?** Yes — seataero is scoped to 9 Canadian airports to/from anywhere on United.
+4. **Any route?** Yes — seataero works with any origin/destination that United serves. Just `seataero search ORIGIN DEST`.
 5. **Don't run multiple MCP servers at once.** If you have several Claude Code sessions or IDE windows each spawning their own `seataero-mcp`, that means multiple browsers hitting United simultaneously from the same IP. Akamai will flag this almost instantly and block your IP. One MCP server at a time — kill stale ones before starting a new session (see #6).
 6. **Stale MCP server processes accumulating?** This is a [known Claude Code bug](https://github.com/anthropics/claude-code/issues/1935). When Claude Code exits or restarts, it does not reliably kill MCP child processes — especially on Windows. Old `seataero-mcp` processes pile up, each holding ~30-50MB RAM (more if a browser was open). **Workaround:** periodically check for and kill stale processes manually (`tasklist | grep python` on Windows, `ps aux | grep seataero-mcp` on Mac/Linux). On Mac, orphaned processes are reparented to PID 1 and can be detected; on Windows they're invisible without checking the process list. If the MCP scraper behaves oddly (login failures, stale data), the first thing to try is killing all `seataero-mcp` processes and letting Claude Code spawn a fresh one.
 

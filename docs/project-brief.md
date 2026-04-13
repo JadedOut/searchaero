@@ -20,7 +20,7 @@ This is a reference document, not a working document.
 
 ## What this project is
 
-A free, open-source CLI tool for United MileagePlus award flight search, scoped to Canada routes. The CLI scrapes United's award search API, stores results in a local SQLite database, and lets you search availability from the command line. No hosted service, no web UI, no subscriptions.
+A free, open-source CLI tool for United MileagePlus award flight search. The CLI scrapes United's award search API, stores results in a local SQLite database, and lets you search availability from the command line. No hosted service, no web UI, no subscriptions.
 
 ## Design philosophy
 
@@ -43,7 +43,7 @@ Core principles:
 ## Scope
 
 - One airline program: United MileagePlus
-- Geographic coverage: Routes where at least one endpoint is a Canadian airport (9 airports: YYZ, YVR, YUL, YYC, YOW, YEG, YWG, YHZ, YQB)
+- Geographic coverage: Any origin/destination United serves
 - Date coverage: full 337 days (United's maximum award booking window)
 - Refresh cadence: daily full sweep
 - Runs locally — no server hosting required
@@ -244,22 +244,6 @@ Any MCP-compatible client discovers typed tool schemas automatically — paramet
 
 For agents without MCP support, `seataero schema` returns the same information as JSON, and all commands support `--json` for structured output.
 
-### Codespace scraping (IP rotation)
-
-Running Playwright from the user's home IP poisons Akamai IP reputation, eventually blocking even manual browsing on united.com (HTTP 428). Research confirms Akamai's ban is **IP + TLS fingerprint**, not account-level — the same MileagePlus account works fine from a fresh IP.
-
-GitHub Codespaces provides a fresh Azure IP on every creation, 60 free hours/month (2-core), and full CLI automation via `gh codespace`. The setup includes:
-
-- `.devcontainer/devcontainer.json` — Auto-installs Python, project deps, Playwright+Chromium. `--shm-size=1gb` prevents Chromium OOM in containers.
-- `scripts/codespace_scrape.sh` — Local wrapper: create Codespace → scrape → copy DB → merge → delete. EXIT trap prevents orphaned Codespaces. `--retention-period 1h` as safety net.
-- `scripts/merge_remote_db.py` — Merges remote `data.db` into local via SQLite ATTACH + INSERT OR REPLACE.
-
-United credentials (`UNITED_MP_NUMBER`, `UNITED_PASSWORD`) are stored as GitHub Codespace secrets, injected as env vars automatically.
-
-**Next step:** Wire the MCP server's `search_route` tool to scrape via Codespace instead of local Playwright, so the user's IP is never exposed to united.com during agent-driven scrapes.
-
-**Caveat:** Codespace IPs are Azure datacenter IPs, which Akamai gives lower trust than residential. Request delays between windows are still necessary. MFA handling in unattended Codespace scrapes is not yet solved — if MFA triggers, that scrape fails.
-
 ### Infrastructure and cost
 
 Runs on your local machine. No VPS, no domain, no Docker, no hosted infrastructure.
@@ -268,7 +252,6 @@ Runs on your local machine. No VPS, no domain, no Docker, no hosted infrastructu
 |-----------|------|-------------|
 | Local machine | Your laptop/desktop (needs ~2GB RAM for Playwright) | $0 |
 | SQLite | Just a file — zero setup | $0 |
-| GitHub Codespaces | 2-core, 60 free hours/month (optional, for IP rotation) | $0 |
 | **Total** | | **$0/month** |
 
 ## Operational notes
@@ -319,9 +302,7 @@ Build the `seataero` CLI as the primary interface. Each step gates the next.
 | **16** | **~~Live agent loop test (round 1).~~** Done (2026-04-10). First test revealed agent bypassed all MCP tools and used Bash with raw Python/SQL imports. Root causes: (1) `query_flights` returned flat JSON identical to Bash+SQL — no differentiation, (2) tool descriptions said what tools do, not when to use them, (3) each `search_route` spawned a fresh subprocess — no session reuse. Fix shipped same day: enriched `query_flights` with `_summary`/`_display_hint`/`_format_suggestions`, added FastMCP `instructions` with decision flow, added `ToolAnnotations`, replaced subprocess with persistent in-process CookieFarm, added `stop_session` tool. Re-test confirmed agent used `query_flights` → `search_route` → `submit_mfa` → `query_flights` correctly. Identified token waste: final `query_flights` returned ~10.4k tokens (91 rows) when agent only needed the ~150-token summary. Led to step 16b. | ~~Features that aren't tested from the agent's perspective will have invisible UX bugs.~~ |
 | **16b** | **~~Token-efficient toolkit.~~** Done (2026-04-10). Refactored `query_flights` to summary-only (~150-300 tokens, no raw rows). Added 3 new MCP tools: `get_flight_details` (paginated rows, default 15, max 50, sort by cheapest), `get_price_trend` (per-date cheapest miles time series for graphing, with `from_date`/`to_date` date range filters), `find_deals` (server-side cross-route deal discovery via SQL CTEs in `find_deals_query()` in `core/db.py`). Updated FastMCP `instructions` with new tool selection flow. Tool count: 7 → 10. 35 MCP tests (was 22). 389 tests passing. | Token waste from `query_flights` returning full row arrays (~10.4k tokens) when agents only needed the summary (~150 tokens). Summary/detail split prevents context window blowup. |
 | **16c** | **Live re-test (token-efficient toolkit).** Repeat step 16 test protocol with the summary/detail split in place. Verify: (1) agent uses `query_flights` and gets ~150-300 token summary, not ~10.4k, (2) agent calls `get_flight_details` only when user asks for a table, (3) `get_price_trend` and `find_deals` work when prompted, (4) multi-turn conversation stays well under context limits. | Confirm the token reduction works in practice from the agent's perspective. |
-| **16d** | **~~Codespace scraper infrastructure.~~** Done (2026-04-10). `.devcontainer/devcontainer.json` (Python 3.12, Playwright+Chromium, `--shm-size=1gb`, sshd), `scripts/codespace_scrape.sh` (lifecycle wrapper with EXIT trap), `scripts/merge_remote_db.py` (ATTACH + INSERT OR REPLACE). United credentials via Codespace secrets. Research confirmed Akamai ban is IP+fingerprint, not account-level. | Home IP gets poisoned by Akamai after repeated scraping. Codespaces provide disposable Azure IPs. |
-| **16e** | **MCP search_route via Codespace.** Wire `search_route` in `mcp_server.py` to scrape via Codespace (`gh codespace create/ssh/cp/delete`) instead of local Playwright. User's home IP never touches united.com during agent-driven scrapes. Handle MFA by prompting user in chat and piping code to Codespace via SSH. | The whole point of Codespace infrastructure — protect the user's IP during the interactive MCP flow, not just batch runs. |
-| **16f** | **~~Remove email auth — MP# only login.~~** Done (2026-04-11). Deleted `gmail_mfa.py` entirely. Rewrote `_auto_login()` in `cookie_farm.py` to enter MP# directly — no email attempt, no Akamai 428 detection, no Gmail IMAP recovery fallback. Removed `UNITED_EMAIL`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` env vars from all files (`cli.py`, `debug_login.py`, `orchestrate.py`, `codespace_scrape.sh`, `.env.sample`). `_load_credentials()` reads only `UNITED_MP_NUMBER` + `UNITED_PASSWORD`. Deleted deprecated specs (`email-recovery-login.md`, `unified-login-with-recovery-fallback.md`). Rewrote `TestAutoLoginRecoveryFallback` as `TestAutoLoginMPOnly`. 392 tests passing. | Email-first login was a liability: Akamai blocked email login frequently, MP# login never gets blocked. The entire email→428→fallback→Gmail IMAP pipeline was unnecessary complexity. |
+| **16f** | **~~Remove email auth — MP# only login.~~** Done (2026-04-11). Deleted `gmail_mfa.py` entirely. Rewrote `_auto_login()` in `cookie_farm.py` to enter MP# directly — no email attempt, no Akamai 428 detection, no Gmail IMAP recovery fallback. Removed `UNITED_EMAIL`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` env vars from all files (`cli.py`, `debug_login.py`, `orchestrate.py`, `.env.sample`). `_load_credentials()` reads only `UNITED_MP_NUMBER` + `UNITED_PASSWORD`. Deleted deprecated specs (`email-recovery-login.md`, `unified-login-with-recovery-fallback.md`). Rewrote `TestAutoLoginRecoveryFallback` as `TestAutoLoginMPOnly`. 392 tests passing. | Email-first login was a liability: Akamai blocked email login frequently, MP# login never gets blocked. The entire email→428→fallback→Gmail IMAP pipeline was unnecessary complexity. |
 | **16g** | **MCP server simplification (fastmcp migration).** Migrate `mcp_server.py` from bundled `mcp.server.fastmcp` to standalone `fastmcp` (v3.x). Replace threading/polling/filesystem MFA architecture with three protocol-native primitives: `task=True` for background execution, `ctx.elicit()` for inline MFA prompts, `Progress` DI for scrape progress. Deletes `scrape_status`, `submit_mfa`, `stop_session` tools and all supporting infrastructure (~350 lines). Target: ~300 lines down from ~900. See `specs/mcp-elicitation-simplification.md`. | The current MCP server reimplements async job management that the protocol already provides natively. |
 | **17** | **~~Watchlist + ntfy notifications.~~** Done (2026-04-11). `seataero watch add/list/remove/check/run/setup` subcommands. `watches` table in SQLite with route, cabin, max_miles, date range, check interval, and notification tracking. `watch check` implements full pipeline: find due watches → check freshness → scrape stale routes via `burn_in.py --one-shot` → evaluate conditions via `check_alert_matches` → content-hash dedup → send ntfy.sh push notifications. `watch run` starts foreground daemon loop. `core/notify.py` handles ntfy.sh via stdlib `urllib.request` (zero new dependencies). Config in `~/.seataero/config.json` with env var overrides. `core/watchlist.py` orchestrates the check pipeline with `parse_interval()` for human-friendly intervals (hourly, 6h, 12h, daily). 4 MCP tools (`add_watch`, `list_watches`, `remove_watch`, `check_watches`). 474 tests passing (56 new across test_notify, test_watchlist, test_cli, test_mcp). | Closes the notification loop — watches combine route monitoring, scheduled scraping, and push notifications into a fully automated pipeline. |
 | **17b** | **~~Agent-mediated notification delivery.~~** Done (2026-04-13). Decoupled MCP notification delivery so seataero returns structured match data with pre-formatted messages, and the calling agent delivers via whatever channel it has (Gmail MCP, Slack, etc.). Deleted `NotifySetup` Pydantic model and all Gmail/email elicitation from `mcp_server.py`. Simplified `_notify_status()` to ntfy-only (`"ntfy"` or `"none"`). Added `_format_notification()` helper that produces `{title, body}` dicts matching `notify_watch_matches()` format. `check_watches` now calls `send_ntfy()` directly (not `notify_watch_matches()`), includes `notification` block and `ntfy_sent` per result, and `ntfy_active` at top level. `add_watch` elicitation simplified to a single `str` prompt for ntfy topic. Removed `notify_watch_matches` import from MCP server. CLI path (`core/notify.py`, `core/watchlist.py`) completely untouched — still uses both ntfy and SMTP. MCP `instructions` updated to guide agents to deliver via their own tools. 474 tests passing (rewrote 10 MCP notification tests). | MCP server was bundling SMTP delivery that duplicated Gmail MCP capabilities already available in the agent session. Decoupling means seataero never needs to know how you want to be notified — it finds deals, the agent routes delivery. |

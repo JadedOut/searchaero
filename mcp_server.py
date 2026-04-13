@@ -23,6 +23,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from core import db
+from core import presentation
 from core.matching import CABIN_FILTER_MAP, compute_match_hash as _compute_match_hash, format_notification as _format_notification
 from core.watchlist import parse_interval
 from core.notify import load_notify_config, save_notify_config, send_ntfy
@@ -44,7 +45,7 @@ class _MFAPending(Exception):
     pass
 
 
-mcp = FastMCP("seataero", instructions="""seataero provides United MileagePlus award flight data for Canada routes.
+mcp = FastMCP("seataero", instructions="""seataero provides United MileagePlus award flight data.
 
 Tool selection:
 - query_flights: ALWAYS try this first. Returns cached availability with pre-computed summary (cheapest deal, saver counts, format suggestions). Instant results.
@@ -67,7 +68,28 @@ MFA may be required on any scrape, not just the first. The browser session is ke
 
 IMPORTANT: When query_flights returns no_results, your next action MUST be search_route. Do not return text to the user. Do not ask for confirmation. Just call search_route.
 
+Before calling search_route for any reason (no_results or stale data), tell the user: "Starting a fresh scrape — this takes about 2 minutes." Then immediately call search_route without waiting for a response.
+
 In autonomous/loop mode, skip the query_flights-first rule — call search_route directly since the goal is fresh data each iteration.
+
+Presentation:
+After calling a data tool (query_flights, get_flight_details, get_price_trend, find_deals),
+call the show_* tool named in the _present_with field to format results for the user.
+Display show_* output verbatim — do not reformat, summarize, or add commentary around it.
+
+Presentation tool selection:
+- show_summary: Deal card for quick overview (after query_flights)
+- show_flights: seats.aero-style table with all dates/cabins (after get_flight_details, or when user wants a table)
+- show_graph: ASCII price chart over time (after get_price_trend, or when user wants a graph)
+- show_deals: Deals table across routes (after find_deals)
+- show_general: Passthrough for freeform text — only when no specific tool fits
+
+You can override _present_with based on user intent:
+- "show me flights/prices/table" → show_flights
+- "graph/chart/trend" → show_graph
+- "what's cheapest?" / quick summary → show_summary
+
+If the user asks for multiple views (e.g., "summary and table", "graph and deals"), call each corresponding show_* tool in sequence before stopping.
 
 Do NOT query the database directly via SQL, import core.db, or run seataero CLI commands via Bash. These tools handle everything.""")
 
@@ -233,22 +255,6 @@ def _compute_summary(rows):
     }
 
 
-def _pick_display_hint(date="", from_date="", to_date="", cabin=""):
-    """Choose display hint based on query shape."""
-    if date:
-        return "full_list"
-    if cabin:
-        return "best_deal"
-    return "date_comparison"
-
-
-_FORMAT_SUGGESTIONS = {
-    "best_deal": "Present the cheapest option prominently: date, miles, taxes. Mention Saver vs Standard date counts. Note data age if over 24h.",
-    "date_comparison": "Show a compact table grouped by date, columns for cabin classes with lowest miles. Highlight Saver availability. Summarize best deal at top.",
-    "full_list": "Show all options for this date in a table: cabin, award type, miles, taxes. Highlight cheapest. Compare Saver vs Standard.",
-}
-
-
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def query_flights(origin: Airport, destination: Airport, cabin: Cabin = "",
                   from_date: DateStr = "", to_date: DateStr = "",
@@ -286,13 +292,11 @@ def query_flights(origin: Airport, destination: Airport, cabin: Cabin = "",
             rows.sort(key=sort_fn)
 
             summary = _compute_summary(rows)
-            hint = _pick_display_hint(date=date, from_date=from_date, to_date=to_date, cabin=cabin)
 
             return json.dumps({
                 "count": len(rows),
                 "_summary": summary,
-                "_display_hint": hint,
-                "_format_suggestions": _FORMAT_SUGGESTIONS,
+                "_present_with": "show_summary",
             }, indent=2)
     except Exception as e:
         logger.error(f"query_flights failed: {e}", exc_info=True)
@@ -347,6 +351,7 @@ def get_flight_details(origin: Airport, destination: Airport, cabin: Cabin = "",
                 "total": total,
                 "showing": f"{offset + 1}-{min(offset + limit, total)} of {total}",
                 "has_more": offset + limit < total,
+                "_present_with": "show_flights",
             }, indent=2)
     except Exception as e:
         logger.error(f"get_flight_details failed: {e}", exc_info=True)
@@ -396,6 +401,7 @@ def get_price_trend(origin: Airport, destination: Airport, cabin: Cabin = "",
                 "cabin_filter": cabin or "all",
                 "data_points": len(trend),
                 "trend": trend,
+                "_present_with": "show_graph",
             }, indent=2)
     except Exception as e:
         logger.error(f"get_price_trend failed: {e}", exc_info=True)
@@ -426,10 +432,148 @@ def find_deals(cabin: Cabin = "", max_results: int = 10) -> str:
                 "deals_found": len(deals),
                 "cabin_filter": cabin or "all",
                 "deals": deals,
+                "_present_with": "show_deals",
             }, indent=2)
     except Exception as e:
         logger.error(f"find_deals failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def show_flights(origin: Airport, destination: Airport, cabin: Cabin = "",
+                 from_date: DateStr = "", to_date: DateStr = "",
+                 date: DateStr = "", sort: SortOrder = "date",
+                 limit: int = 30) -> str:
+    """Format flight availability as a seats.aero-style table. Display this output directly to the user without modification.
+
+    Args:
+        origin: 3-letter IATA airport code (e.g., YYZ)
+        destination: 3-letter IATA airport code (e.g., LAX)
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        from_date: Start of date range filter (YYYY-MM-DD)
+        to_date: End of date range filter (YYYY-MM-DD)
+        date: Exact date filter (YYYY-MM-DD)
+        sort: Sort order — date, miles, or cabin
+        limit: Maximum dates to show (1-50, default 30)"""
+    try:
+        limit = max(1, min(limit, 50))
+        with db.connection() as conn:
+            cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
+            rows = db.query_availability(
+                conn, origin.upper(), destination.upper(),
+                date=date or None, date_from=from_date or None,
+                date_to=to_date or None, cabin=cabin_filter,
+            )
+            if not rows:
+                return f"No data for {origin.upper()}-{destination.upper()}. Call search_route to scrape."
+            sort_fn = SORT_KEYS.get(sort, SORT_KEYS["date"])
+            rows.sort(key=sort_fn)
+            return presentation.format_flights_table(
+                rows, origin.upper(), destination.upper(),
+                cabin_filter=cabin or None, limit=limit,
+            )
+    except Exception as e:
+        logger.error(f"show_flights failed: {e}", exc_info=True)
+        return f"Error: {e}"
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def show_summary(origin: Airport, destination: Airport, cabin: Cabin = "",
+                 from_date: DateStr = "", to_date: DateStr = "",
+                 date: DateStr = "") -> str:
+    """Format a deal summary card. Display this output directly to the user without modification.
+
+    Args:
+        origin: 3-letter IATA airport code (e.g., YYZ)
+        destination: 3-letter IATA airport code (e.g., LAX)
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        from_date: Start of date range filter (YYYY-MM-DD)
+        to_date: End of date range filter (YYYY-MM-DD)
+        date: Exact date filter (YYYY-MM-DD)"""
+    try:
+        with db.connection() as conn:
+            cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
+            rows = db.query_availability(
+                conn, origin.upper(), destination.upper(),
+                date=date or None, date_from=from_date or None,
+                date_to=to_date or None, cabin=cabin_filter,
+            )
+            if not rows:
+                return f"No data for {origin.upper()}-{destination.upper()}. Call search_route to scrape."
+            summary = _compute_summary(rows)
+            return presentation.format_summary_card(
+                summary, origin.upper(), destination.upper(), count=len(rows),
+            )
+    except Exception as e:
+        logger.error(f"show_summary failed: {e}", exc_info=True)
+        return f"Error: {e}"
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def show_graph(origin: Airport, destination: Airport, cabin: Cabin = "",
+               from_date: DateStr = "", to_date: DateStr = "") -> str:
+    """Format a price trend as an ASCII chart. Display this output directly to the user without modification.
+
+    Args:
+        origin: 3-letter IATA airport code (e.g., YYZ)
+        destination: 3-letter IATA airport code (e.g., LAX)
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        from_date: Start of date range filter (YYYY-MM-DD)
+        to_date: End of date range filter (YYYY-MM-DD)"""
+    try:
+        with db.connection() as conn:
+            cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
+            rows = db.query_availability(
+                conn, origin.upper(), destination.upper(),
+                cabin=cabin_filter,
+                date_from=from_date or None, date_to=to_date or None,
+            )
+            if not rows:
+                return f"No data for {origin.upper()}-{destination.upper()}. Call search_route to scrape."
+            # Aggregate: one point per date, cheapest miles
+            by_date = {}
+            for r in rows:
+                d = r["date"]
+                if d not in by_date or r["miles"] < by_date[d]["miles"]:
+                    by_date[d] = {"date": d, "miles": r["miles"],
+                                  "cabin": r["cabin"], "award_type": r["award_type"]}
+            trend = sorted(by_date.values(), key=lambda x: x["date"])
+            return presentation.format_price_chart(
+                trend, origin.upper(), destination.upper(),
+                cabin_filter=cabin or None,
+            )
+    except Exception as e:
+        logger.error(f"show_graph failed: {e}", exc_info=True)
+        return f"Error: {e}"
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def show_deals(cabin: Cabin = "", max_results: int = 10) -> str:
+    """Format best deals across all routes as a table. Display this output directly to the user without modification.
+
+    Args:
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        max_results: Maximum number of deals to return (1-25, default 10)"""
+    try:
+        max_results = max(1, min(max_results, 25))
+        with db.connection() as conn:
+            cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
+            deals = db.find_deals_query(conn, cabin=cabin_filter, max_results=max_results)
+            if not deals:
+                return "No deals found."
+            return presentation.format_deals_table(deals, cabin_filter=cabin or None)
+    except Exception as e:
+        logger.error(f"show_deals failed: {e}", exc_info=True)
+        return f"Error: {e}"
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def show_general(text: str) -> str:
+    """Pass through text for display. Use only when no specific show_* tool applies. Display this output directly to the user without modification.
+
+    Args:
+        text: The text to display"""
+    return presentation.format_general(text)
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -1016,6 +1160,11 @@ def _list_tools():
         ("list_watches", "List active watched routes"),
         ("remove_watch", "Remove a watch"),
         ("check_watches", "Evaluate watches and send notifications"),
+        ("show_flights", "Format availability as seats.aero-style table"),
+        ("show_summary", "Format deal summary card"),
+        ("show_graph", "Format price trend as ASCII chart"),
+        ("show_deals", "Format deals table across routes"),
+        ("show_general", "Pass through text for display"),
     ]
     print("seataero MCP server — available tools:\n")
     for name, desc in tools:

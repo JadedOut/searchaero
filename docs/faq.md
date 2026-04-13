@@ -1,19 +1,17 @@
 # Frequently Asked Questions
 
-### What should I ask the agent?
+### What MCP servers should I connect?
 
-Some examples:
+For the best experience, connect **two** MCP servers to your agent:
 
-- "What's the cheapest flight from Toronto to New York this summer?"
-- "Find business class deals from any Canadian airport"
-- "Show me a price chart for YYZ to LAX"
-- "Set up a watch for YYZ to LHR business under 70K miles"
-- "Scrape fresh data for Vancouver to Tokyo"
-- "Check my watches and email me any deals"
+1. **seataero** — flight search, scraping, alerts, watches
+2. **Gmail** — automatic MFA code retrieval, email notifications for deal alerts
+
+With both connected, the agent can handle MFA verification hands-free (reads the code from Gmail) and deliver watch notifications via email. seataero works without Gmail, but you'll need to manually type SMS codes and won't get email-based notifications.
 
 ## Why Playwright?
 
-Seataero uses **curl for all flight data requests**. However, United's login flow requires Playwright for **cookie farming**.
+Seataero uses **curl_cffi for all flight data requests**. However, United's login flow requires Playwright for **cookie farming**.
 
 United's authentication sits behind Akamai bot detection and SMS/email-based MFA, which means we need a real browser session to log in and capture the resulting auth cookies. Those cookies expire, so Playwright needs to periodically re-authenticate to keep them fresh. Once `cookie_farm.py` has a valid session, every subsequent API call (searching routes, fetching availability) goes through plain HTTP via `curl`/`requests`.
 
@@ -31,20 +29,19 @@ United's Akamai bot detection flagged your request. This is usually transient �
 
 - Wait 10–15 minutes and try again
 - Use a proxy: `seataero search YYZ LAX --proxy socks5://user:pass@host:port`
-- For heavy scraping, use GitHub Codespaces (disposable Azure IPs): `scripts/codespace_scrape.sh`
 
 ### How often should I re-scrape?
 
 Award pricing changes frequently. For routes you're actively monitoring:
 
 - **Casual browsing:** Scrape once, data is good for a few days
-- **Active booking:** Re-scrape every 12–24 hours (`seataero query --refresh` does this automatically)
-- **Price watching:** Set up a watch with `seataero watch add` — it handles scraping and notifications
+- **Active booking:** Re-scrape every 24 hours (`seataero query --refresh` does this automatically)
+- **Price watching:** Set up a watch with `seataero watch add` — it handles scraping and notifications, but your AI agent must be left on.
 
 ### How long does a full scrape take?
 
 - **Single route:** ~2 minutes (12 API calls covering 337 days)
-- **15 test routes:** ~30 minutes with 1 worker
+- **15 routes:** ~30 minutes with 1 worker
 
 
 ## MFA / Login
@@ -129,15 +126,6 @@ In practice this means you don't need ntfy at all — the agent handles the full
 
 Any MCP-compatible agent: Claude Code, VS Code Copilot, Cursor, Continue, Cline, and others. See the README for setup instructions.
 
-### What MCP servers should I connect?
-
-For the best experience, connect **two** MCP servers to your agent:
-
-1. **seataero** — flight search, scraping, alerts, watches
-2. **Gmail** — automatic MFA code retrieval, email notifications for deal alerts
-
-With both connected, the agent can handle MFA verification hands-free (reads the code from Gmail) and deliver watch notifications via email. seataero works without Gmail, but you'll need to manually type SMS codes and won't get email-based notifications.
-
 
 ### The agent is trying to run SQL or CLI commands directly
 
@@ -158,10 +146,6 @@ seataero search YYZ LAX --proxy socks5://user:pass@host:port
 # Via environment variable
 export PROXY_URL="socks5://user:pass@host:port"
 ```
-
-### What about GitHub Codespaces?
-
-For IP rotation without a paid proxy, you can scrape from GitHub Codespaces (free tier: 120 hours/month). Each Codespace gets a fresh Azure IP. See `scripts/codespace_scrape.sh`.
 
 ---
 

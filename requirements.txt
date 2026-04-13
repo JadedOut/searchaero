@@ -1,6 +1,0 @@
-curl_cffi>=0.7
-playwright>=1.40
-python-dotenv>=1.0
-python-ghost-cursor>=0.1.1
-rich>=13.0
-fastmcp[tasks]>=3.0

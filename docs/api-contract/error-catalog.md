@@ -42,8 +42,8 @@ Errors fall into three categories:
 **Common causes**:
 - TLS fingerprint mismatch (e.g., claiming Chrome user-agent but using a Python TLS stack)
 - Missing or mismatched `sec-*` headers
-- Datacenter IP flagged by Cloudflare
-- Too many requests from the same IP in a short window
+- Datacenter IP flagged by Cloudflare (use residential IP!)
+- Too many requests from the same IP in a short window (rare case)
 - Stale or missing Cloudflare cookies (`__cf_bm`, `cf_clearance`)
 
 **Recommended handling**:

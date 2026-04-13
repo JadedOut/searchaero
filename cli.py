@@ -1840,13 +1840,9 @@ United's Akamai bot detection can block your IP after repeated scraping.
   2. [bold]Use a proxy:[/bold]
      seataero search YYZ LAX --proxy socks5://user:pass@host:port
      Or set the PROXY_URL environment variable.
-  3. [bold]Use GitHub Codespaces[/bold] — free disposable Azure IPs:
-     scripts/codespace_scrape.sh
-
 [bold]For heavy use:[/bold]
   • Parallel scraping (--workers 3) is fine but increases block risk
   • Increase --delay (default 3s) to reduce detection risk
-  • Rotate through Codespace instances for full route sweeps
 """,
     "watches": """
 [bold]Watchlist & Notifications[/bold]
