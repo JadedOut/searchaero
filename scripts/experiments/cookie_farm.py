@@ -25,7 +25,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
-
 SCRIPT_DIR = Path(__file__).parent.resolve()
 DEFAULT_USER_DATA_DIR = SCRIPT_DIR / ".browser-profile"
 
@@ -37,7 +36,7 @@ class CookieFarm:
     alive, and exports cookies/tokens on demand for curl_cffi to use.
     """
 
-    def __init__(self, user_data_dir=None, headless=False, ephemeral=True, env_file=None):
+    def __init__(self, user_data_dir=None, headless=False, ephemeral=True, env_file=None, proxy=None):
         if ephemeral and user_data_dir is None:
             self._ephemeral = True
             self._user_data_dir = Path(tempfile.mkdtemp(prefix="seataero-browser-"))
@@ -45,30 +44,34 @@ class CookieFarm:
             self._ephemeral = False
             self._user_data_dir = Path(user_data_dir) if user_data_dir else DEFAULT_USER_DATA_DIR
         self._headless = headless
+        self._proxy = proxy or os.getenv("PROXY_URL", "").strip() or None
         self._playwright = None
         self._context = None
         self._page = None
         self._lock = threading.Lock()
         self._mfa_prompt = None  # stored callback for re-auth during session recovery
+        self.status_message = ""  # current login step, read by MCP status poller
         self._load_credentials(env_file)
+
+    @property
+    def proxy(self) -> str | None:
+        return self._proxy
 
     # ------------------------------------------------------------------
     # Credentials
     # ------------------------------------------------------------------
 
     def _load_credentials(self, env_file=None):
-        """Load login and Gmail credentials from .env file."""
+        """Load login credentials from .env file."""
         script_dir = Path(__file__).parent.resolve()
         load_dotenv(env_file or (script_dir / ".env"))
 
-        self._united_email = os.getenv("UNITED_EMAIL", "").strip()
+        self._united_mp_number = os.getenv("UNITED_MP_NUMBER", "").strip()
         self._united_password = os.getenv("UNITED_PASSWORD", "").strip()
-        self._gmail_address = os.getenv("GMAIL_ADDRESS", "").strip()
-        self._gmail_app_password = os.getenv("GMAIL_APP_PASSWORD", "").strip()
 
     def _has_auto_login_credentials(self) -> bool:
         """Return True if all auto-login credentials are configured."""
-        return all([self._united_email, self._united_password])
+        return all([self._united_mp_number, self._united_password])
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -90,7 +93,7 @@ class CookieFarm:
             print("WARNING: headless mode is not supported for united.com "
                   "(Akamai bot detection). Launching headed instead.")
             self._headless = False
-        self._context = self._playwright.chromium.launch_persistent_context(
+        launch_kwargs = dict(
             user_data_dir=str(self._user_data_dir),
             headless=False,
             channel="chrome",
@@ -98,6 +101,11 @@ class CookieFarm:
             args=["--disable-blink-features=AutomationControlled"],
             ignore_default_args=["--enable-automation"],
         )
+        if self._proxy:
+            launch_kwargs["proxy"] = {"server": self._proxy}
+            print(f"Cookie farm using proxy: {self._proxy.split('@')[-1] if '@' in self._proxy else self._proxy}")
+
+        self._context = self._playwright.chromium.launch_persistent_context(**launch_kwargs)
         self._page = self._context.pages[0] if self._context.pages else self._context.new_page()
         print(f"Cookie farm started ({'ephemeral' if self._ephemeral else 'persistent'} profile)")
 
@@ -210,18 +218,8 @@ class CookieFarm:
     # Login
     # ------------------------------------------------------------------
 
-    def ensure_logged_in(self, mfa_prompt=None):
-        """Navigate to united.com and verify login state.
-
-        Args:
-            mfa_prompt: Optional callable that returns the SMS verification
-                code as a string. When provided and MFA is required, this
-                callback is invoked to get the code from the user.
-
-        Raises:
-            RuntimeError: If headless and not logged in with no way to log in.
-        """
-        # Persist callback so restart() and recovery paths can re-auth
+    def ensure_logged_in(self, mfa_prompt=None, mfa_method="sms"):
+        """Navigate to united.com and verify login state."""
         if mfa_prompt is not None:
             self._mfa_prompt = mfa_prompt
 
@@ -234,8 +232,6 @@ class CookieFarm:
                     timeout=30000,
                 )
 
-            # Wait for SPA to resolve auth state — either the Sign in
-            # button appears (anonymous) or a logged-in indicator renders.
             try:
                 self._page.wait_for_selector(
                     'button:has-text("Sign in"):visible, '
@@ -245,49 +241,65 @@ class CookieFarm:
                     timeout=10000,
                 )
             except Exception:
-                # Timeout — page may be slow, proceed with detection anyway
                 pass
 
             if self._is_logged_in():
                 print("Already logged in")
                 return
 
-            if not self._headless:
-                # Headed mode: try auto-login first
-                if self._has_auto_login_credentials():
-                    result = self._auto_login()
-                    if result == "success":
+            if not self._has_auto_login_credentials():
+                if not self._headless:
+                    self._wait_for_login()
+                    return
+                raise RuntimeError(
+                    "No login credentials configured. "
+                    "Set UNITED_MP_NUMBER + UNITED_PASSWORD in .env."
+                )
+
+            print("Trying auto-login...")
+            result = self._auto_login(mfa_method=mfa_method)
+            print(f"  auto_login returned: {result!r}")
+            self.status_message = f"auto_login returned: {result!r}"
+            if result == "success":
+                return
+            if result == "failed":
+                print("  Login failed — retrying with ghost cursor mouse movements...")
+                self.status_message = "Retrying with ghost cursor..."
+                try:
+                    self._page.goto("https://www.united.com/en/ca/", wait_until="domcontentloaded", timeout=30000)
+                    time.sleep(2)
+                except Exception:
+                    pass
+                result = self._auto_login(use_ghost_cursor=True, mfa_method=mfa_method)
+                if result == "success":
+                    return
+            if result == "mfa_required":
+                if mfa_prompt is not None:
+                    print("  Calling mfa_prompt (waiting for code file)...")
+                    self.status_message = "Waiting for MFA code file..."
+                    code = mfa_prompt()
+                    print(f"  Got MFA code: {code[:2]}***")
+                    self.status_message = f"Got MFA code, entering..."
+                    mfa_ok = self._enter_mfa_code(code)
+                    print(f"  _enter_mfa_code returned: {mfa_ok}")
+                    self.status_message = f"_enter_mfa_code returned: {mfa_ok}"
+                    if mfa_ok:
                         return
-                    if result == "mfa_required":
-                        if mfa_prompt is not None:
-                            code = mfa_prompt()
-                            if self._enter_mfa_code(code):
-                                return
-                            print("MFA code failed — falling back to manual login")
-                        # Fall through to manual login
+                    print("  MFA code rejected")
+                else:
+                    print("  MFA required but no prompt callback")
+
+            # If running programmatically (mfa_prompt set), always raise on failure.
+            # _wait_for_login() is only for interactive CLI use without mfa_prompt.
+            if not self._headless and mfa_prompt is None:
                 self._wait_for_login()
                 return
 
-            # Headless mode: must auto-login
-            if self._has_auto_login_credentials():
-                result = self._auto_login()
-                if result == "success":
-                    return
-                if result == "mfa_required":
-                    if mfa_prompt is not None:
-                        code = mfa_prompt()
-                        if self._enter_mfa_code(code):
-                            return
-                        raise RuntimeError("MFA code was rejected")
-                    raise RuntimeError(
-                        "MFA required but no prompt callback provided. "
-                        "Pass mfa_prompt to ensure_logged_in() or run headed."
-                    )
-                print("Auto-login failed")
-
+            self.status_message = f"FINAL FAIL: auto_login={result!r}, url={self._page.url}"
             raise RuntimeError(
-                "Not logged in and running headless. "
-                "Configure auto-login credentials in .env or run headed first."
+                "Login failed. Your IP may be blocked by Akamai. "
+                "Try restarting your router for a new IP, "
+                "or check your .env credentials."
             )
 
     def _is_logged_in(self) -> bool:
@@ -374,11 +386,10 @@ class CookieFarm:
     # Auto-login
     # ------------------------------------------------------------------
 
-    def _auto_login(self):
+    def _auto_login(self, use_ghost_cursor=False, mfa_method="sms"):
         """Automate United login up to the MFA wall.
 
-        Enters MileagePlus credentials (email + password) and clicks
-        Sign in.
+        Enters MileagePlus number + password and clicks Sign in.
 
         Must be called from within self._lock (called by ensure_logged_in).
 
@@ -389,150 +400,193 @@ class CookieFarm:
         """
         if not self._has_auto_login_credentials():
             print("Auto-login credentials not configured in .env")
-            print("Required: UNITED_EMAIL, UNITED_PASSWORD")
+            print("Required: UNITED_MP_NUMBER, UNITED_PASSWORD")
             return "failed"
 
-        print("Attempting auto-login...")
+        def _step(msg):
+            """Update status_message (for MCP poller) and print."""
+            self.status_message = msg
+            print(f"  {msg}")
+
+        _step("Starting auto-login...")
         page = self._page
 
-        # Step 1: Click "Sign in" on the homepage
-        try:
-            page.goto("https://www.united.com/en/ca/", wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_timeout(4000)
-            print("  Step 1: Loaded homepage")
+        # Selectors used throughout the login flow
+        _SIGN_IN_DRAWER_INPUT = '#MPIDEmailField'
+        _PASSWORD_FIELD = '#password'
+        _SIGN_IN_BUTTON = 'text=Sign in'
+        _MFA_INPUTS = 'input[type="tel"], input[autocomplete="one-time-code"], input[inputmode="numeric"]'
 
-            sign_in = page.locator("text=Sign in").first
-            sign_in.click()
-            page.wait_for_timeout(4000)
-            print("  Step 1: Clicked Sign in")
-        except Exception as e:
-            print(f"  Step 1 FAILED: {e}")
-            return "failed"
+        # Click a button inside the sign-in drawer by its visible text.
+        # The drawer is the rightmost panel; its buttons come AFTER nav-bar
+        # buttons in DOM order, so we pick the last match.  No magic pixel
+        # coordinates — works at any viewport width.
+        # Returns True if a button was found and clicked, False otherwise.
+        def _click_drawer_button(text):
+            if use_ghost_cursor:
+                from core.ghost_click import ghost_click_button_by_text
+                return ghost_click_button_by_text(page, text)
+            return page.evaluate(f"""() => {{
+                const matches = [];
+                for (const btn of document.querySelectorAll('button')) {{
+                    if (btn.textContent.trim() === '{text}' && btn.offsetParent !== null) {{
+                        matches.push(btn);
+                    }}
+                }}
+                if (matches.length === 0) return false;
+                matches[matches.length - 1].click();
+                return true;
+            }}""")
 
-        # Step 2: Enter email/MileagePlus number
-        # The sign-in panel is a slide-out on the right side of the page.
-        # The email input has id="MPIDEmailField" (discovered via debug_login.py).
-        # United sometimes shows "Something went wrong" after clicking Continue,
-        # so we retry the email+Continue step up to 3 times.
-        password_visible = False
-        for attempt in range(3):
-            try:
-                email_input = page.locator('#MPIDEmailField')
-                email_input.wait_for(state="visible", timeout=10000)
-                email_input.fill(self._united_email)
-                page.wait_for_timeout(1000)
-                print(f"  Step 2: Entered email (attempt {attempt + 1})")
-
-                # Click Continue (JS click to avoid overlay interception)
-                page.evaluate("""() => {
-                    const buttons = document.querySelectorAll('button');
-                    for (const btn of buttons) {
-                        const text = btn.textContent.trim();
-                        const rect = btn.getBoundingClientRect();
-                        if (text === 'Continue' && rect.x > 650 && rect.width > 100) {
-                            btn.click();
-                            return;
-                        }
-                    }
-                }""")
-                page.wait_for_timeout(4000)
-                print("  Step 2: Clicked Continue")
-
-                # Check if password field appeared or if we got an error
-                password_input = page.locator('#password')
-                password_input.wait_for(state="visible", timeout=8000)
-                password_visible = True
-                break
-            except Exception as e:
-                # Check for "Something went wrong" error
-                content = page.content()
-                if "Something went wrong" in content and attempt < 2:
-                    print(f"  Step 2: 'Something went wrong' error, retrying in 5s...")
-                    page.wait_for_timeout(5000)
-                    # Close the drawer and re-open to reset state
-                    try:
-                        close_btn = page.locator('button[aria-label="Close"]').first
-                        close_btn.click()
-                        page.wait_for_timeout(2000)
-                        sign_in = page.locator("text=Sign in").first
-                        sign_in.click()
-                        page.wait_for_timeout(4000)
-                    except Exception:
-                        # If close/reopen fails, just reload the page
-                        page.goto("https://www.united.com/en/ca/", wait_until="domcontentloaded", timeout=30000)
-                        page.wait_for_timeout(4000)
-                        sign_in = page.locator("text=Sign in").first
-                        sign_in.click()
-                        page.wait_for_timeout(4000)
-                    continue
+        # Helper: open the sign-in drawer and wait for the input field
+        def _open_sign_in_drawer():
+            if use_ghost_cursor:
+                from core.ghost_click import ghost_click_element
+                sign_in = page.query_selector('button:has-text("Sign in"), a:has-text("Sign in")')
+                if sign_in is None:
+                    sign_in = page.locator(_SIGN_IN_BUTTON).first
+                    sign_in.click()
                 else:
-                    print(f"  Step 2 FAILED: {e}")
-                    return "failed"
+                    ghost_click_element(page, sign_in)
+            else:
+                sign_in = page.locator(_SIGN_IN_BUTTON).first
+                sign_in.click()
+            page.locator(_SIGN_IN_DRAWER_INPUT).wait_for(state="visible", timeout=10000)
 
-        if not password_visible:
-            print("  Step 2 FAILED: Could not get past email step after 3 attempts")
-            return "failed"
+        # Helper: fill identifier + click Continue, return True if password field appears
+        def _submit_identifier(value, label="identifier"):
+            page.locator(_SIGN_IN_DRAWER_INPUT).fill(value)
+            _step(f"Entered {label}, clicking Continue...")
+            if not _click_drawer_button("Continue"):
+                _step(f"Could not find Continue button in drawer")
+                return False
+            try:
+                page.locator(_PASSWORD_FIELD).wait_for(state="visible", timeout=12000)
+                return True
+            except Exception:
+                return False
 
-        # Step 3: Enter password
-        # Password input has id="password" inside the sign-in drawer.
+        # Step 1: Load homepage and open sign-in drawer
         try:
-            password_input = page.locator('#password')
-            password_input.wait_for(state="visible", timeout=5000)
-            password_input.fill(self._united_password)
-            page.wait_for_timeout(1000)
-            print("  Step 3: Entered password")
-
-            # The "Sign in" button in the drawer gets blocked by an overlay
-            # when using normal Playwright click (the nav bar "Sign in" button
-            # intercepts). Use JavaScript click scoped to the drawer instead.
-            page.evaluate("""() => {
-                const buttons = document.querySelectorAll('button');
-                for (const btn of buttons) {
-                    const text = btn.textContent.trim();
-                    const rect = btn.getBoundingClientRect();
-                    // The drawer button is on the right side (x > 650) and is
-                    // the filled/primary style, not the bare nav button
-                    if (text === 'Sign in' && rect.x > 650 && rect.width > 100) {
-                        btn.click();
-                        return;
-                    }
-                }
-            }""")
-            page.wait_for_timeout(6000)
-            print("  Step 3: Clicked Sign in")
+            _step("Loading united.com...")
+            page.goto("https://www.united.com/en/ca/", wait_until="domcontentloaded", timeout=30000)
+            _step("Opening sign-in drawer...")
+            _open_sign_in_drawer()
+            _step("Sign-in drawer open")
         except Exception as e:
-            print(f"  Step 3 FAILED: {e}")
+            _step(f"FAILED: {e}")
             return "failed"
 
-        # Check if we're already logged in (no MFA required)
+        # Step 2: Enter MP# and click Continue
+        _step("Entering MP#...")
+        password_visible = _submit_identifier(self._united_mp_number, "MP#")
+        if not password_visible:
+            _step("FAILED: Password field not visible after MP# entry")
+            return "failed"
+        _step("MP# accepted — entering password...")
+
+        # Step 3: Enter password and submit
+        try:
+            page.locator(_PASSWORD_FIELD).fill(self._united_password)
+            _step("Clicking Sign in...")
+
+            if not _click_drawer_button("Sign in"):
+                _step("FAILED: Could not find Sign in button in drawer")
+                return "failed"
+
+            _step("Waiting for login response...")
+            try:
+                page.locator(_PASSWORD_FIELD).wait_for(state="hidden", timeout=15000)
+            except Exception:
+                pass
+        except Exception as e:
+            _step(f"FAILED: {e}")
+            return "failed"
+
+        # Check outcome: logged in, MFA required, or unknown
         if self._is_logged_in():
-            print("  Auto-login successful (no MFA required)!")
+            _step("Login successful!")
             return "success"
 
-        # Check for MFA/verification code input
         try:
-            page = self._page
             content = page.content().lower()
-            # Look for verification code indicators
-            has_mfa = any([
-                "verification code" in content,
-                "security code" in content,
-                "enter code" in content,
-                "enter your code" in content,
+            has_mfa = any(kw in content for kw in [
+                "verification code", "security code", "enter code", "enter your code",
             ])
             if not has_mfa:
-                # Also check for a numeric code input field
-                code_input = page.locator('input[type="tel"], input[autocomplete="one-time-code"], input[inputmode="numeric"]')
-                if code_input.count() > 0:
+                if page.locator(_MFA_INPUTS).count() > 0:
                     has_mfa = True
             if has_mfa:
-                print("  MFA/verification code screen detected")
+                self._select_mfa_method(page, mfa_method, _step)
+                _step(f"MFA code required ({mfa_method}) — waiting for code...")
                 return "mfa_required"
         except Exception:
             pass
 
-        print("  Login did not complete — unknown state")
+        _step("Login did not complete — unknown state")
         return "failed"
+
+    def _select_mfa_method(self, page, mfa_method, _step):
+        """Select SMS or email delivery on United's MFA method screen.
+
+        Called after _auto_login detects MFA. If United shows a method selection
+        (e.g., radio buttons or links for SMS/email), clicks the appropriate one.
+        If no selection is shown (code input already visible), does nothing.
+
+        Args:
+            page: Playwright page on MFA screen.
+            mfa_method: "sms" or "email".
+            _step: Logging callback.
+        """
+        # If code input is already visible, United auto-sent — no selection needed
+        try:
+            code_input = page.locator(
+                'input[type="tel"], input[autocomplete="one-time-code"], input[inputmode="numeric"]'
+            ).first
+            if code_input.is_visible():
+                _step(f"Code input already visible — United auto-sent ({mfa_method})")
+                return
+        except Exception:
+            pass
+
+        # Look for method selection options
+        _step(f"Looking for MFA method selection (want: {mfa_method})...")
+
+        if mfa_method == "email":
+            selectors = [
+                'button:has-text("email")',
+                'a:has-text("email")',
+                'label:has-text("email")',
+                '[data-testid*="email"]',
+            ]
+        else:
+            selectors = [
+                'button:has-text("text")',
+                'a:has-text("text")',
+                'button:has-text("phone")',
+                'a:has-text("phone")',
+                'label:has-text("text")',
+                'label:has-text("phone")',
+                '[data-testid*="sms"]',
+                '[data-testid*="phone"]',
+            ]
+
+        for selector in selectors:
+            try:
+                el = page.locator(selector).first
+                if el.is_visible(timeout=2000):
+                    _step(f"Found method option: {selector}")
+                    el.click()
+                    # Wait for code input to appear after selection
+                    page.locator(
+                        'input[type="tel"], input[autocomplete="one-time-code"], input[inputmode="numeric"]'
+                    ).first.wait_for(state="visible", timeout=10000)
+                    _step(f"Code input appeared after selecting {mfa_method}")
+                    return
+            except Exception:
+                continue
+
+        _step(f"No method selection found — proceeding with default ({mfa_method})")
 
     def _enter_mfa_code(self, code: str) -> bool:
         """Fill the MFA verification code and submit.
@@ -543,19 +597,22 @@ class CookieFarm:
         Returns:
             True if login succeeded after entering the code.
         """
+        def _mfa_step(msg):
+            self.status_message = f"MFA: {msg}"
+            print(f"  MFA: {msg}")
+
         page = self._page
         try:
-            # Find the code input field
+            _mfa_step(f"Looking for code input (url: {page.url})")
             code_input = page.locator(
                 'input[type="tel"], input[autocomplete="one-time-code"], input[inputmode="numeric"]'
             ).first
             code_input.wait_for(state="visible", timeout=5000)
             code_input.fill(code)
-            page.wait_for_timeout(1000)
-            print("  MFA: Entered verification code")
+            _mfa_step("Entered verification code")
 
-            # Find and click the submit/verify button
-            page.evaluate("""() => {
+            # Click the submit/verify button
+            clicked = page.evaluate("""() => {
                 const buttons = document.querySelectorAll('button');
                 for (const btn of buttons) {
                     const text = btn.textContent.trim().toLowerCase();
@@ -563,49 +620,75 @@ class CookieFarm:
                         const rect = btn.getBoundingClientRect();
                         if (rect.width > 50 && rect.height > 20) {
                             btn.click();
-                            return;
+                            return text;
                         }
                     }
                 }
+                return null;
             }""")
-            page.wait_for_timeout(5000)
-            print("  MFA: Clicked submit, waiting for page to settle...")
+            _mfa_step(f"Clicked button: {clicked}")
 
-            # United's SPA does NOT redirect after MFA — it stays on the
-            # verification page.  Navigate to the homepage so that
-            # _is_logged_in() can see the authenticated DOM state.
-            page.goto(
-                "https://www.united.com/en/ca/",
-                wait_until="domcontentloaded",
-                timeout=30000,
-            )
+            if not clicked:
+                _mfa_step("WARNING: No submit button found!")
 
-            # Wait for SPA to resolve auth state
+            # Wait for United to process the MFA code before navigating away.
+            # The code input disappearing (or a navigation) signals acceptance.
+            try:
+                code_input.wait_for(state="hidden", timeout=15000)
+                _mfa_step(f"Verification page dismissed (url: {page.url})")
+            except Exception:
+                import time as _time
+                _time.sleep(3)
+                _mfa_step(f"Code input still visible after 15s (url: {page.url})")
+
+            # Check cookies before navigating — they may already be set
+            if self._has_login_cookies():
+                _mfa_step("Auth cookies present after MFA submit!")
+
+            # Check if United already redirected us (e.g. to homepage)
+            current = page.url or ""
+            _mfa_step(f"Current URL: {current}")
+            if "verification" in current.lower() or "otp" in current.lower() or "mfa" in current.lower():
+                _mfa_step("Still on MFA page, navigating home...")
+                page.goto(
+                    "https://www.united.com/en/ca/",
+                    wait_until="domcontentloaded",
+                    timeout=30000,
+                )
+            else:
+                _mfa_step("United redirected, waiting for page to settle...")
+                try:
+                    page.wait_for_load_state("domcontentloaded", timeout=10000)
+                except Exception:
+                    pass
+
+            _mfa_step(f"Final URL: {page.url}")
+
+            # Wait for SPA to resolve auth state (sign-in button or user greeting)
             try:
                 page.wait_for_selector(
                     'button:has-text("Sign in"):visible, '
                     'a:has-text("Sign in"):visible, '
                     'text="View My United", '
                     'text="MILEAGEPLUS NUMBER"',
-                    timeout=10000,
+                    timeout=15000,
                 )
             except Exception:
                 pass
 
             if self._is_logged_in():
-                print("  MFA: Login confirmed!")
+                _mfa_step("Login confirmed!")
                 return True
 
-            # Retry once — SPA hydration can be slow
-            page.wait_for_timeout(3000)
-            if self._is_logged_in():
-                print("  MFA: Login confirmed!")
+            # DOM check failed, but auth cookies may already be set
+            if self._has_login_cookies():
+                _mfa_step("Login confirmed via cookies (DOM not yet rendered)")
                 return True
 
-            print("  MFA: Login not confirmed after code entry")
+            _mfa_step("Login not confirmed after code entry")
             return False
         except Exception as e:
-            print(f"  MFA: Failed to enter code — {e}")
+            _mfa_step(f"Failed — {e}")
             return False
 
     # ------------------------------------------------------------------

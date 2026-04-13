@@ -1,57 +1,83 @@
 """seataero MCP server — exposes award flight tools via JSON-RPC over stdio."""
 
-import hashlib
+import asyncio
+import glob
 import json
 import logging
 import os
-import re
 import shutil
-import subprocess
+import signal
 import sys
-import tempfile
-import time
 import atexit
+import tempfile
 import threading
+from contextlib import asynccontextmanager
 
-from mcp.server.fastmcp import FastMCP
+from typing import Annotated, Literal
+
+from fastmcp import FastMCP, Context
+from fastmcp.server.tasks import TaskConfig
+from fastmcp.dependencies import Progress
+from datetime import timedelta
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from core import db
+from core.matching import CABIN_FILTER_MAP, compute_match_hash as _compute_match_hash, format_notification as _format_notification
+from core.watchlist import parse_interval
+from core.notify import load_notify_config, save_notify_config, send_ntfy
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 logger = logging.getLogger("seataero-mcp")
+
+_PROXY_URL = os.getenv("PROXY_URL", "").strip() or None
+
+Airport = Annotated[str, Field(description="3-letter IATA airport code (e.g., YYZ)")]
+Cabin = Annotated[Literal["economy", "business", "first", ""], Field(description="Cabin class filter (empty for all)")]
+DateStr = Annotated[str, Field(description="Date in YYYY-MM-DD format")]
+SortOrder = Annotated[Literal["date", "miles", "cabin"], Field(description="Sort order for results")]
+MfaMethod = Annotated[Literal["sms", "email"], Field(description="MFA delivery channel")]
+
+
+class _MFAPending(Exception):
+    """Raised when MFA is required but elicitation is unavailable."""
+    pass
+
 
 mcp = FastMCP("seataero", instructions="""seataero provides United MileagePlus award flight data for Canada routes.
 
 Tool selection:
 - query_flights: ALWAYS try this first. Returns cached availability with pre-computed summary (cheapest deal, saver counts, format suggestions). Instant results.
-- get_flight_details: Get paginated raw rows (default 15, sorted by cheapest). Use after query_flights when building tables.
-- get_price_trend: Per-date cheapest miles for a route. Use for graphing.
-- find_deals: Scan all routes for below-average pricing.
-- search_route: Only if query_flights returns no results or data is stale. Launches a remote scrape (~2 min once environment is ready). First scrape takes 5-10 min (environment creation). Subsequent scrapes reuse the existing environment. Returns IMMEDIATELY — poll scrape_status() right away.
-- submit_mfa: Only after scrape_status returns {"status": "mfa_required"}. Ask the user for their SMS code, then call this.
-- scrape_status: Poll this after search_route. Returns poll_interval_s — use it as your sleep time. During environment creation it returns 10 (slow, ~5-10 min). During login it returns 3 (fast, to catch MFA). During scraping it adapts to ETA. Also shows window progress and estimated_remaining_s.
-- flight_status: Check data freshness and coverage.
-- add_alert / check_alerts: Price monitoring.
-- stop_session: Delete the remote scraping environment. It auto-cleans after 24h if forgotten.
+- get_flight_details: Get paginated raw rows (default 15, sorted by cheapest). Use after query_flights when building tables or charts.
+- get_price_trend: Per-date cheapest miles for a route. Use for graphing price over time.
+- find_deals: Scan all routes for below-average pricing. Server-side analysis.
+- search_route: Only if query_flights returns no results or data is stale. Launches a local browser scrape (~2 min). Runs as a background task — returns immediately, reports progress via the protocol.
+- submit_mfa: Only after search_route returns {"status": "mfa_required"}. Ask the user for their SMS/email code, then call this. The browser is already on the MFA screen.
+- flight_status: Check data freshness and coverage (record count, routes, date range, scrape stats).
+- add_alert / check_alerts: Price monitoring. Create alerts with a miles threshold; check_alerts evaluates them against cached data with deduplication.
+- add_watch / list_watches / remove_watch / check_watches: Watchlist with push notifications via ntfy. Watches periodically check for deals below a miles threshold. check_watches sends ntfy push if configured and returns pre-formatted notifications for other channels (email, Slack).
 
 Scrape workflow:
-1. search_route("YYZ", "LAX") → returns immediately with "starting"
-2. Poll scrape_status() using poll_interval_s as sleep time
-3. If scrape_status returns "mfa_required": ask user for SMS code → submit_mfa(code) → resume polling
-4. Continue polling until "complete" or "error" — report window progress to user
+1. search_route("YYZ", "LAX") → returns immediately as a background task
+2. Progress is reported via the protocol (window X/12, found/stored counts)
+3. If MFA is required: search_route returns {"status": "mfa_required"} — ask user for SMS code → submit_mfa(code) → submit_mfa runs the pending scrape automatically
+4. When complete: call query_flights or get_flight_details to retrieve the scraped results
 
-MFA may be required on any scrape, not just the first. Scraping environments are kept alive between routes but United may expire sessions.
+MFA may be required on any scrape, not just the first. The browser session is kept alive between routes but United may expire sessions.
 
 IMPORTANT: When query_flights returns no_results, your next action MUST be search_route. Do not return text to the user. Do not ask for confirmation. Just call search_route.
 
+In autonomous/loop mode, skip the query_flights-first rule — call search_route directly since the goal is fresh data each iteration.
+
 Do NOT query the database directly via SQL, import core.db, or run seataero CLI commands via Bash. These tools handle everything.""")
 
-CABIN_FILTER_MAP = {
-    "economy": ["economy", "premium_economy"],
-    "business": ["business", "business_pure"],
-    "first": ["first", "first_pure"],
-}
+def _notify_status(cfg: dict) -> str:
+    """Return 'ntfy' if ntfy topic is configured, else 'none'."""
+    return "ntfy" if cfg.get("ntfy_topic") else "none"
+
+
+
+# _format_notification and CABIN_FILTER_MAP imported from core.matching
 
 SORT_KEYS = {
     "date": lambda r: (r["date"], r["cabin"], r["miles"]),
@@ -59,217 +85,112 @@ SORT_KEYS = {
     "cabin": lambda r: (r["cabin"], r["date"], r["miles"]),
 }
 
-# Codespace lifecycle state — survives across tool calls
-_codespace = {
-    "name": None,    # Codespace name from gh create
-    "repo": None,    # owner/repo string
+# Persistent browser session — survives across tool calls
+# RLock guards _session against concurrent access from asyncio.to_thread() workers.
+# Reentrant because blocking_scrape() → _ensure_session() would deadlock with a plain Lock.
+_session_lock = threading.RLock()
+_session = {
+    "farm": None,        # CookieFarm instance
+    "scraper": None,     # HybridScraper instance
+    "logged_in": False,  # True after successful login+MFA
+    "mfa_pending": False,
+    "pending_scrape": None,  # (origin, destination) tuple when scrape interrupted by MFA
+    "mfa_method": "sms",
 }
 
-# Active scrape tracking (replaces existing _active_scrape)
-_active_scrape = {
-    "thread": None,
-    "route_key": None,
-    "phase": "idle",  # idle | creating | login | mfa_required | scraping | copying | merging | complete | error
-    "result": None,
-    "error": None,
-    "window": 0,
-    "total_windows": 12,
-    "found_so_far": 0,
-    "stored_so_far": 0,
-    "started_at": None,
-}
+def _ensure_session(mfa_prompt=None, mfa_method="sms"):
+    """Start CookieFarm + HybridScraper if not already running. Login if needed."""
+    with _session_lock:
+        if _session["farm"] is not None and _session["logged_in"]:
+            return  # Session is warm — reuse
+
+        if _session["farm"] is None:
+            from core.cookie_farm import CookieFarm
+            from core.hybrid_scraper import HybridScraper  # noqa: F811
+
+            farm = CookieFarm(headless=False, ephemeral=True, proxy=_PROXY_URL)
+            farm.start()
+            _session["farm"] = farm
+            logger.info("Cookie farm started")
+
+        if not _session["logged_in"]:
+            _session["farm"].ensure_logged_in(mfa_prompt=mfa_prompt, mfa_method=mfa_method)
+            _session["logged_in"] = True
+            logger.info("Login confirmed")
+
+        if _session["scraper"] is None:
+            from core.hybrid_scraper import HybridScraper
+            scraper = HybridScraper(_session["farm"], refresh_interval=2)
+            scraper.start()
+            _session["scraper"] = scraper
+            logger.info("Scraper started")
 
 
-def _reset_active_scrape():
-    """Reset _active_scrape to idle defaults."""
-    _active_scrape.update({
-        "thread": None, "route_key": None, "phase": "idle",
-        "result": None, "error": None,
-        "window": 0, "total_windows": 12, "found_so_far": 0, "stored_so_far": 0,
-        "started_at": None,
-    })
+def _stop_session():
+    """Stop CookieFarm, HybridScraper, clean up."""
+    with _session_lock:
+        if _session["scraper"]:
+            try:
+                _session["scraper"].stop()
+            except Exception:
+                pass
+            _session["scraper"] = None
+        if _session["farm"]:
+            try:
+                _session["farm"].stop()
+            except Exception:
+                pass
+            _session["farm"] = None
+        _session["logged_in"] = False
+        _session["mfa_pending"] = False
+        _session["pending_scrape"] = None
+        _session["mfa_method"] = "sms"
+        logger.info("Session stopped")
 
 
-def _check_gh_cli():
-    """Verify `gh` is installed. Return error dict or None."""
-    if shutil.which("gh") is None:
-        return {"error": "gh_not_installed",
-                "message": "GitHub CLI (gh) is not installed. Install from https://cli.github.com/"}
-    return None
+atexit.register(_stop_session)
 
 
-def _detect_repo():
-    """Detect GitHub repo from current directory. Cache in _codespace['repo']."""
-    if _codespace["repo"]:
-        return _codespace["repo"]
-    result = subprocess.run(
-        ["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
-        capture_output=True, text=True, timeout=30,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to detect GitHub repo: {result.stderr.strip()}")
-    repo = result.stdout.strip()
-    if not repo:
-        raise RuntimeError("Could not detect GitHub repo — ensure you are in a git repo with a GitHub remote.")
-    _codespace["repo"] = repo
-    return repo
+def _cleanup_orphans():
+    """Kill orphaned Chrome processes and temp profiles from previous crashes."""
+    tmp = tempfile.gettempdir()
+    dirs = glob.glob(os.path.join(tmp, "seataero-browser-*"))
+    if dirs:
+        logger.info("Cleaning %d orphaned temp profiles from previous runs", len(dirs))
+        for d in dirs:
+            try:
+                shutil.rmtree(d, ignore_errors=True)
+            except Exception:
+                pass
 
 
-def _codespace_state(name):
-    """Return the state of a Codespace (Available, Shutdown, etc.) or None if not found."""
-    result = subprocess.run(
-        ["gh", "codespace", "view", "-c", name, "--json", "state", "-q", ".state"],
-        capture_output=True, text=True, timeout=30,
-    )
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
+def _signal_cleanup(signum, frame):
+    """Handle SIGTERM/SIGINT — clean up browser before exit."""
+    logger.info("Signal %s received, cleaning up...", signum)
+    _stop_session()
+    _cleanup_orphans()
+    sys.exit(0)
 
 
-def _ensure_codespace():
-    """Return an existing Codespace name or create a new one."""
-    if _codespace["name"]:
-        state = _codespace_state(_codespace["name"])
-        if state in ("Available", "Shutdown", "Starting"):
-            logger.info(f"Reusing codespace {_codespace['name']} (state={state})")
-            return _codespace["name"]
-        # Codespace gone or in unexpected state — create a new one
-        logger.info(f"Codespace {_codespace['name']} state={state}, creating new one")
-        _codespace["name"] = None
-
-    repo = _detect_repo()
-    logger.info(f"Creating codespace for {repo}...")
-    result = subprocess.run(
-        ["gh", "codespace", "create", "-R", repo, "-b", "master",
-         "-m", "basicLinux32gb", "--retention-period", "24h",
-         "--idle-timeout", "30m", "--default-permissions"],
-        capture_output=True, text=True, timeout=900,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to create codespace: {result.stderr.strip()}")
-    name = result.stdout.strip()
-    if not name:
-        raise RuntimeError("gh codespace create returned empty name")
-    _codespace["name"] = name
-    logger.info(f"Created codespace: {name}")
-    return name
+# Register signal handlers for graceful shutdown
+signal.signal(signal.SIGTERM, _signal_cleanup)
+signal.signal(signal.SIGINT, _signal_cleanup)
+if sys.platform == "win32" and hasattr(signal, "SIGBREAK"):
+    signal.signal(signal.SIGBREAK, _signal_cleanup)
 
 
-def _delete_codespace():
-    """Delete the active Codespace if one exists. Reset state."""
-    name = _codespace.get("name")
-    if name:
-        try:
-            subprocess.run(
-                ["gh", "codespace", "delete", "-c", name, "--force"],
-                capture_output=True, text=True, timeout=60,
-            )
-            logger.info(f"Deleted codespace: {name}")
-        except Exception as e:
-            logger.warning(f"Failed to delete codespace {name}: {e}")
-        _codespace["name"] = None
-    _reset_active_scrape()
-
-
-def _parse_scrape_stdout(line):
-    """Parse one line of SSH stdout and update _active_scrape dict."""
-    m = re.search(r'Window (\d+)/(\d+)', line)
-    if m:
-        _active_scrape["window"] = int(m.group(1))
-        _active_scrape["total_windows"] = int(m.group(2))
-        _active_scrape["phase"] = "scraping"
-
-    if "MFA_REQUIRED" in line:
-        _active_scrape["phase"] = "mfa_required"
-
-    if "Already logged in" in line or "Login confirmed" in line:
-        _active_scrape["phase"] = "scraping"
-
-    m = re.search(r'Found:\s+(\d+)', line)
-    if m:
-        _active_scrape["found_so_far"] = int(m.group(1))
-
-    m = re.search(r'Stored:\s+(\d+)', line)
-    if m:
-        _active_scrape["stored_so_far"] = int(m.group(1))
-
-
-def _run_codespace_scrape(origin, dest):
-    """Thread target: full Codespace scrape lifecycle."""
+@asynccontextmanager
+async def _lifespan(server):
+    """FastMCP lifespan — clean orphans on startup, stop session on shutdown."""
+    _cleanup_orphans()
     try:
-        # 1. Ensure codespace exists
-        _active_scrape["phase"] = "creating"
-        cs_name = _ensure_codespace()
+        yield {}
+    finally:
+        _stop_session()
+        _cleanup_orphans()
+        logger.info("Lifespan cleanup complete")
 
-        # 2. Login phase
-        _active_scrape["phase"] = "login"
-
-        # 3. Run SSH scrape command
-        cmd = [
-            "gh", "codespace", "ssh", "-c", cs_name, "--",
-            "cd /workspaces/seataero && seataero search {} {} --headless --create-schema --mfa-file".format(
-                origin, dest
-            ),
-        ]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-
-        # 4. Read stdout line-by-line
-        for line in proc.stdout:
-            line = line.rstrip('\n')
-            logger.info(f"[ssh] {line}")
-            _parse_scrape_stdout(line)
-
-        # 5. Wait for proc to finish
-        proc.wait()
-        if proc.returncode != 0 and _active_scrape["phase"] != "complete":
-            _active_scrape["error"] = RuntimeError(f"SSH scrape exited with code {proc.returncode}")
-            _active_scrape["phase"] = "error"
-            return
-
-        # 6. Copy DB from codespace
-        _active_scrape["phase"] = "copying"
-        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".db", prefix="seataero_remote_")
-        os.close(tmp_fd)
-        try:
-            cp_result = subprocess.run(
-                ["gh", "codespace", "cp", "-c", cs_name, "-e",
-                 "remote:~/.seataero/data.db", tmp_path],
-                capture_output=True, text=True, timeout=120,
-            )
-            if cp_result.returncode != 0:
-                raise RuntimeError(f"Failed to copy DB: {cp_result.stderr.strip()}")
-
-            # 7. Merge remote DB
-            _active_scrape["phase"] = "merging"
-            merge_result = subprocess.run(
-                [sys.executable, "scripts/merge_remote_db.py", tmp_path],
-                capture_output=True, text=True, timeout=120,
-            )
-            if merge_result.returncode != 0:
-                raise RuntimeError(f"Merge failed: {merge_result.stderr.strip()}")
-
-        finally:
-            # 8. Clean up tmp DB file
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-
-        # 9. Complete
-        _active_scrape["result"] = {
-            "status": "complete",
-            "route": f"{origin}-{dest}",
-            "found": _active_scrape["found_so_far"],
-            "stored": _active_scrape["stored_so_far"],
-        }
-        _active_scrape["phase"] = "complete"
-        logger.info(f"Scrape complete for {origin}-{dest}")
-
-    except Exception as e:
-        _active_scrape["error"] = e
-        _active_scrape["phase"] = "error"
-        logger.error(f"Codespace scrape failed: {e}", exc_info=True)
-
-
-atexit.register(_delete_codespace)
+mcp.lifespan = _lifespan
 
 
 def _compute_summary(rows):
@@ -329,192 +250,183 @@ _FORMAT_SUGGESTIONS = {
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def query_flights(origin: str, destination: str, cabin: str = "",
-                  from_date: str = "", to_date: str = "",
-                  date: str = "", sort: str = "date") -> str:
-    """Search United MileagePlus award flight availability. Use this tool for any flight availability question.
+def query_flights(origin: Airport, destination: Airport, cabin: Cabin = "",
+                  from_date: DateStr = "", to_date: DateStr = "",
+                  date: DateStr = "", sort: SortOrder = "date") -> str:
+    """Search cached United MileagePlus award flight availability. Instant — no network calls.
 
-    Returns a pre-computed summary: total count, cheapest option, Saver/Standard date counts,
-    miles range, data freshness, and format suggestions. Instant — no network calls.
-
-    This returns ONLY the summary, not individual flight rows. Use get_flight_details to retrieve
-    specific rows when you need to show a table or the user asks for detail.
-
-    Try this FIRST before search_route. Only use search_route if this returns no results or data is stale.
+    ALWAYS try this first before search_route. Returns a pre-computed summary: total count,
+    cheapest option, Saver/Standard date counts, miles range, data freshness, and format
+    suggestions. Does not return individual rows — use get_flight_details for full row data
+    when building tables.
 
     Args:
-        origin: 3-letter IATA airport code (e.g., YYZ, YVR, YUL)
-        destination: 3-letter IATA airport code (e.g., LAX, SFO, JFK)
-        cabin: Filter by cabin class: economy, business, or first
-        from_date: Start date for range filter (YYYY-MM-DD, inclusive)
-        to_date: End date for range filter (YYYY-MM-DD, inclusive)
-        date: Show detail for a specific date (YYYY-MM-DD)
-        sort: Sort order: date, miles, or cabin (default: date)
-    """
+        origin: 3-letter IATA airport code (e.g., YYZ)
+        destination: 3-letter IATA airport code (e.g., LAX)
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        from_date: Start of date range filter (YYYY-MM-DD)
+        to_date: End of date range filter (YYYY-MM-DD)
+        date: Exact date filter (YYYY-MM-DD). Overrides from_date/to_date.
+        sort: Sort order — date, miles, or cabin"""
     try:
-        conn = db.get_connection()
-        cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
-        rows = db.query_availability(
-            conn, origin.upper(), destination.upper(),
-            date=date or None, date_from=from_date or None,
-            date_to=to_date or None, cabin=cabin_filter,
-        )
-        conn.close()
+        with db.connection() as conn:
+            cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
+            rows = db.query_availability(
+                conn, origin.upper(), destination.upper(),
+                date=date or None, date_from=from_date or None,
+                date_to=to_date or None, cabin=cabin_filter,
+            )
 
-        if not rows:
-            return json.dumps({"error": "no_results",
-                               "message": f"No availability found for {origin.upper()}-{destination.upper()}",
-                               "next_step": "AUTOMATICALLY call search_route now to scrape fresh data from United. Do not ask the user."})
+            if not rows:
+                return json.dumps({"error": "no_results",
+                                   "message": f"No availability found for {origin.upper()}-{destination.upper()}",
+                                   "next_step": "AUTOMATICALLY call search_route now to scrape fresh data from United. Do not ask the user."})
 
-        sort_fn = SORT_KEYS.get(sort, SORT_KEYS["date"])
-        rows.sort(key=sort_fn)
+            sort_fn = SORT_KEYS.get(sort, SORT_KEYS["date"])
+            rows.sort(key=sort_fn)
 
-        summary = _compute_summary(rows)
-        hint = _pick_display_hint(date=date, from_date=from_date, to_date=to_date, cabin=cabin)
+            summary = _compute_summary(rows)
+            hint = _pick_display_hint(date=date, from_date=from_date, to_date=to_date, cabin=cabin)
 
-        return json.dumps({
-            "count": len(rows),
-            "_summary": summary,
-            "_display_hint": hint,
-            "_format_suggestions": _FORMAT_SUGGESTIONS,
-        }, indent=2)
+            return json.dumps({
+                "count": len(rows),
+                "_summary": summary,
+                "_display_hint": hint,
+                "_format_suggestions": _FORMAT_SUGGESTIONS,
+            }, indent=2)
     except Exception as e:
         logger.error(f"query_flights failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_flight_details(origin: str, destination: str, cabin: str = "",
-                       from_date: str = "", to_date: str = "",
-                       date: str = "", sort: str = "miles",
+def get_flight_details(origin: Airport, destination: Airport, cabin: Cabin = "",
+                       from_date: DateStr = "", to_date: DateStr = "",
+                       date: DateStr = "", sort: SortOrder = "miles",
                        limit: int = 15, offset: int = 0) -> str:
     """Retrieve individual flight availability rows with pagination.
 
-    Use this after query_flights to get specific rows for building tables or detailed analysis.
+    Use after query_flights when you need full row data for building tables or charts.
     Returns raw flight data: date, cabin, award_type, miles, taxes.
-
     Default: 15 rows sorted by cheapest miles. Use offset for pagination.
 
     Args:
-        origin: 3-letter IATA airport code (e.g., YYZ, YVR, YUL)
-        destination: 3-letter IATA airport code (e.g., LAX, SFO, JFK)
-        cabin: Filter by cabin class: economy, business, or first
-        from_date: Start date for range filter (YYYY-MM-DD, inclusive)
-        to_date: End date for range filter (YYYY-MM-DD, inclusive)
-        date: Show detail for a specific date (YYYY-MM-DD)
-        sort: Sort order: date, miles, or cabin (default: miles)
-        limit: Max rows to return (default: 15, max: 50)
-        offset: Skip this many rows for pagination (default: 0)
-    """
+        origin: 3-letter IATA airport code (e.g., YYZ)
+        destination: 3-letter IATA airport code (e.g., LAX)
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        from_date: Start of date range filter (YYYY-MM-DD)
+        to_date: End of date range filter (YYYY-MM-DD)
+        date: Exact date filter (YYYY-MM-DD)
+        sort: Sort order — date, miles, or cabin (default: miles)
+        limit: Number of rows to return (1-50, default 15)
+        offset: Skip this many rows for pagination"""
     try:
         limit = max(1, min(limit, 50))
         offset = max(0, offset)
 
-        conn = db.get_connection()
-        cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
-        rows = db.query_availability(
-            conn, origin.upper(), destination.upper(),
-            date=date or None, date_from=from_date or None,
-            date_to=to_date or None, cabin=cabin_filter,
-        )
-        conn.close()
+        with db.connection() as conn:
+            cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
+            rows = db.query_availability(
+                conn, origin.upper(), destination.upper(),
+                date=date or None, date_from=from_date or None,
+                date_to=to_date or None, cabin=cabin_filter,
+            )
 
-        if not rows:
-            return json.dumps({"error": "no_results",
-                               "message": f"No availability found for {origin.upper()}-{destination.upper()}"})
+            if not rows:
+                return json.dumps({"error": "no_results",
+                                   "message": f"No availability found for {origin.upper()}-{destination.upper()}"})
 
-        sort_fn = SORT_KEYS.get(sort, SORT_KEYS["miles"])
-        rows.sort(key=sort_fn)
+            sort_fn = SORT_KEYS.get(sort, SORT_KEYS["miles"])
+            rows.sort(key=sort_fn)
 
-        total = len(rows)
-        page = rows[offset:offset + limit]
+            total = len(rows)
+            page = rows[offset:offset + limit]
 
-        return json.dumps({
-            "results": page,
-            "total": total,
-            "showing": f"{offset + 1}-{min(offset + limit, total)} of {total}",
-            "has_more": offset + limit < total,
-        }, indent=2)
+            return json.dumps({
+                "results": page,
+                "total": total,
+                "showing": f"{offset + 1}-{min(offset + limit, total)} of {total}",
+                "has_more": offset + limit < total,
+            }, indent=2)
     except Exception as e:
         logger.error(f"get_flight_details failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_price_trend(origin: str, destination: str, cabin: str = "") -> str:
-    """Get per-date cheapest miles for a route — compact time series for graphing.
+def get_price_trend(origin: Airport, destination: Airport, cabin: Cabin = "",
+                    from_date: DateStr = "", to_date: DateStr = "") -> str:
+    """Per-date cheapest miles for a route — compact time series for graphing.
 
     Returns one data point per date: the minimum miles cost across all award types.
-    Ideal for plotting price over time (x=date, y=miles).
+    Ideal for plotting price over time (x=date, y=miles). Use this when the user
+    asks for a price chart, trend, or graph.
 
     Args:
         origin: 3-letter IATA airport code (e.g., YYZ)
         destination: 3-letter IATA airport code (e.g., LAX)
-        cabin: Filter by cabin class: economy, business, or first
-    """
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        from_date: Start of date range filter (YYYY-MM-DD)
+        to_date: End of date range filter (YYYY-MM-DD)"""
     try:
-        conn = db.get_connection()
-        cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
-        rows = db.query_availability(
-            conn, origin.upper(), destination.upper(),
-            cabin=cabin_filter,
-        )
-        conn.close()
+        with db.connection() as conn:
+            cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
+            rows = db.query_availability(
+                conn, origin.upper(), destination.upper(),
+                cabin=cabin_filter,
+                date_from=from_date or None, date_to=to_date or None,
+            )
 
-        if not rows:
-            return json.dumps({"error": "no_results",
-                               "message": f"No availability found for {origin.upper()}-{destination.upper()}"})
+            if not rows:
+                return json.dumps({"error": "no_results",
+                                   "message": f"No availability found for {origin.upper()}-{destination.upper()}"})
 
-        # Aggregate: one point per date, cheapest miles
-        by_date = {}
-        for r in rows:
-            d = r["date"]
-            if d not in by_date or r["miles"] < by_date[d]["miles"]:
-                by_date[d] = {"date": d, "miles": r["miles"],
-                              "cabin": r["cabin"], "award_type": r["award_type"]}
+            # Aggregate: one point per date, cheapest miles
+            by_date = {}
+            for r in rows:
+                d = r["date"]
+                if d not in by_date or r["miles"] < by_date[d]["miles"]:
+                    by_date[d] = {"date": d, "miles": r["miles"],
+                                  "cabin": r["cabin"], "award_type": r["award_type"]}
 
-        trend = sorted(by_date.values(), key=lambda x: x["date"])
+            trend = sorted(by_date.values(), key=lambda x: x["date"])
 
-        return json.dumps({
-            "route": f"{origin.upper()}-{destination.upper()}",
-            "cabin_filter": cabin or "all",
-            "data_points": len(trend),
-            "trend": trend,
-        }, indent=2)
+            return json.dumps({
+                "route": f"{origin.upper()}-{destination.upper()}",
+                "cabin_filter": cabin or "all",
+                "data_points": len(trend),
+                "trend": trend,
+            }, indent=2)
     except Exception as e:
         logger.error(f"get_price_trend failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def find_deals(cabin: str = "", max_results: int = 10) -> str:
+def find_deals(cabin: Cabin = "", max_results: int = 10) -> str:
     """Find the best deals across all cached routes — server-side analysis, no token waste.
 
-    Compares each route's cheapest current price against its average for that route+cabin.
-    Returns routes where current pricing is significantly below average (hidden gems, price drops).
-
-    Use this when the user asks about deals, bargains, or wants to know where to fly cheaply.
+    Compares each route's cheapest current price against its historical average.
+    Returns routes where current pricing is significantly below average.
 
     Args:
-        cabin: Filter by cabin class: economy, business, or first
-        max_results: Max deals to return (default: 10, max: 25)
-    """
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        max_results: Maximum number of deals to return (1-25, default 10)"""
     try:
         max_results = max(1, min(max_results, 25))
-        conn = db.get_connection()
-        cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
-        deals = db.find_deals_query(conn, cabin=cabin_filter, max_results=max_results)
-        conn.close()
+        with db.connection() as conn:
+            cabin_filter = CABIN_FILTER_MAP.get(cabin.lower()) if cabin else None
+            deals = db.find_deals_query(conn, cabin=cabin_filter, max_results=max_results)
 
-        if not deals:
-            return json.dumps({"deals_found": 0,
-                               "message": "No deals found. Data may be too fresh for comparison, or all routes are at typical pricing."})
+            if not deals:
+                return json.dumps({"deals_found": 0,
+                                   "message": "No deals found. Data may be too fresh for comparison, or all routes are at typical pricing."})
 
-        return json.dumps({
-            "deals_found": len(deals),
-            "cabin_filter": cabin or "all",
-            "deals": deals,
-        }, indent=2)
+            return json.dumps({
+                "deals_found": len(deals),
+                "cabin_filter": cabin or "all",
+                "deals": deals,
+            }, indent=2)
     except Exception as e:
         logger.error(f"find_deals failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
@@ -530,340 +442,663 @@ def flight_status() -> str:
     and scrape job stats (completed/failed/total).
     """
     try:
-        conn = db.get_connection()
-        avail_stats = db.get_scrape_stats(conn)
-        job_stats = db.get_job_stats(conn)
-        conn.close()
+        with db.connection() as conn:
+            avail_stats = db.get_scrape_stats(conn)
+            job_stats = db.get_job_stats(conn)
 
-        stats = {**avail_stats, **job_stats}
-        return json.dumps(stats, indent=2)
+            stats = {**avail_stats, **job_stats}
+            return json.dumps(stats, indent=2)
     except Exception as e:
         logger.error(f"flight_status failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
-def add_alert(origin: str, destination: str, max_miles: int,
-              cabin: str = "", from_date: str = "", to_date: str = "") -> str:
+def add_alert(origin: Airport, destination: Airport, max_miles: int,
+              cabin: Cabin = "", from_date: DateStr = "", to_date: DateStr = "") -> str:
     """Create a price alert for award flights. Triggers when miles cost drops to or below the threshold.
-
-    Use this when the user wants to monitor a route for price drops. Check alerts later with check_alerts.
 
     Args:
         origin: 3-letter IATA airport code (e.g., YYZ)
         destination: 3-letter IATA airport code (e.g., LAX)
-        max_miles: Maximum miles threshold — alert triggers at or below this
-        cabin: Optional cabin filter: economy, business, or first
-        from_date: Optional start of travel date window (YYYY-MM-DD)
-        to_date: Optional end of travel date window (YYYY-MM-DD)
-    """
+        max_miles: Alert when miles cost is at or below this value
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        from_date: Start of date range filter (YYYY-MM-DD)
+        to_date: End of date range filter (YYYY-MM-DD)"""
     try:
-        conn = db.get_connection()
-        alert_id = db.create_alert(
-            conn, origin.upper(), destination.upper(), max_miles,
-            cabin=cabin or None, date_from=from_date or None,
-            date_to=to_date or None,
-        )
-        conn.close()
+        with db.connection() as conn:
+            alert_id = db.create_alert(
+                conn, origin.upper(), destination.upper(), max_miles,
+                cabin=cabin or None, date_from=from_date or None,
+                date_to=to_date or None,
+            )
 
-        return json.dumps({
-            "id": alert_id,
-            "status": "created",
-            "origin": origin.upper(),
-            "destination": destination.upper(),
-            "max_miles": max_miles,
-        })
+            return json.dumps({
+                "id": alert_id,
+                "status": "created",
+                "origin": origin.upper(),
+                "destination": destination.upper(),
+                "max_miles": max_miles,
+            })
     except Exception as e:
         logger.error(f"add_alert failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
 
 
-def _compute_match_hash(matches):
-    """Compute a content hash of matching availability for dedup."""
-    if not matches:
-        return None
-    parts = []
-    for m in matches:
-        parts.append(f"{m['date']}|{m['cabin']}|{m['award_type']}|{m['miles']}")
-    return hashlib.sha256("\n".join(parts).encode()).hexdigest()[:16]
+
+# _compute_match_hash imported from core.matching
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
 def check_alerts() -> str:
-    """Evaluate all active price alerts against current cached availability.
+    """Evaluate all active price alerts against current cached data.
 
-    Use this when the user asks to check their alerts. Returns which alerts triggered
-    with matching flights. Deduplicates — won't re-notify for identical matches.
-
-    Returns JSON with alerts_checked, alerts_triggered count, and results array.
-    """
+    Returns which alerts triggered with matching flights. Deduplicates — won't
+    re-notify for identical matches. Side effects: expires past-date alerts,
+    updates notification hashes to prevent duplicate triggers.
+    No arguments — checks all active alerts."""
     try:
-        conn = db.get_connection()
-        expired = db.expire_past_alerts(conn)
-        alerts = db.list_alerts(conn, active_only=True)
+        with db.connection() as conn:
+            expired = db.expire_past_alerts(conn)
+            alerts = db.list_alerts(conn, active_only=True)
 
-        if not alerts:
-            conn.close()
-            return json.dumps({"alerts_checked": 0, "alerts_triggered": 0, "expired": expired})
+            if not alerts:
+                return json.dumps({"alerts_checked": 0, "alerts_triggered": 0, "expired": expired})
 
-        results = []
-        for alert in alerts:
-            cabin_filter = CABIN_FILTER_MAP.get(alert["cabin"]) if alert.get("cabin") else None
-            matches = db.check_alert_matches(
-                conn, alert["origin"], alert["destination"], alert["max_miles"],
-                cabin=cabin_filter, date_from=alert.get("date_from"),
-                date_to=alert.get("date_to"),
-            )
+            results = []
+            for alert in alerts:
+                cabin_filter = CABIN_FILTER_MAP.get(alert["cabin"]) if alert.get("cabin") else None
+                matches = db.check_alert_matches(
+                    conn, alert["origin"], alert["destination"], alert["max_miles"],
+                    cabin=cabin_filter, date_from=alert.get("date_from"),
+                    date_to=alert.get("date_to"),
+                )
 
-            if not matches:
-                continue
+                if not matches:
+                    continue
 
-            match_hash = _compute_match_hash(matches)
-            if match_hash == alert.get("last_notified_hash"):
-                continue
+                match_hash = _compute_match_hash(matches)
+                if match_hash == alert.get("last_notified_hash"):
+                    continue
 
-            db.update_alert_notification(conn, alert["id"], match_hash)
-            results.append({
-                "alert_id": alert["id"],
-                "origin": alert["origin"],
-                "destination": alert["destination"],
-                "cabin": alert["cabin"],
-                "max_miles": alert["max_miles"],
-                "matches": matches,
-            })
+                db.update_alert_notification(conn, alert["id"], match_hash)
+                results.append({
+                    "alert_id": alert["id"],
+                    "origin": alert["origin"],
+                    "destination": alert["destination"],
+                    "cabin": alert["cabin"],
+                    "max_miles": alert["max_miles"],
+                    "matches": matches,
+                })
 
-        conn.close()
-
-        return json.dumps({
-            "alerts_checked": len(alerts),
-            "alerts_triggered": len(results),
-            "expired": expired,
-            "results": results,
-        }, indent=2)
+            return json.dumps({
+                "alerts_checked": len(alerts),
+                "alerts_triggered": len(results),
+                "expired": expired,
+                "results": results,
+            }, indent=2)
     except Exception as e:
         logger.error(f"check_alerts failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False))
-def search_route(origin: str, destination: str) -> str:
-    """Scrape fresh award flight data from United for a single route via a remote Codespace.
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
+async def add_watch(origin: Airport, destination: Airport, max_miles: int,
+                    cabin: Cabin = "", from_date: DateStr = "", to_date: DateStr = "",
+                    every: str = "12h", ctx: Context = None) -> str:
+    """Add a route to your watchlist for automatic monitoring and push notifications.
 
-    Returns IMMEDIATELY — poll scrape_status() for progress. No blocking wait.
-    First scrape takes 5-10 min (Codespace creation). Subsequent scrapes reuse the environment (~2 min).
-
-    ONLY use this when query_flights returns no results or data is stale. This launches a
-    remote scraping environment, logs into United MileagePlus, and scrapes all 12 monthly windows (~337 days).
-
-    MFA may be required on any scrape (not just the first). scrape_status() will return
-    "mfa_required" when SMS verification is needed — ask the user for the code, then call submit_mfa.
+    Watches periodically check for award availability below a miles threshold
+    and send notifications via ntfy when deals are found. If ntfy is not configured,
+    prompts for setup. Use check_watches to evaluate all active watches.
 
     Args:
         origin: 3-letter IATA airport code (e.g., YYZ)
         destination: 3-letter IATA airport code (e.g., LAX)
-    """
-    origin = origin.upper()
-    destination = destination.upper()
-
-    # Check gh CLI is installed
-    gh_err = _check_gh_cli()
-    if gh_err:
-        return json.dumps(gh_err)
-
-    # Reject if a scrape is already in progress
-    if _active_scrape.get("thread") and _active_scrape["thread"].is_alive():
-        return json.dumps({
-            "error": "scrape_in_progress",
-            "message": "A scrape is already running. Call scrape_status() to check progress.",
-        })
-
-    # Determine if we're reusing an existing codespace
-    reusing = _codespace.get("name") is not None
-
-    # Reset active scrape state
-    _active_scrape.update({
-        "thread": None, "route_key": (origin, destination),
-        "phase": "creating", "result": None, "error": None,
-        "window": 0, "total_windows": 12, "found_so_far": 0, "stored_so_far": 0,
-        "started_at": time.time(),
-    })
-
-    # Start scrape in background thread
-    thread = threading.Thread(target=_run_codespace_scrape, args=(origin, destination), daemon=True)
-    _active_scrape["thread"] = thread
-    thread.start()
-
-    if reusing:
-        msg = "Reusing existing environment. Scraping in background."
-    else:
-        msg = "Creating scraping environment (first time takes 5-10 min). Poll scrape_status()."
-
-    return json.dumps({
-        "status": "starting",
-        "message": msg,
-        "route": f"{origin}-{destination}",
-        "poll_interval_s": 10 if not reusing else 3,
-    })
-
-
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
-def submit_mfa(code: str) -> str:
-    """Submit the SMS verification code to the remote Codespace to complete a pending scrape.
-
-    ONLY call this after search_route or scrape_status returns {"status": "mfa_required"}.
-    The SMS code has already been sent to the user's phone at that point — ask them for it.
-    Pipes the code via SSH stdin and returns immediately. Poll scrape_status() for progress.
-
-    Args:
-        code: The SMS verification code (typically 6 digits)
-    """
-    code = code.strip()
-    if not code:
-        return json.dumps({"error": "invalid_code", "message": "Code cannot be empty"})
-
-    thread = _active_scrape.get("thread")
-    if not thread or not thread.is_alive():
-        return json.dumps({
-            "error": "no_active_scrape",
-            "message": "No scrape is currently waiting for MFA. Call search_route first.",
-        })
-
-    if _active_scrape.get("phase") != "mfa_required":
-        return json.dumps({
-            "error": "not_waiting_for_mfa",
-            "message": f"Scrape is in '{_active_scrape.get('phase')}' phase, not waiting for MFA.",
-        })
-
-    cs_name = _codespace.get("name")
-    if not cs_name:
-        return json.dumps({"error": "no_codespace", "message": "No active Codespace."})
-
+        max_miles: Alert when miles cost is at or below this value
+        cabin: Filter by cabin class — economy, business, or first. Empty for all.
+        from_date: Start of date range filter (YYYY-MM-DD)
+        to_date: End of date range filter (YYYY-MM-DD)
+        every: Check interval — e.g. "12h", "30m", "1d" (default "12h")"""
     try:
-        proc = subprocess.Popen(
-            ["gh", "codespace", "ssh", "-c", cs_name, "--",
-             "cat > /home/vscode/.seataero/mfa_response"],
-            stdin=subprocess.PIPE, text=True,
-        )
-        proc.communicate(input=code, timeout=30)
+        try:
+            interval = parse_interval(every)
+        except ValueError as e:
+            return json.dumps({"error": "invalid_interval", "message": str(e)})
 
-        route_key = _active_scrape.get("route_key", ("?", "?"))
-        logger.info(f"MFA code submitted for {route_key[0]}-{route_key[1]}")
+        # --- ntfy setup elicitation ---
+        cfg = load_notify_config()
+        if not cfg.get("ntfy_topic") and ctx is not None:
+            try:
+                result = await ctx.elicit(
+                    "No ntfy topic configured. Enter an ntfy.sh topic name "
+                    "to receive push notifications for watch matches "
+                    "(or decline to skip — your agent can deliver via email instead):",
+                    response_type=str,
+                )
+                if result.action == "accept" and result.data:
+                    save_notify_config(topic=result.data.strip())
+            except Exception:
+                pass  # Elicitation not supported — continue without ntfy
+
+        with db.connection() as conn:
+            watch_id = db.create_watch(
+                conn, origin.upper(), destination.upper(), max_miles,
+                cabin=cabin or None, date_from=from_date or None,
+                date_to=to_date or None, check_interval_minutes=interval,
+            )
+
+        # Send confirmation notification via ntfy
+        cfg = load_notify_config()
+        if cfg.get("ntfy_topic"):
+            cabin_label = f" ({cabin})" if cabin else ""
+            send_ntfy(
+                topic=cfg["ntfy_topic"],
+                title=f"Watch Added: {origin.upper()} -> {destination.upper()}",
+                message=f"≤{max_miles:,} miles{cabin_label}. Use check_watches to evaluate.",
+                priority=2,
+                tags=["eyes"],
+                server=cfg.get("ntfy_server", "https://ntfy.sh"),
+            )
+
+        # Reload config after potential elicitation changes
+        cfg = load_notify_config()
 
         return json.dumps({
-            "status": "code_submitted",
-            "message": "MFA code submitted. Scrape is resuming. "
-                       "Call scrape_status() to track progress.",
-            "route": f"{route_key[0]}-{route_key[1]}",
+            "id": watch_id,
+            "status": "created",
+            "origin": origin.upper(),
+            "destination": destination.upper(),
+            "max_miles": max_miles,
+            "check_interval_minutes": interval,
+            "notifications": _notify_status(cfg),
         })
-
     except Exception as e:
-        logger.error(f"submit_mfa failed: {e}", exc_info=True)
+        logger.error(f"add_watch failed: {e}", exc_info=True)
         return json.dumps({"error": type(e).__name__, "message": str(e)})
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def scrape_status() -> str:
-    """Check the status of a running or recently completed remote scrape.
+def list_watches() -> str:
+    """List all active watched routes with check intervals and last-checked times."""
+    try:
+        with db.connection() as conn:
+            watches = db.list_watches(conn, active_only=True)
 
-    Call this after search_route or submit_mfa to track progress.
-    All state comes from stdout parsing — no additional SSH calls.
-    Returns current phase, window progress, flights found, completion status,
-    estimated_remaining_s, and poll_interval_s. Use poll_interval_s as
-    your sleep time between polls.
-    """
-    route_key = _active_scrape.get("route_key")
-    if not route_key:
-        return json.dumps({"status": "idle", "message": "No scrape has been started."})
+            return json.dumps({
+                "watches": watches,
+                "count": len(watches),
+            }, indent=2)
+    except Exception as e:
+        logger.error(f"list_watches failed: {e}", exc_info=True)
+        return json.dumps({"error": type(e).__name__, "message": str(e)})
 
-    route = f"{route_key[0]}-{route_key[1]}"
-    phase = _active_scrape.get("phase", "idle")
 
-    if phase == "mfa_required":
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
+def remove_watch(watch_id: int) -> str:
+    """Remove a route from your watchlist."""
+    try:
+        with db.connection() as conn:
+            removed = db.remove_watch(conn, watch_id)
+
+            if removed:
+                return json.dumps({"status": "removed", "watch_id": watch_id})
+            else:
+                return json.dumps({"status": "not_found", "watch_id": watch_id})
+    except Exception as e:
+        logger.error(f"remove_watch failed: {e}", exc_info=True)
+        return json.dumps({"error": type(e).__name__, "message": str(e)})
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
+def check_watches() -> str:
+    """Evaluate all active watches against cached data. Returns matches with pre-formatted notifications.
+
+    ntfy push notifications are sent directly if configured. For other channels (email, Slack),
+    the 'notification' block in each result contains ready-to-use title and body strings.
+    Does NOT trigger scraping — only checks existing cached data.
+    Side effects: sends ntfy push if configured, updates notification hashes and last-checked timestamps."""
+    try:
+        with db.connection() as conn:
+            watches = db.list_watches(conn, active_only=True)
+
+            if not watches:
+                return json.dumps({"watches_checked": 0, "watches_triggered": 0, "results": []})
+
+            results = []
+            notify_config = None
+
+            for watch in watches:
+                cabin_filter = CABIN_FILTER_MAP.get(watch["cabin"]) if watch.get("cabin") else None
+                matches = db.check_alert_matches(
+                    conn, watch["origin"], watch["destination"], watch["max_miles"],
+                    cabin=cabin_filter, date_from=watch.get("date_from"),
+                    date_to=watch.get("date_to"),
+                )
+
+                if not matches:
+                    db.update_watch_checked(conn, watch["id"])
+                    continue
+
+                match_hash = _compute_match_hash(matches)
+                if match_hash == watch.get("last_notified_hash"):
+                    db.update_watch_checked(conn, watch["id"])
+                    continue
+
+                # New matches found
+                note = _format_notification(watch, matches)
+
+                # Send ntfy if configured (user's explicit choice)
+                ntfy_sent = False
+                if notify_config is None:
+                    notify_config = load_notify_config()
+                if notify_config.get("ntfy_topic"):
+                    ntfy_sent = send_ntfy(
+                        topic=notify_config["ntfy_topic"],
+                        title=note["title"],
+                        message=note["body"],
+                        priority=4,
+                        tags=["airplane", "moneybag"],
+                        server=notify_config.get("ntfy_server", "https://ntfy.sh"),
+                    )
+
+                # Always update hash to prevent infinite retry when ntfy is down
+                db.update_watch_notification(conn, watch["id"], match_hash)
+                db.update_watch_checked(conn, watch["id"])
+
+                results.append({
+                    "watch_id": watch["id"],
+                    "origin": watch["origin"],
+                    "destination": watch["destination"],
+                    "cabin": watch.get("cabin"),
+                    "max_miles": watch["max_miles"],
+                    "matches": matches,
+                    "notification": note,
+                    "ntfy_sent": ntfy_sent,
+                })
+
+            return json.dumps({
+                "watches_checked": len(watches),
+                "watches_triggered": len(results),
+                "ntfy_active": bool(notify_config and notify_config.get("ntfy_topic")),
+                "results": results,
+            }, indent=2)
+    except Exception as e:
+        logger.error(f"check_watches failed: {e}", exc_info=True)
+        return json.dumps({"error": type(e).__name__, "message": str(e)})
+
+
+@mcp.tool(
+    task=TaskConfig(mode="optional", poll_interval=timedelta(seconds=5)),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+)
+async def search_route(
+    origin: Airport,
+    destination: Airport,
+    ctx: Context,
+    progress: Progress = Progress(),
+    mfa_method: MfaMethod = "sms",
+    autonomous: Annotated[bool, Field(description="Skip interactive MFA prompts; forces email MFA")] = False,
+) -> str:
+    """Scrape fresh award flight data from United for a single route. Takes ~2 minutes.
+
+    Only call this if query_flights returns no results or data is stale. Launches a local
+    browser scrape. Runs as a background task — returns immediately, reports progress via
+    the protocol (window X/12, found/stored counts).
+
+    If MFA is required, returns {status: "mfa_required"} — ask user for SMS/email code,
+    then call submit_mfa(code). submit_mfa will automatically run the pending scrape.
+
+    When complete, call query_flights or get_flight_details to retrieve the scraped results.
+
+    Args:
+        origin: 3-letter IATA airport code (e.g., YYZ)
+        destination: 3-letter IATA airport code (e.g., LAX)
+        mfa_method: MFA delivery channel — "sms" (default) or "email"
+        autonomous: Skip interactive MFA prompts; forces email MFA for automated/loop workflows"""
+    origin, destination = origin.upper(), destination.upper()
+    if autonomous:
+        mfa_method = "email"
+    with _session_lock:
+        _session["mfa_method"] = mfa_method
+    loop = asyncio.get_running_loop()
+
+    # Sync->async bridge for MFA elicitation
+    if autonomous:
+        def sync_mfa_prompt(timeout: int = 300) -> str:
+            raise RuntimeError("Autonomous mode — MFA code submitted via submit_mfa")
+    else:
+        if mfa_method == "email":
+            _elicit_msg = "United sent a verification code to your email. Enter it:"
+        else:
+            _elicit_msg = "United sent an SMS code to your phone. Enter it:"
+
+        def sync_mfa_prompt(timeout: int = 300) -> str:
+            future = asyncio.run_coroutine_threadsafe(
+                ctx.elicit(_elicit_msg, response_type=str),
+                loop,
+            )
+            result = future.result(timeout=timeout)
+            if result.action == "accept":
+                return result.data
+            elif result.action == "decline":
+                raise RuntimeError("MFA declined by user")
+            else:
+                raise RuntimeError("MFA cancelled by user")
+
+    # Sync->async bridge for progress reporting
+    window_count = 0
+    def sync_progress_cb(window, total, found, stored):
+        nonlocal window_count
+        asyncio.run_coroutine_threadsafe(
+            progress.set_total(total), loop
+        )
+        asyncio.run_coroutine_threadsafe(
+            progress.set_message(f"Window {window}/{total}: {found} found, {stored} stored"),
+            loop,
+        )
+        # Increment by the delta since last callback
+        delta = window - window_count
+        for _ in range(delta):
+            asyncio.run_coroutine_threadsafe(progress.increment(), loop)
+        window_count = window
+
+    def _wrapped_ensure_session():
+        """Call _ensure_session with MFA-pending detection."""
+        try:
+            _ensure_session(mfa_prompt=sync_mfa_prompt, mfa_method=mfa_method)
+        except RuntimeError as e:
+            msg = str(e)
+            if "MFA declined" in msg or "MFA cancelled" in msg:
+                raise
+            if _session.get("farm") is not None and not _session.get("logged_in"):
+                raise _MFAPending(msg) from e
+            raise
+        except Exception as e:
+            if _session.get("farm") is not None and not _session.get("logged_in"):
+                raise _MFAPending(str(e)) from e
+            raise
+
+    def blocking_scrape():
+        # Use timeout on lock acquisition — a stuck thread from a previous
+        # cancelled call may still hold the lock (e.g., ghost cursor hang).
+        if not _session_lock.acquire(timeout=90):
+            # Force-tear down the stuck session so the next call works
+            logger.error("_session_lock acquisition timed out — previous thread is stuck. Resetting session.")
+            try:
+                _stop_session()
+            except Exception:
+                pass
+            raise RuntimeError(
+                "Login timed out (previous session stuck). The session has been reset. "
+                "Please try search_route again."
+            )
+        try:
+            # Ensure session (login if needed, with elicitation for MFA)
+            _wrapped_ensure_session()
+
+            # Verify browser health for warm sessions
+            if _session.get("scraper") and not _session["scraper"].is_browser_alive():
+                logger.warning("Browser is dead — tearing down session, will cold start")
+                _stop_session()
+                _wrapped_ensure_session()
+
+            # Check auth cookies for warm sessions
+            if _session.get("farm") and _session.get("logged_in"):
+                try:
+                    session_valid = _session["farm"]._has_login_cookies()
+                except Exception:
+                    session_valid = False
+                if not session_valid:
+                    logger.warning("Auth cookies missing — tearing down, will cold start")
+                    _stop_session()
+                    _wrapped_ensure_session()
+
+            with db.connection() as conn:
+                from scrape import scrape_route as _scrape
+                result = _scrape(origin, destination, conn, _session["scraper"],
+                                delay=7.0, verbose=False,
+                                progress_cb=sync_progress_cb)
+                # Keep session warm for next route
+                try:
+                    _session["farm"].refresh_cookies()
+                except Exception:
+                    pass
+                return result
+        finally:
+            _session_lock.release()
+
+    try:
+        result = await asyncio.to_thread(blocking_scrape)
+        resp = {
+            "status": "complete",
+            "route": f"{origin}-{destination}",
+            "found": result.get("found", 0),
+            "stored": result.get("stored", 0),
+            "next_step": "Call query_flights or get_flight_details to retrieve the scraped results.",
+        }
+        if result.get("circuit_break"):
+            resp["warning"] = (
+                "Akamai rate-limiting detected — scrape was cut short by the circuit breaker. "
+                "Stop repeated scraping and wait at least 10 minutes before retrying. "
+                "Cached data from previous scrapes is still available via query_flights."
+            )
+        elif result.get("found", 0) == 0 and result.get("errors", 0) > 0:
+            resp["warning"] = (
+                "All date windows failed — likely Akamai blocking. "
+                "Stop repeated scraping and wait at least 10 minutes before retrying. "
+                "Cached data from previous scrapes is still available via query_flights."
+            )
+        return json.dumps(resp)
+    except _MFAPending:
+        with _session_lock:
+            _session["mfa_pending"] = True
+            _session["pending_scrape"] = (origin, destination)
+        if mfa_method == "email":
+            msg = (
+                "United requires a verification code to complete login. "
+                "The code was sent to the account's email. "
+                "Search Gmail for the most recent email from united@united.com "
+                "with subject containing 'verification', "
+                "extract the 6-digit code, and call submit_mfa."
+            )
+        else:
+            msg = (
+                "United requires a verification code to complete login. "
+                "The code was sent via SMS. "
+                "Ask the user for the code, then call submit_mfa."
+            )
         return json.dumps({
             "status": "mfa_required",
-            "message": "SMS verification code sent to your phone. Call submit_mfa(code).",
-            "route": route,
+            "route": f"{origin}-{destination}",
+            "mfa_method": mfa_method,
+            "message": msg,
         })
-
-    if phase == "complete":
-        result = _active_scrape.get("result", {})
-        return json.dumps(result, indent=2)
-
-    if phase == "error":
-        e = _active_scrape.get("error")
-        if e:
-            return json.dumps({"status": "error", "route": route,
-                               "error": type(e).__name__, "message": str(e)})
-        return json.dumps({"status": "error", "route": route, "message": "Unknown error"})
-
-    # Active scrape — return progress
-    elapsed = 0
-    if _active_scrape.get("started_at"):
-        elapsed = int(time.time() - _active_scrape["started_at"])
-
-    # ETA and poll interval — phase-aware
-    window = _active_scrape.get("window", 0)
-    total = _active_scrape.get("total_windows", 12)
-    remaining_windows = total - window
-
-    if phase == "creating":
-        # Codespace creation takes 5-10 minutes
-        estimated_remaining = max(300 - elapsed, 60)
-        poll_interval = 10
-    elif phase == "login":
-        # Fast polling during login to catch MFA immediately
-        estimated_remaining = remaining_windows * 20
-        poll_interval = 3
-    elif phase in ("copying", "merging"):
-        estimated_remaining = 30
-        poll_interval = 5
-    elif window > 0 and elapsed > 0:
-        avg_per_window = elapsed / window
-        estimated_remaining = int(avg_per_window * remaining_windows)
-        poll_interval = max(5, min(30, estimated_remaining // 2)) if estimated_remaining > 0 else 10
-    else:
-        # Scraping started but no windows completed yet
-        estimated_remaining = remaining_windows * 20
-        poll_interval = 5
-
-    status = {
-        "status": phase,  # creating | login | scraping | copying | merging
-        "route": route,
-        "window": window,
-        "total_windows": total,
-        "found_so_far": _active_scrape.get("found_so_far", 0),
-        "stored_so_far": _active_scrape.get("stored_so_far", 0),
-        "elapsed_s": elapsed,
-        "estimated_remaining_s": estimated_remaining,
-        "poll_interval_s": poll_interval,
-    }
-
-    # Check if thread died unexpectedly
-    thread = _active_scrape.get("thread")
-    if thread and not thread.is_alive() and phase not in ("complete", "error", "idle"):
-        status["status"] = "error"
-        status["message"] = "Scrape thread exited unexpectedly"
-        _active_scrape["phase"] = "error"
-
-    return json.dumps(status, indent=2)
+    except RuntimeError as e:
+        if "MFA declined" in str(e) or "MFA cancelled" in str(e):
+            return json.dumps({"error": "mfa_declined", "message": str(e)})
+        raise
+    except Exception as e:
+        logger.error(f"search_route failed: {e}", exc_info=True)
+        _stop_session()
+        return json.dumps({"error": type(e).__name__, "message": str(e)})
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False))
-def stop_session() -> str:
-    """Delete the remote scraping environment (Codespace) and clean up.
+async def submit_mfa(code: Annotated[str, Field(description="6-digit verification code from United")]) -> str:
+    """Submit a United verification code to complete login and run the pending scrape.
 
-    Call this when done scraping to free resources. The environment also
-    auto-deletes after 24h if forgotten. Auto-cleans on MCP server shutdown.
-    """
-    was_running = _codespace.get("name") is not None
-    _delete_codespace()
-    return json.dumps({
-        "status": "stopped" if was_running else "not_running",
-        "message": "Scraping environment deleted." if was_running else "No active environment.",
-    })
+    Only call after search_route returns {"status": "mfa_required"}. The browser is already
+    on the MFA screen — this enters the code, completes login, and automatically runs
+    the pending scrape that was interrupted by MFA.
+
+    Args:
+        code: 6-digit verification code from United (SMS or email)"""
+    with _session_lock:
+        if not _session.get("mfa_pending"):
+            return json.dumps({"error": "no_mfa_pending",
+                               "message": "No MFA in progress. Call search_route first."})
+
+        farm = _session.get("farm")
+        if farm is None:
+            _session["mfa_pending"] = False
+            _session["pending_scrape"] = None
+            return json.dumps({"error": "no_session",
+                               "message": "Browser session not active. Call search_route to restart."})
+
+    def blocking_submit():
+        with _session_lock:
+            success = farm._enter_mfa_code(code.strip())
+            if not success:
+                return {"status": "mfa_failed",
+                        "message": "Code rejected by United. Get a fresh code and try again."}
+
+            _session["logged_in"] = True
+            _session["mfa_pending"] = False
+            logger.info("MFA accepted, login confirmed")
+
+            # Start scraper if not running
+            if _session["scraper"] is None:
+                from core.hybrid_scraper import HybridScraper
+                scraper = HybridScraper(farm, refresh_interval=2)
+                scraper.start()
+                _session["scraper"] = scraper
+                logger.info("Scraper started after MFA")
+
+            # Run pending scrape if any
+            pending = _session.get("pending_scrape")
+            _session["pending_scrape"] = None
+            if pending:
+                origin, destination = pending
+                with db.connection() as conn:
+                    from scrape import scrape_route as _scrape
+                    result = _scrape(origin, destination, conn, _session["scraper"],
+                                    delay=7.0, verbose=False)
+                    try:
+                        farm.refresh_cookies()
+                    except Exception:
+                        pass
+                    return {
+                        "status": "complete",
+                        "route": f"{origin}-{destination}",
+                        "found": result.get("found", 0),
+                        "stored": result.get("stored", 0),
+                        "next_step": "Call query_flights or get_flight_details to retrieve the scraped results.",
+                    }
+
+            return {"status": "logged_in",
+                    "message": "MFA accepted. Session is warm — call search_route for any route."}
+
+    try:
+        result = await asyncio.to_thread(blocking_submit)
+        return json.dumps(result)
+    except Exception as e:
+        logger.error(f"submit_mfa failed: {e}", exc_info=True)
+        with _session_lock:
+            _session["mfa_pending"] = False
+            _session["pending_scrape"] = None
+        return json.dumps({"error": type(e).__name__, "message": str(e)})
+
+
+def _list_tools():
+    """Print all available MCP tools and exit."""
+    tools = [
+        ("query_flights", "Search cached availability (instant summary)"),
+        ("get_flight_details", "Paginated raw rows for building tables"),
+        ("get_price_trend", "Per-date cheapest miles for graphing"),
+        ("find_deals", "Cross-route deal discovery (below-average pricing)"),
+        ("flight_status", "Data freshness and coverage"),
+        ("search_route", "Scrape fresh data from United (~2 min)"),
+        ("submit_mfa", "Submit MFA code to complete login + pending scrape"),
+        ("add_alert", "Create a price alert"),
+        ("check_alerts", "Evaluate alerts against current data"),
+        ("add_watch", "Watch a route with push notifications"),
+        ("list_watches", "List active watched routes"),
+        ("remove_watch", "Remove a watch"),
+        ("check_watches", "Evaluate watches and send notifications"),
+    ]
+    print("seataero MCP server — available tools:\n")
+    for name, desc in tools:
+        print(f"  {name:24s} {desc}")
+    print(f"\n{len(tools)} tools available. Connect via: claude mcp add seataero -- seataero-mcp")
+
+
+def _health_check():
+    """Run basic health checks and exit."""
+    issues = []
+
+    # Database
+    db_path = os.getenv("SEATAERO_DB", db.DEFAULT_DB_PATH)
+    try:
+        with db.connection() as conn:
+            db.create_schema(conn)
+            row_count = conn.execute("SELECT COUNT(*) FROM availability").fetchone()[0]
+        print(f"  database:    ok ({db_path}, {row_count:,} rows)")
+    except Exception as e:
+        print(f"  database:    FAIL ({e})")
+        issues.append("database")
+
+    # Playwright
+    try:
+        import importlib.metadata
+        pw_version = importlib.metadata.version("playwright")
+        print(f"  playwright:  ok ({pw_version})")
+    except Exception:
+        print(f"  playwright:  FAIL (not installed)")
+        issues.append("playwright")
+
+    # Credentials
+    env_file = os.path.join(os.path.dirname(__file__), "scripts", "experiments", ".env")
+    if os.path.isfile(env_file):
+        print(f"  credentials: ok ({env_file})")
+    else:
+        print(f"  credentials: FAIL ({env_file} not found)")
+        issues.append("credentials")
+
+    print()
+    if issues:
+        print(f"FAIL: {len(issues)} issue(s) — {', '.join(issues)}")
+        return 1
+    else:
+        print("OK: all checks passed")
+        return 0
 
 
 def main():
+    if len(sys.argv) > 1:
+        flag = sys.argv[1]
+        if flag in ("--list-tools", "-l"):
+            _list_tools()
+            return
+        if flag in ("--health", "--check"):
+            print("seataero-mcp health check:\n")
+            sys.exit(_health_check())
+        if flag in ("--help", "-h"):
+            print("seataero-mcp — MCP server for United MileagePlus award flight search")
+            print()
+            print("Usage:")
+            print("  seataero-mcp              Start MCP server (stdio transport)")
+            print("  seataero-mcp --list-tools  List all available tools")
+            print("  seataero-mcp --health      Run health checks")
+            print()
+            print("Connect to an AI agent:")
+            print("  claude mcp add seataero -- seataero-mcp")
+            return
+    # cookie_farm.py has 46 print() calls for login progress.  In stdio
+    # transport, stdout IS the JSON-RPC pipe — those prints corrupt the
+    # protocol.  Fix: make print() go to stderr while keeping .buffer on
+    # the real stdout (which the MCP SDK reads for protocol I/O).
+    _real_buffer = sys.stdout.buffer
+    class _ProtocolSafeStdout:
+        """print() → stderr, .buffer → real stdout for MCP protocol."""
+        buffer = _real_buffer
+        encoding = "utf-8"
+        def write(self, s):  return sys.stderr.write(s)
+        def flush(self):     sys.stderr.flush()
+        def fileno(self):    return _real_buffer.fileno()
+        def isatty(self):    return False
+        def writable(self):  return True
+    sys.stdout = _ProtocolSafeStdout()
     mcp.run(transport="stdio")
 
 

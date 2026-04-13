@@ -12,14 +12,15 @@ dependencies = [
     "playwright>=1.40",
     "python-dotenv>=1.0",
     "rich>=13.0",
-    "apscheduler>=3.10,<4",
-    "sqlalchemy>=2.0",
-    "mcp[cli]>=1.20",
+    "fastmcp[tasks]>=3.0",
 ]
 
 [tool.setuptools]
 py-modules = ["cli", "scrape", "mcp_server"]
 packages = ["core"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
 
 [project.scripts]
 seataero = "cli:main"

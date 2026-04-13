@@ -24,6 +24,7 @@ from datetime import datetime
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from core import db  # noqa: E402
+from core.routes import load_routes  # noqa: E402
 
 
 # Module-level lock for synchronized printing across worker output threads
@@ -33,24 +34,6 @@ _print_lock = threading.Lock()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def load_routes(path):
-    """Load routes from a file. Each line is 'ORIGIN DEST', # comments skipped.
-
-    Returns:
-        list of (origin, dest) tuples.
-    """
-    routes = []
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = line.split()
-            if len(parts) >= 2:
-                routes.append((parts[0], parts[1]))
-    return routes
 
 
 def check_env_files(num_workers):
@@ -71,7 +54,7 @@ def check_env_files(num_workers):
             print(f"  - {p}")
         print()
         print("Create these files with United account credentials.")
-        print("Each file should contain UNITED_EMAIL, UNITED_PASSWORD, and GMAIL_APP_PASSWORD.")
+        print("Each file should contain UNITED_MP_NUMBER and UNITED_PASSWORD.")
         return False
     return True
 
@@ -359,6 +342,15 @@ def main():
     # 2. Check credential files
     if not check_env_files(args.workers):
         sys.exit(1)
+
+    # 2b. Create schema in main process to avoid worker race condition
+    if args.create_schema:
+        try:
+            conn = db.get_connection(args.db_path)
+            db.create_schema(conn)
+            conn.close()
+        except Exception as exc:
+            print(f"WARNING: Schema creation failed ({exc})")
 
     # 3. Skip scanned routes (default: enabled)
     if args.skip_scanned:

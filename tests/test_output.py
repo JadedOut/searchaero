@@ -1,13 +1,9 @@
 """Tests for core/output.py -- Rich output, sparklines, auto-TTY."""
 
 import json
-import os
-import sys
 from unittest.mock import patch
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.output import sparkline, should_use_json, build_meta, print_error, print_table, get_console
 

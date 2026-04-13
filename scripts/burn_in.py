@@ -18,14 +18,14 @@ import time
 from datetime import datetime
 
 # ---------------------------------------------------------------------------
-# Path setup — allow imports from scripts/experiments and project root
+# Path setup — project root for core imports
 # ---------------------------------------------------------------------------
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "experiments"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core import db, models  # noqa: E402
-from cookie_farm import CookieFarm  # noqa: E402
-from hybrid_scraper import HybridScraper, load_routes_file  # noqa: E402
+from core.cookie_farm import CookieFarm  # noqa: E402
+from core.hybrid_scraper import HybridScraper  # noqa: E402
+from core.routes import load_routes  # noqa: E402
 from scrape import scrape_route, detect_browser_crash  # noqa: E402
 
 
@@ -244,7 +244,7 @@ def main():
     args = parser.parse_args()
 
     # Load routes
-    routes = load_routes_file(args.routes_file)
+    routes = load_routes(args.routes_file)
     if not routes:
         print(f"ERROR: No routes found in {args.routes_file}")
         sys.exit(1)
@@ -480,7 +480,11 @@ def _run_burn_in(args, routes, conn, farm, scraper, log_filename, duration_secon
                         print("\n  BROWSER CRASH detected — restarting browser...")
                         scraper.stop()
                         farm.restart()
-                        farm.ensure_logged_in()
+                        try:
+                            farm.ensure_logged_in()
+                        except Exception as e:
+                            print(f"\n  RE-AUTH FAILED after crash: {e} — exiting worker")
+                            break
                         scraper.start()
                         scraper.reset_backoff()
                         print("  Browser restarted, session recovered")

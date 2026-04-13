@@ -2,6 +2,7 @@
 
 import os
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 
 
@@ -28,7 +29,32 @@ def get_connection(db_path=None):
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=30000")
     return conn
+
+
+@contextmanager
+def connection(db_path=None):
+    """Context manager for DB connections — auto-closes on exit."""
+    conn = get_connection(db_path)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+def _schema_exists(conn):
+    """Check if core tables already exist (avoids redundant CREATE IF NOT EXISTS)."""
+    cur = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='availability'"
+    )
+    return cur.fetchone() is not None
+
+
+def ensure_schema(conn):
+    """Create schema only if tables don't exist yet."""
+    if not _schema_exists(conn):
+        create_schema(conn)
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +185,34 @@ def create_schema(conn: sqlite3.Connection):
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_alerts_active
         ON alerts(active)
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS watches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            origin TEXT NOT NULL,
+            destination TEXT NOT NULL,
+            cabin TEXT,
+            max_miles INTEGER NOT NULL,
+            date_from TEXT,
+            date_to TEXT,
+            check_interval_minutes INTEGER NOT NULL DEFAULT 720,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            last_checked_at TEXT,
+            last_notified_at TEXT,
+            last_notified_hash TEXT,
+            active INTEGER NOT NULL DEFAULT 1
+        )
+    """)
+
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_watches_active
+        ON watches(active)
+    """)
+
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_watches_due
+        ON watches(active, last_checked_at)
     """)
 
     conn.commit()
@@ -608,6 +662,103 @@ def expire_past_alerts(conn):
     cur = conn.execute(sql)
     conn.commit()
     return cur.rowcount
+
+
+# ---------------------------------------------------------------------------
+# Watches
+# ---------------------------------------------------------------------------
+
+
+def create_watch(conn, origin, dest, max_miles, cabin=None, date_from=None, date_to=None, check_interval_minutes=720):
+    """Create a new watch."""
+    sql = """
+        INSERT INTO watches (origin, destination, cabin, max_miles, date_from, date_to, check_interval_minutes)
+        VALUES (:origin, :destination, :cabin, :max_miles, :date_from, :date_to, :check_interval_minutes)
+    """
+    cur = conn.execute(sql, {
+        "origin": origin,
+        "destination": dest,
+        "cabin": cabin,
+        "max_miles": max_miles,
+        "date_from": date_from,
+        "date_to": date_to,
+        "check_interval_minutes": check_interval_minutes,
+    })
+    conn.commit()
+    return cur.lastrowid
+
+
+def list_watches(conn, active_only=True):
+    """List watches, optionally filtering to active only."""
+    sql = "SELECT * FROM watches"
+    if active_only:
+        sql += " WHERE active = 1"
+    sql += " ORDER BY id"
+    cur = conn.execute(sql)
+    return [dict(row) for row in cur.fetchall()]
+
+
+def get_watch(conn, watch_id):
+    """Get a single watch by ID."""
+    cur = conn.execute("SELECT * FROM watches WHERE id = ?", (watch_id,))
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def remove_watch(conn, watch_id):
+    """Remove a watch by ID."""
+    cur = conn.execute("DELETE FROM watches WHERE id = ?", (watch_id,))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def get_due_watches(conn):
+    """Get watches that are due for checking."""
+    sql = """
+        SELECT * FROM watches
+        WHERE active = 1
+          AND (last_checked_at IS NULL
+               OR datetime(last_checked_at, '+' || check_interval_minutes || ' minutes') <= datetime('now'))
+        ORDER BY id
+    """
+    cur = conn.execute(sql)
+    return [dict(row) for row in cur.fetchall()]
+
+
+def update_watch_checked(conn, watch_id):
+    """Update a watch's last_checked_at timestamp."""
+    sql = "UPDATE watches SET last_checked_at = datetime('now') WHERE id = ?"
+    conn.execute(sql, (watch_id,))
+    conn.commit()
+
+
+def update_watch_notification(conn, watch_id, notified_hash):
+    """Update a watch's notification tracking after a match."""
+    sql = """
+        UPDATE watches
+        SET last_notified_at = datetime('now'), last_notified_hash = :hash
+        WHERE id = :id
+    """
+    conn.execute(sql, {"id": watch_id, "hash": notified_hash})
+    conn.commit()
+
+
+def expire_past_watches(conn):
+    """Deactivate watches where date_to is in the past."""
+    sql = """
+        UPDATE watches SET active = 0
+        WHERE active = 1 AND date_to IS NOT NULL AND date_to < date('now')
+    """
+    cur = conn.execute(sql)
+    conn.commit()
+    return cur.rowcount
+
+
+def get_watched_routes(conn):
+    """Get distinct active watched routes."""
+    sql = "SELECT DISTINCT origin, destination FROM watches WHERE active = 1"
+    cur = conn.execute(sql)
+    return [(row[0], row[1]) for row in cur.fetchall()]
 
 
 def find_deals_query(conn, cabin=None, max_results=10):

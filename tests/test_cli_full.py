@@ -10,12 +10,9 @@ import datetime
 import json
 import os
 import sqlite3
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from cli import main
 from core.db import (
@@ -687,72 +684,6 @@ class TestAlert:
         captured = capsys.readouterr()
         data = json.loads(captured.out)
         assert data["alerts_triggered"] == 0
-
-
-# ---------------------------------------------------------------------------
-# TestSchedule
-# ---------------------------------------------------------------------------
-
-
-class TestSchedule:
-    """Tests for the 'schedule' subcommand with mocked scheduler functions."""
-
-    def test_schedule_add(self, tmp_path, capsys):
-        """schedule add returns 0."""
-        routes_file = str(tmp_path / "routes.txt")
-        with open(routes_file, "w") as f:
-            f.write("YYZ LAX\n")
-
-        mock_result = {
-            "name": "test-job",
-            "cron": "daily",
-            "next_run_time": "2026-04-08 06:00:00",
-        }
-
-        with patch("cli.add_schedule", create=True) as mock_add:
-            # The import happens inside _schedule_add, so we patch at the
-            # module level where it's imported
-            with patch("core.scheduler.add_schedule", return_value=mock_result):
-                # Actually, _schedule_add does `from core.scheduler import add_schedule`
-                # so we need to ensure the import resolves to our mock.
-                # Easiest: patch it in the function's local scope won't work;
-                # instead, patch the module being imported from.
-                rc = main([
-                    "schedule", "add", "test-job",
-                    "--every", "daily",
-                    "--file", routes_file,
-                ])
-
-        # If the above didn't work due to import mechanics, try alternate approach
-        if rc != 0:
-            with patch("core.scheduler.add_schedule", return_value=mock_result):
-                rc = main([
-                    "schedule", "add", "test-job",
-                    "--every", "daily",
-                    "--file", routes_file,
-                ])
-
-        assert rc == 0
-
-    def test_schedule_list(self, capsys):
-        """schedule list returns 0."""
-        mock_schedules = [
-            {"name": "test-job", "trigger": "cron[hour='6', minute='0']", "next_run_time": "2026-04-08 06:00:00"},
-        ]
-
-        with patch("core.scheduler.list_schedules", return_value=mock_schedules):
-            rc = main(["schedule", "list"])
-
-        assert rc == 0
-        captured = capsys.readouterr()
-        assert "test-job" in captured.out
-
-    def test_schedule_remove(self, capsys):
-        """schedule remove returns 0."""
-        with patch("core.scheduler.remove_schedule", return_value=True):
-            rc = main(["schedule", "remove", "test-job"])
-
-        assert rc == 0
 
 
 # ---------------------------------------------------------------------------

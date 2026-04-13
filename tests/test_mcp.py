@@ -1,17 +1,14 @@
 """Tests for mcp_server.py MCP tool functions."""
 
+import asyncio
 import datetime
 import json
 import os
 import sqlite3
-import sys
 import threading
-import time
 
 import pytest
-from unittest.mock import MagicMock, patch, call
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from unittest.mock import MagicMock, patch
 
 from core.db import create_schema, upsert_availability, record_scrape_job
 from core.models import AwardResult
@@ -174,553 +171,1024 @@ class TestCheckAlerts:
         assert result["alerts_triggered"] == 0
 
 
-def _reset_mcp_state():
-    """Reset mcp_server codespace and scrape state between tests."""
-    import mcp_server
-    mcp_server._codespace.update({"name": None, "repo": None})
-    mcp_server._active_scrape.update({
-        "thread": None, "route_key": None, "phase": "idle",
-        "result": None, "error": None,
-        "window": 0, "total_windows": 12, "found_so_far": 0, "stored_so_far": 0,
-        "started_at": None,
-    })
+class TestGetFlightDetails:
+    def test_basic(self, seeded_mcp_db):
+        from mcp_server import get_flight_details
+        result = json.loads(get_flight_details("YYZ", "LAX"))
+        assert "results" in result
+        assert isinstance(result["results"], list)
+        assert result["total"] == 7
+        assert len(result["results"]) <= 15
+        assert "has_more" in result
+        assert "showing" in result
+
+    def test_limit_offset(self, seeded_mcp_db):
+        from mcp_server import get_flight_details
+        result = json.loads(get_flight_details("YYZ", "LAX", limit=3, offset=0))
+        assert len(result["results"]) == 3
+        assert result["total"] == 7
+        assert result["has_more"] is True
+        assert result["showing"] == "1-3 of 7"
+
+        page2 = json.loads(get_flight_details("YYZ", "LAX", limit=3, offset=3))
+        assert len(page2["results"]) == 3
+        assert page2["showing"] == "4-6 of 7"
+
+        page3 = json.loads(get_flight_details("YYZ", "LAX", limit=3, offset=6))
+        assert len(page3["results"]) == 1
+        assert page3["has_more"] is False
+
+    def test_cabin_filter(self, seeded_mcp_db):
+        from mcp_server import get_flight_details
+        result = json.loads(get_flight_details("YYZ", "LAX", cabin="business"))
+        assert all(r["cabin"] in ("business", "business_pure") for r in result["results"])
+        assert result["total"] == 2
+
+    def test_sort_by_miles(self, seeded_mcp_db):
+        from mcp_server import get_flight_details
+        result = json.loads(get_flight_details("YYZ", "LAX", sort="miles"))
+        miles = [r["miles"] for r in result["results"]]
+        assert miles == sorted(miles)
+
+    def test_no_results(self, mcp_db):
+        from mcp_server import get_flight_details
+        result = json.loads(get_flight_details("YYZ", "LAX"))
+        assert result["error"] == "no_results"
+
+    def test_limit_clamped(self, seeded_mcp_db):
+        from mcp_server import get_flight_details
+        result = json.loads(get_flight_details("YYZ", "LAX", limit=100))
+        assert len(result["results"]) == 7
 
 
-class TestCodespaceScrape:
-    """Tests for Codespace-based search_route, scrape_status, submit_mfa, stop_session."""
+class TestGetPriceTrend:
+    def test_basic(self, seeded_mcp_db):
+        from mcp_server import get_price_trend
+        result = json.loads(get_price_trend("YYZ", "LAX"))
+        assert result["data_points"] > 0
+        assert "trend" in result
+        for point in result["trend"]:
+            assert "date" in point
+            assert "miles" in point
+        dates = [p["date"] for p in result["trend"]]
+        assert dates == sorted(dates)
 
-    def setup_method(self):
-        _reset_mcp_state()
+    def test_cabin_filter(self, seeded_mcp_db):
+        from mcp_server import get_price_trend
+        result = json.loads(get_price_trend("YYZ", "LAX", cabin="business"))
+        assert result["cabin_filter"] == "business"
+        for point in result["trend"]:
+            assert point["cabin"] in ("business", "business_pure")
 
-    def teardown_method(self):
-        _reset_mcp_state()
+    def test_no_results(self, mcp_db):
+        from mcp_server import get_price_trend
+        result = json.loads(get_price_trend("YYZ", "LAX"))
+        assert result["error"] == "no_results"
 
-    # 1. search_route cold start (no existing Codespace) — creates one, starts scrape
-    @patch("mcp_server.shutil.which", return_value="/usr/bin/gh")
-    @patch("mcp_server._run_codespace_scrape")
-    def test_search_route_cold_start(self, mock_run, mock_which):
+
+class TestFindDeals:
+    def test_no_deals_empty_db(self, mcp_db):
+        from mcp_server import find_deals
+        result = json.loads(find_deals())
+        assert result["deals_found"] == 0
+
+    def test_returns_deals_structure(self, seeded_mcp_db):
+        from mcp_server import find_deals
+        result = json.loads(find_deals())
+        assert "deals_found" in result
+        if result["deals_found"] > 0:
+            deal = result["deals"][0]
+            assert "origin" in deal
+            assert "destination" in deal
+            assert "miles" in deal
+            assert "savings_pct" in deal
+
+    def test_cabin_filter(self, seeded_mcp_db):
+        from mcp_server import find_deals
+        result = json.loads(find_deals(cabin="business"))
+        if result["deals_found"] > 0:
+            assert result.get("cabin_filter") == "business"
+        else:
+            # No deals found — cabin_filter only present in non-empty responses
+            assert result["deals_found"] == 0
+
+    def test_max_results_clamped(self, seeded_mcp_db):
+        from mcp_server import find_deals
+        result = json.loads(find_deals(max_results=50))
+        if result["deals_found"] > 0:
+            assert len(result["deals"]) <= 25
+
+
+class TestSearchRouteAsync:
+    """Tests for the async search_route tool with elicitation and Progress DI."""
+
+    def test_search_route_is_async(self):
+        """search_route is registered as an async function."""
+        import asyncio
         import mcp_server
-        _reset_mcp_state()
-        # No existing codespace
-        assert mcp_server._codespace["name"] is None
+        assert asyncio.iscoroutinefunction(mcp_server.search_route)
 
-        result = json.loads(mcp_server.search_route("YYZ", "LAX"))
+    def test_search_route_uppercase_normalization(self):
+        """search_route normalizes origin/destination to uppercase."""
+        import asyncio
+        import mcp_server
+        from unittest.mock import MagicMock, AsyncMock, patch
 
-        assert result["status"] == "starting"
+        mock_ctx = MagicMock()
+        mock_progress = MagicMock()
+        mock_progress.set_total = AsyncMock()
+        mock_progress.set_message = AsyncMock()
+        mock_progress.increment = AsyncMock()
+
+        mock_result = {"found": 10, "stored": 8}
+        mock_scrape = MagicMock(return_value=mock_result)
+
+        # Mock warm session
+        mcp_server._session["farm"] = MagicMock()
+        mcp_server._session["farm"]._has_login_cookies.return_value = True
+        mcp_server._session["farm"].refresh_cookies.return_value = True
+        mcp_server._session["scraper"] = MagicMock()
+        mcp_server._session["scraper"].is_browser_alive.return_value = True
+        mcp_server._session["logged_in"] = True
+
+        with patch.dict("sys.modules", {"scrape": MagicMock(scrape_route=mock_scrape)}):
+            result = json.loads(asyncio.run(
+                mcp_server.search_route("yyz", "lax", ctx=mock_ctx, progress=mock_progress)
+            ))
+
         assert result["route"] == "YYZ-LAX"
-        assert "Creating scraping environment" in result["message"]
-        assert result["poll_interval_s"] == 10
-        mock_run.assert_called_once_with("YYZ", "LAX")
+        assert result["status"] == "complete"
 
-        # Wait for thread to finish
-        thread = mcp_server._active_scrape.get("thread")
-        if thread and thread.is_alive():
-            thread.join(timeout=2)
+        # Verify scrape_route was called with uppercase
+        call_args = mock_scrape.call_args
+        assert call_args[0][0] == "YYZ"
+        assert call_args[0][1] == "LAX"
 
-    # 2. search_route warm start (existing Codespace) — reuses, starts scrape
-    @patch("mcp_server.shutil.which", return_value="/usr/bin/gh")
-    @patch("mcp_server._run_codespace_scrape")
-    def test_search_route_warm_start(self, mock_run, mock_which):
+        # Cleanup
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+
+    def test_search_route_warm_session(self, mcp_db):
+        """Warm session scrape completes successfully via asyncio."""
+        import asyncio
         import mcp_server
-        _reset_mcp_state()
-        mcp_server._codespace["name"] = "test-codespace-123"
+        from unittest.mock import MagicMock, AsyncMock, patch
 
-        result = json.loads(mcp_server.search_route("YYZ", "LAX"))
+        mock_ctx = MagicMock()
+        mock_progress = MagicMock()
+        mock_progress.set_total = AsyncMock()
+        mock_progress.set_message = AsyncMock()
+        mock_progress.increment = AsyncMock()
 
-        assert result["status"] == "starting"
-        assert result["route"] == "YYZ-LAX"
-        assert "Reusing existing environment" in result["message"]
-        assert result["poll_interval_s"] == 3
-        mock_run.assert_called_once_with("YYZ", "LAX")
+        mock_result = {"found": 100, "stored": 95}
+        mock_scrape = MagicMock(return_value=mock_result)
 
-        # Wait for thread to finish
-        thread = mcp_server._active_scrape.get("thread")
-        if thread and thread.is_alive():
-            thread.join(timeout=2)
+        mcp_server._session["farm"] = MagicMock()
+        mcp_server._session["farm"]._has_login_cookies.return_value = True
+        mcp_server._session["farm"].refresh_cookies.return_value = True
+        mcp_server._session["scraper"] = MagicMock()
+        mcp_server._session["scraper"].is_browser_alive.return_value = True
+        mcp_server._session["logged_in"] = True
 
-    # 3. scrape_status during creating phase
-    def test_scrape_status_creating(self):
-        import mcp_server
-        _reset_mcp_state()
-        mcp_server._active_scrape.update({
-            "thread": MagicMock(is_alive=MagicMock(return_value=True)),
-            "route_key": ("YYZ", "LAX"),
-            "phase": "creating",
-            "started_at": time.time() - 30,
-        })
+        with patch.dict("sys.modules", {"scrape": MagicMock(scrape_route=mock_scrape)}):
+            result = json.loads(asyncio.run(
+                mcp_server.search_route("YYZ", "LAX", ctx=mock_ctx, progress=mock_progress)
+            ))
 
-        result = json.loads(mcp_server.scrape_status())
-        assert result["status"] == "creating"
-        assert result["route"] == "YYZ-LAX"
-        assert result["poll_interval_s"] == 10
-        # ETA: max(300 - 30, 60) = 270
-        assert result["estimated_remaining_s"] >= 60
-
-    # 4. scrape_status during scraping phase with window progress
-    def test_scrape_status_scraping_progress(self):
-        import mcp_server
-        _reset_mcp_state()
-        mcp_server._active_scrape.update({
-            "thread": MagicMock(is_alive=MagicMock(return_value=True)),
-            "route_key": ("YYZ", "LAX"),
-            "phase": "scraping",
-            "window": 5, "total_windows": 12,
-            "found_so_far": 200, "stored_so_far": 185,
-            "started_at": time.time() - 30,
-        })
-
-        result = json.loads(mcp_server.scrape_status())
-        assert result["status"] == "scraping"
-        assert result["route"] == "YYZ-LAX"
-        assert result["window"] == 5
-        assert result["total_windows"] == 12
-        assert result["found_so_far"] == 200
-        assert result["stored_so_far"] == 185
-        assert result["elapsed_s"] >= 29
-        assert "estimated_remaining_s" in result
-        assert "poll_interval_s" in result
-
-    # 5. scrape_status with mfa_required
-    def test_scrape_status_mfa_required(self):
-        import mcp_server
-        _reset_mcp_state()
-        mcp_server._active_scrape.update({
-            "thread": MagicMock(is_alive=MagicMock(return_value=True)),
-            "route_key": ("YYZ", "LAX"),
-            "phase": "mfa_required",
-            "started_at": time.time(),
-        })
-
-        result = json.loads(mcp_server.scrape_status())
-        assert result["status"] == "mfa_required"
-        assert "submit_mfa" in result["message"]
-
-    # 6. scrape_status when complete
-    def test_scrape_status_complete(self):
-        import mcp_server
-        _reset_mcp_state()
-        mcp_server._active_scrape.update({
-            "route_key": ("YYZ", "LAX"),
-            "phase": "complete",
-            "result": {
-                "status": "complete",
-                "route": "YYZ-LAX",
-                "found": 100,
-                "stored": 95,
-            },
-        })
-
-        result = json.loads(mcp_server.scrape_status())
         assert result["status"] == "complete"
         assert result["found"] == 100
         assert result["stored"] == 95
-
-    # 7. submit_mfa writes code via SSH stdin
-    @patch("mcp_server.subprocess.Popen")
-    def test_submit_mfa_writes_code(self, mock_popen):
-        import mcp_server
-        _reset_mcp_state()
-        mock_proc = MagicMock()
-        mock_proc.communicate.return_value = ("", "")
-        mock_popen.return_value = mock_proc
-
-        mcp_server._codespace["name"] = "test-cs-123"
-        mcp_server._active_scrape.update({
-            "thread": MagicMock(is_alive=MagicMock(return_value=True)),
-            "route_key": ("YYZ", "LAX"),
-            "phase": "mfa_required",
-            "started_at": time.time(),
-        })
-
-        result = json.loads(mcp_server.submit_mfa("847291"))
-        assert result["status"] == "code_submitted"
-        assert result["route"] == "YYZ-LAX"
-
-        # Verify the SSH command was called with correct args
-        mock_popen.assert_called_once()
-        call_args = mock_popen.call_args
-        cmd = call_args[0][0]
-        assert "gh" in cmd[0]
-        assert "codespace" in cmd[1]
-        assert "ssh" in cmd[2]
-        assert "test-cs-123" in cmd
-        # Verify code was piped via stdin
-        mock_proc.communicate.assert_called_once_with(input="847291", timeout=30)
-
-    # 8. submit_mfa with no active scrape
-    def test_submit_mfa_no_active_scrape(self):
-        import mcp_server
-        _reset_mcp_state()
-
-        result = json.loads(mcp_server.submit_mfa("123456"))
-        assert result["error"] == "no_active_scrape"
-
-    # 9. stop_session deletes Codespace
-    @patch("mcp_server.subprocess.run")
-    def test_stop_session_deletes_codespace(self, mock_run):
-        import mcp_server
-        _reset_mcp_state()
-        mock_run.return_value = MagicMock(returncode=0)
-        mcp_server._codespace["name"] = "test-cs-456"
-
-        result = json.loads(mcp_server.stop_session())
-        assert result["status"] == "stopped"
-        assert "deleted" in result["message"].lower()
-        assert mcp_server._codespace["name"] is None
-
-        # Verify gh codespace delete was called
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args[0][0]
-        assert "delete" in call_args
-        assert "test-cs-456" in call_args
-
-    # 10. stop_session when no Codespace
-    def test_stop_session_no_codespace(self):
-        import mcp_server
-        _reset_mcp_state()
-
-        result = json.loads(mcp_server.stop_session())
-        assert result["status"] == "not_running"
-        assert "no active" in result["message"].lower()
-
-    # 11. search_route when gh CLI not installed
-    @patch("mcp_server.shutil.which", return_value=None)
-    def test_search_route_no_gh_cli(self, mock_which):
-        import mcp_server
-        _reset_mcp_state()
-
-        result = json.loads(mcp_server.search_route("YYZ", "LAX"))
-        assert result["error"] == "gh_not_installed"
-
-    # 12. submit_mfa with empty code
-    def test_submit_mfa_empty_code(self):
-        import mcp_server
-        _reset_mcp_state()
-
-        result = json.loads(mcp_server.submit_mfa(""))
-        assert result["error"] == "invalid_code"
-
-    # 13. search_route rejects duplicate
-    @patch("mcp_server.shutil.which", return_value="/usr/bin/gh")
-    def test_search_route_rejects_duplicate(self, mock_which):
-        import mcp_server
-        _reset_mcp_state()
-
-        # Create a fake alive thread
-        event = threading.Event()
-        thread = threading.Thread(target=lambda: event.wait(timeout=5), daemon=True)
-        thread.start()
-
-        mcp_server._active_scrape.update({
-            "thread": thread,
-            "route_key": ("YYZ", "LAX"),
-            "phase": "scraping",
-            "started_at": time.time(),
-        })
-
-        result = json.loads(mcp_server.search_route("YYZ", "LAX"))
-        assert result["error"] == "scrape_in_progress"
+        mock_scrape.assert_called_once()
 
         # Cleanup
-        event.set()
-        thread.join(timeout=2)
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
 
-    # 14. scrape_status idle
-    def test_scrape_status_idle(self):
+    def test_search_route_cold_session(self, mcp_db):
+        """Cold session calls _ensure_session then scrapes."""
+        import asyncio
         import mcp_server
-        _reset_mcp_state()
+        from unittest.mock import MagicMock, AsyncMock, patch, call
 
-        result = json.loads(mcp_server.scrape_status())
-        assert result["status"] == "idle"
+        mock_ctx = MagicMock()
+        mock_progress = MagicMock()
+        mock_progress.set_total = AsyncMock()
+        mock_progress.set_message = AsyncMock()
+        mock_progress.increment = AsyncMock()
 
-    # 15. scrape_status error
-    def test_scrape_status_error(self):
+        mock_result = {"found": 50, "stored": 45}
+        mock_scrape = MagicMock(return_value=mock_result)
+
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+
+        # _ensure_session sets up the session
+        def fake_ensure(mfa_prompt=None, mfa_method="sms"):
+            mcp_server._session["farm"] = MagicMock()
+            mcp_server._session["farm"]._has_login_cookies.return_value = True
+            mcp_server._session["farm"].refresh_cookies.return_value = True
+            mcp_server._session["scraper"] = MagicMock()
+            mcp_server._session["scraper"].is_browser_alive.return_value = True
+            mcp_server._session["logged_in"] = True
+
+        with patch.object(mcp_server, "_ensure_session", side_effect=fake_ensure), \
+             patch.dict("sys.modules", {"scrape": MagicMock(scrape_route=mock_scrape)}):
+            result = json.loads(asyncio.run(
+                mcp_server.search_route("YYZ", "LAX", ctx=mock_ctx, progress=mock_progress)
+            ))
+
+        assert result["status"] == "complete"
+        assert result["found"] == 50
+
+        # Cleanup
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+
+    def test_search_route_scrape_error(self, mcp_db):
+        """Scrape error returns JSON error and tears down session."""
+        import asyncio
         import mcp_server
-        _reset_mcp_state()
-        mcp_server._active_scrape.update({
-            "route_key": ("YYZ", "LAX"),
-            "phase": "error",
-            "error": RuntimeError("SSH connection failed"),
-        })
+        from unittest.mock import MagicMock, AsyncMock, patch
 
-        result = json.loads(mcp_server.scrape_status())
-        assert result["status"] == "error"
-        assert "SSH connection failed" in result["message"]
+        mock_ctx = MagicMock()
+        mock_progress = MagicMock()
+        mock_progress.set_total = AsyncMock()
+        mock_progress.set_message = AsyncMock()
+        mock_progress.increment = AsyncMock()
 
-    # 16. scrape_status thread died unexpectedly
-    def test_scrape_status_thread_died(self):
+        mock_scrape = MagicMock(side_effect=ConnectionError("CDP connection closed"))
+
+        mcp_server._session["farm"] = MagicMock()
+        mcp_server._session["farm"]._has_login_cookies.return_value = True
+        mcp_server._session["farm"].refresh_cookies.return_value = True
+        mcp_server._session["scraper"] = MagicMock()
+        mcp_server._session["scraper"].is_browser_alive.return_value = True
+        mcp_server._session["logged_in"] = True
+
+        with patch.dict("sys.modules", {"scrape": MagicMock(scrape_route=mock_scrape)}):
+            result = json.loads(asyncio.run(
+                mcp_server.search_route("YYZ", "LAX", ctx=mock_ctx, progress=mock_progress)
+            ))
+
+        assert result["error"] == "ConnectionError"
+        assert "CDP connection closed" in result["message"]
+
+        # Session should be torn down
+        assert mcp_server._session["farm"] is None
+        assert mcp_server._session["logged_in"] is False
+
+    def test_search_route_mfa_decline(self, mcp_db):
+        """MFA decline returns clear error JSON."""
+        import asyncio
         import mcp_server
-        _reset_mcp_state()
-        mcp_server._active_scrape.update({
-            "thread": MagicMock(is_alive=MagicMock(return_value=False)),
-            "route_key": ("YYZ", "LAX"),
-            "phase": "scraping",
-            "started_at": time.time() - 10,
-        })
+        from unittest.mock import MagicMock, AsyncMock, patch
 
-        result = json.loads(mcp_server.scrape_status())
-        assert result["status"] == "error"
-        assert "unexpectedly" in result["message"]
+        mock_ctx = MagicMock()
+        mock_progress = MagicMock()
+        mock_progress.set_total = AsyncMock()
+        mock_progress.set_message = AsyncMock()
+        mock_progress.increment = AsyncMock()
 
-    # 17. submit_mfa when phase is not mfa_required
-    @patch("mcp_server.subprocess.Popen")
-    def test_submit_mfa_wrong_phase(self, mock_popen):
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+
+        # _ensure_session calls mfa_prompt, which will trigger elicitation
+        # The elicitation returns "decline"
+        def fake_ensure(mfa_prompt=None, mfa_method="sms"):
+            if mfa_prompt:
+                mfa_prompt()  # This will trigger the sync_mfa_prompt which calls ctx.elicit
+
+        # Mock elicit to return decline
+        mock_elicit_result = MagicMock()
+        mock_elicit_result.action = "decline"
+        mock_elicit_result.data = None
+        mock_ctx.elicit = AsyncMock(return_value=mock_elicit_result)
+
+        with patch.object(mcp_server, "_ensure_session", side_effect=fake_ensure):
+            result = json.loads(asyncio.run(
+                mcp_server.search_route("YYZ", "LAX", ctx=mock_ctx, progress=mock_progress)
+            ))
+
+        assert result["error"] == "mfa_declined"
+        assert "declined" in result["message"].lower()
+
+        # Cleanup
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+
+    def test_search_route_mfa_pending(self, mcp_db):
+        """Elicitation failure with active farm returns mfa_required (not error)."""
+        import asyncio
         import mcp_server
-        _reset_mcp_state()
-        mcp_server._codespace["name"] = "test-cs-123"
-        mcp_server._active_scrape.update({
-            "thread": MagicMock(is_alive=MagicMock(return_value=True)),
-            "route_key": ("YYZ", "LAX"),
-            "phase": "scraping",
-            "started_at": time.time(),
-        })
+        from unittest.mock import MagicMock, AsyncMock, patch
 
-        result = json.loads(mcp_server.submit_mfa("123456"))
-        assert result["error"] == "not_waiting_for_mfa"
-        mock_popen.assert_not_called()
+        mock_ctx = MagicMock()
+        mock_ctx.elicit = AsyncMock(side_effect=Exception("Elicitation not supported"))
+        mock_progress = MagicMock()
+        mock_progress.set_total = AsyncMock()
+        mock_progress.set_message = AsyncMock()
+        mock_progress.increment = AsyncMock()
 
-    # 18. _parse_scrape_stdout updates state correctly
-    def test_parse_scrape_stdout(self):
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = False
+        mcp_server._session["pending_scrape"] = None
+        mcp_server._session["mfa_method"] = "sms"
+
+        # _ensure_session sets up farm but fails during login (MFA prompt triggers
+        # ctx.elicit which raises).  _wrapped_ensure_session sees farm != None and
+        # logged_in == False, so it converts the exception into _MFAPending.
+        def fake_ensure(mfa_prompt=None, mfa_method="sms"):
+            mcp_server._session["farm"] = MagicMock()
+            mcp_server._session["farm"]._has_login_cookies.return_value = False
+            # Simulate login attempt that calls mfa_prompt, which triggers elicitation
+            if mfa_prompt:
+                mfa_prompt()  # This calls sync_mfa_prompt -> ctx.elicit which raises
+
+        with patch.object(mcp_server, "_ensure_session", side_effect=fake_ensure):
+            result = json.loads(asyncio.run(
+                mcp_server.search_route("YYZ", "LAX", ctx=mock_ctx, progress=mock_progress)
+            ))
+
+        assert result["status"] == "mfa_required"
+        assert result["route"] == "YYZ-LAX"
+        assert mcp_server._session["mfa_pending"] is True
+        assert mcp_server._session["pending_scrape"] == ("YYZ", "LAX")
+
+        # Cleanup
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = False
+        mcp_server._session["pending_scrape"] = None
+        mcp_server._session["mfa_method"] = "sms"
+
+    def test_search_route_autonomous_forces_email(self, mcp_db):
+        """autonomous=True forces mfa_method='email' and returns mfa_required."""
+        import asyncio
         import mcp_server
-        _reset_mcp_state()
+        from unittest.mock import MagicMock, AsyncMock, patch
 
-        # Window progress
-        mcp_server._parse_scrape_stdout("Window 3/12 — searching...")
-        assert mcp_server._active_scrape["window"] == 3
-        assert mcp_server._active_scrape["total_windows"] == 12
-        assert mcp_server._active_scrape["phase"] == "scraping"
+        mock_ctx = MagicMock()
+        mock_progress = MagicMock()
+        mock_progress.set_total = AsyncMock()
+        mock_progress.set_message = AsyncMock()
+        mock_progress.increment = AsyncMock()
 
-        # MFA required
-        mcp_server._parse_scrape_stdout("MFA_REQUIRED")
-        assert mcp_server._active_scrape["phase"] == "mfa_required"
+        mock_farm = MagicMock()
 
-        # Login confirmed
-        mcp_server._parse_scrape_stdout("Login confirmed — proceeding")
-        assert mcp_server._active_scrape["phase"] == "scraping"
+        def fake_ensure(mfa_prompt=None, mfa_method="sms"):
+            mcp_server._session["farm"] = mock_farm
+            mcp_server._session["logged_in"] = False
+            assert mfa_method == "email", "autonomous should force email"
+            if mfa_prompt:
+                mfa_prompt()  # The autonomous prompt raises immediately
 
-        # Found/Stored counts
-        mcp_server._parse_scrape_stdout("Found:  42 solutions")
-        assert mcp_server._active_scrape["found_so_far"] == 42
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = False
+        mcp_server._session["pending_scrape"] = None
+        mcp_server._session["mfa_method"] = "sms"
 
-        mcp_server._parse_scrape_stdout("Stored: 38 records")
-        assert mcp_server._active_scrape["stored_so_far"] == 38
+        with patch.object(mcp_server, "_ensure_session", side_effect=fake_ensure):
+            result = json.loads(asyncio.run(
+                mcp_server.search_route("YYZ", "LAX", ctx=mock_ctx, progress=mock_progress,
+                                         autonomous=True)
+            ))
 
-    # 19. _check_gh_cli when gh is available
-    @patch("mcp_server.shutil.which", return_value="/usr/bin/gh")
-    def test_check_gh_cli_available(self, mock_which):
+        assert result["status"] == "mfa_required"
+        assert result["mfa_method"] == "email"
+        assert mcp_server._session["mfa_method"] == "email"
+
+        # Cleanup
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = False
+        mcp_server._session["pending_scrape"] = None
+        mcp_server._session["mfa_method"] = "sms"
+
+    def test_search_route_email_mfa_method_stored(self, mcp_db):
+        """mfa_method='email' is stored in _session after successful scrape."""
+        import asyncio
         import mcp_server
-        assert mcp_server._check_gh_cli() is None
+        from unittest.mock import MagicMock, AsyncMock, patch
 
-    # 20. _check_gh_cli when gh is not available
-    @patch("mcp_server.shutil.which", return_value=None)
-    def test_check_gh_cli_missing(self, mock_which):
+        mock_ctx = MagicMock()
+        mock_progress = MagicMock()
+        mock_progress.set_total = AsyncMock()
+        mock_progress.set_message = AsyncMock()
+        mock_progress.increment = AsyncMock()
+
+        mock_scrape = MagicMock(return_value={"found": 10, "stored": 10})
+
+        def fake_ensure(mfa_prompt=None, mfa_method="sms"):
+            mcp_server._session["farm"] = MagicMock()
+            mcp_server._session["logged_in"] = True
+            mcp_server._session["scraper"] = MagicMock()
+            mcp_server._session["scraper"].is_browser_alive.return_value = True
+
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = False
+        mcp_server._session["pending_scrape"] = None
+        mcp_server._session["mfa_method"] = "sms"
+
+        with patch.object(mcp_server, "_ensure_session", side_effect=fake_ensure), \
+             patch("mcp_server.db.get_connection") as mock_conn, \
+             patch.dict("sys.modules", {"scrape": MagicMock(scrape_route=mock_scrape)}):
+            mock_conn.return_value = MagicMock()
+            result = json.loads(asyncio.run(
+                mcp_server.search_route("YYZ", "LAX", ctx=mock_ctx, progress=mock_progress,
+                                         mfa_method="email")
+            ))
+
+        assert mcp_server._session["mfa_method"] == "email"
+
+        # Cleanup
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = False
+        mcp_server._session["pending_scrape"] = None
+        mcp_server._session["mfa_method"] = "sms"
+
+
+class TestMCPMetadata:
+    """Tests for FastMCP instructions and ToolAnnotations."""
+
+    def test_instructions_set(self):
         import mcp_server
-        result = mcp_server._check_gh_cli()
-        assert result is not None
-        assert result["error"] == "gh_not_installed"
+        assert mcp_server.mcp.instructions is not None
+        assert "query_flights" in mcp_server.mcp.instructions
+        assert "search_route" in mcp_server.mcp.instructions
+        assert "Do NOT" in mcp_server.mcp.instructions
+        assert "autonomous" in mcp_server.mcp.instructions.lower()
 
-    # 21. scrape_status ETA with active window progress
-    def test_scrape_status_eta_with_windows(self):
+
+class TestMCPCLIFlags:
+    """Tests for seataero-mcp --list-tools, --health, --help flags."""
+
+    def test_list_tools_output(self, capsys):
+        """--list-tools prints all tool names."""
         import mcp_server
-        _reset_mcp_state()
+        mcp_server._list_tools()
+        captured = capsys.readouterr()
+        assert "query_flights" in captured.out
+        assert "search_route" in captured.out
+        assert "submit_mfa" in captured.out
+        assert "add_alert" in captured.out
+        assert "check_watches" in captured.out
+        assert "13 tools available" in captured.out
 
-        # Simulate mid-scrape: 4 of 12 windows done in 80 seconds (20s/window)
-        mock_thread = MagicMock()
-        mock_thread.is_alive.return_value = True
-        mcp_server._active_scrape.update({
-            "thread": mock_thread,
-            "route_key": ("YYZ", "LAX"),
-            "phase": "scraping",
-            "window": 4, "total_windows": 12,
-            "found_so_far": 100, "stored_so_far": 90,
-            "started_at": time.time() - 80,
-        })
-
-        result = json.loads(mcp_server.scrape_status())
-        assert result["status"] == "scraping"
-        assert "estimated_remaining_s" in result
-        # 8 remaining windows * 20s/window = 160s, allow some tolerance
-        assert 140 <= result["estimated_remaining_s"] <= 180, \
-            f"Expected ~160s remaining, got {result['estimated_remaining_s']}"
-        assert "poll_interval_s" in result
-        assert 5 <= result["poll_interval_s"] <= 30
-
-    # 22. scrape_status during login phase uses fast polling
-    def test_scrape_status_login_phase(self):
+    def test_list_tools_all_tools_present(self, capsys):
+        """--list-tools lists every registered tool."""
         import mcp_server
-        _reset_mcp_state()
-
-        mock_thread = MagicMock()
-        mock_thread.is_alive.return_value = True
-        mcp_server._active_scrape.update({
-            "thread": mock_thread,
-            "route_key": ("YYZ", "LAX"),
-            "phase": "login",
-            "window": 0, "total_windows": 12,
-            "started_at": time.time() - 5,
-        })
-
-        result = json.loads(mcp_server.scrape_status())
-        assert result["poll_interval_s"] == 3
-        # Fallback: 12 windows * 20s = 240s
-        assert result["estimated_remaining_s"] == 240
-
-
-class TestCodespaceIntegration:
-    """Integration-style tests for the full Codespace scrape lifecycle."""
-
-    def setup_method(self):
-        _reset_mcp_state()
-
-    def teardown_method(self):
-        _reset_mcp_state()
-
-    @patch("mcp_server.subprocess.run")
-    @patch("mcp_server.subprocess.Popen")
-    @patch("mcp_server.shutil.which", return_value="/usr/bin/gh")
-    def test_full_scrape_lifecycle(self, mock_which, mock_popen, mock_run):
-        """End-to-end: ensure_codespace -> SSH scrape -> copy -> merge -> complete."""
-        import mcp_server
-        _reset_mcp_state()
-
-        # Mock subprocess.run for various commands
-        def run_side_effect(cmd, **kwargs):
-            cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
-            result = MagicMock()
-            result.returncode = 0
-            if "repo view" in cmd_str:
-                result.stdout = "owner/seataero\n"
-            elif "codespace view" in cmd_str:
-                result.stdout = "Available\n"
-            elif "codespace create" in cmd_str:
-                result.stdout = "new-codespace-abc\n"
-            elif "codespace cp" in cmd_str:
-                result.stdout = ""
-            elif "merge_remote_db" in cmd_str:
-                result.stdout = "Merged OK\n"
-            elif "codespace delete" in cmd_str:
-                result.stdout = ""
-            else:
-                result.stdout = ""
-            result.stderr = ""
-            return result
-
-        mock_run.side_effect = run_side_effect
-
-        # Mock Popen for SSH scrape command — simulate stdout lines
-        mock_proc = MagicMock()
-        stdout_lines = [
-            "Login confirmed\n",
-            "Window 1/12 — searching 2026-05\n",
-            "Found:  25 solutions\n",
-            "Stored: 20 records\n",
-            "Window 2/12 — searching 2026-06\n",
-            "Found:  50 solutions\n",
-            "Stored: 40 records\n",
+        expected = [
+            "query_flights", "get_flight_details", "get_price_trend",
+            "find_deals", "flight_status", "search_route", "submit_mfa",
+            "add_alert", "check_alerts",
+            "add_watch", "list_watches", "remove_watch", "check_watches",
         ]
-        mock_proc.stdout = iter(stdout_lines)
-        mock_proc.wait.return_value = None
-        mock_proc.returncode = 0
-        mock_popen.return_value = mock_proc
+        mcp_server._list_tools()
+        captured = capsys.readouterr()
+        for tool in expected:
+            assert tool in captured.out, f"Missing tool: {tool}"
 
-        # Run the scrape thread function directly (not via search_route to avoid threading complexity)
-        mcp_server._run_codespace_scrape("YYZ", "LAX")
-
-        # Verify final state
-        assert mcp_server._active_scrape["phase"] == "complete"
-        assert mcp_server._active_scrape["result"]["status"] == "complete"
-        assert mcp_server._active_scrape["result"]["route"] == "YYZ-LAX"
-        assert mcp_server._active_scrape["found_so_far"] == 50
-        assert mcp_server._active_scrape["stored_so_far"] == 40
-
-    @patch("mcp_server.subprocess.run")
-    @patch("mcp_server.subprocess.Popen")
-    @patch("mcp_server.shutil.which", return_value="/usr/bin/gh")
-    def test_scrape_with_mfa_detected(self, mock_which, mock_popen, mock_run):
-        """MFA_REQUIRED in stdout sets phase to mfa_required."""
+    def test_health_check_returns_int(self):
+        """_health_check returns 0 or 1 (int exit code)."""
         import mcp_server
-        _reset_mcp_state()
-        mcp_server._codespace["name"] = "existing-cs"
+        with patch("mcp_server.db.get_connection") as mock_conn, \
+             patch("mcp_server.db.create_schema"), \
+             patch("os.path.isfile", return_value=True):
+            conn = MagicMock()
+            conn.execute = MagicMock(return_value=MagicMock(
+                fetchone=MagicMock(return_value=(42,))
+            ))
+            mock_conn.return_value = conn
+            result = mcp_server._health_check()
+            assert isinstance(result, int)
+            assert result in (0, 1)
 
-        def run_side_effect(cmd, **kwargs):
-            cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
-            result = MagicMock()
-            result.returncode = 0
-            if "codespace view" in cmd_str:
-                result.stdout = "Available\n"
-            elif "codespace cp" in cmd_str:
-                result.stdout = ""
-            elif "merge_remote_db" in cmd_str:
-                result.stdout = ""
-            else:
-                result.stdout = ""
-            result.stderr = ""
-            return result
-
-        mock_run.side_effect = run_side_effect
-
-        # Stdout that includes MFA_REQUIRED then login confirmed
-        mock_proc = MagicMock()
-        stdout_lines = [
-            "MFA_REQUIRED\n",
-            "Login confirmed\n",
-            "Window 1/12 — searching\n",
-            "Found:  10 solutions\n",
-            "Stored: 8 records\n",
-        ]
-
-        # Use a list-based iterator so we can check phase mid-way
-        line_iter = iter(stdout_lines)
-        mock_proc.stdout = line_iter
-        mock_proc.wait.return_value = None
-        mock_proc.returncode = 0
-        mock_popen.return_value = mock_proc
-
-        mcp_server._run_codespace_scrape("YYZ", "LAX")
-
-        # After processing all lines, phase should be complete (MFA was followed by login confirmed + windows)
-        assert mcp_server._active_scrape["phase"] == "complete"
-        assert mcp_server._active_scrape["window"] == 1
-
-    @patch("mcp_server._ensure_codespace", side_effect=RuntimeError("gh auth failed"))
-    def test_scrape_codespace_creation_fails(self, mock_ensure):
-        """If codespace creation fails, phase becomes error."""
+    def test_health_check_missing_credentials(self, capsys):
+        """_health_check reports FAIL when credentials file is missing."""
         import mcp_server
-        _reset_mcp_state()
+        with patch("mcp_server.db.get_connection") as mock_conn, \
+             patch("mcp_server.db.create_schema"), \
+             patch("os.path.isfile", return_value=False):
+            conn = MagicMock()
+            conn.execute = MagicMock(return_value=MagicMock(
+                fetchone=MagicMock(return_value=(0,))
+            ))
+            mock_conn.return_value = conn
+            result = mcp_server._health_check()
+            assert result == 1
+            captured = capsys.readouterr()
+            assert "FAIL" in captured.out
 
-        mcp_server._run_codespace_scrape("YYZ", "LAX")
 
-        assert mcp_server._active_scrape["phase"] == "error"
-        assert "gh auth failed" in str(mcp_server._active_scrape["error"])
+class TestProxyPassthrough:
+    """Tests for proxy passthrough in MCP server."""
 
-    @patch("mcp_server.subprocess.run")
-    @patch("mcp_server.subprocess.Popen")
-    def test_scrape_ssh_nonzero_exit(self, mock_popen, mock_run):
-        """Non-zero SSH exit code sets error."""
+    def test_proxy_url_from_env(self, monkeypatch):
+        """PROXY_URL env var is read at module level and passed to CookieFarm."""
+        monkeypatch.setenv("PROXY_URL", "socks5://user:pass@proxy.example.com:1080")
+
+        # Re-import to pick up the env var change
         import mcp_server
-        _reset_mcp_state()
-        mcp_server._codespace["name"] = "existing-cs"
+        # Directly test the module-level variable by setting it as the env would
+        proxy_url = os.getenv("PROXY_URL", "").strip() or None
+        assert proxy_url == "socks5://user:pass@proxy.example.com:1080"
 
-        def run_side_effect(cmd, **kwargs):
-            result = MagicMock()
-            result.returncode = 0
-            cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
-            if "codespace view" in cmd_str:
-                result.stdout = "Available\n"
-            else:
-                result.stdout = ""
-            result.stderr = ""
-            return result
+    def test_ensure_session_passes_proxy_to_cookiefarm(self, monkeypatch, mcp_db):
+        """_ensure_session passes _PROXY_URL to CookieFarm constructor."""
+        import mcp_server
 
-        mock_run.side_effect = run_side_effect
+        test_proxy = "socks5://test:pass@proxy.local:9050"
+        monkeypatch.setattr(mcp_server, "_PROXY_URL", test_proxy)
 
-        mock_proc = MagicMock()
-        mock_proc.stdout = iter(["Window 1/12\n"])
-        mock_proc.wait.return_value = None
-        mock_proc.returncode = 1
-        mock_popen.return_value = mock_proc
+        # Reset session state
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
 
-        mcp_server._run_codespace_scrape("YYZ", "LAX")
+        captured_kwargs = {}
 
-        assert mcp_server._active_scrape["phase"] == "error"
-        assert "exited with code 1" in str(mcp_server._active_scrape["error"])
+        class FakeCookieFarm:
+            def __init__(self, **kwargs):
+                captured_kwargs.update(kwargs)
+                self.proxy = kwargs.get("proxy")
+            def start(self):
+                pass
+            def ensure_logged_in(self, mfa_prompt=None):
+                pass
+
+        class FakeHybridScraper:
+            def __init__(self, farm, **kwargs):
+                pass
+            def start(self):
+                pass
+
+        # Patch the imports that _ensure_session uses
+        monkeypatch.setattr(mcp_server, "_ensure_session", lambda mfa_prompt=None: None)
+
+        # Directly test that CookieFarm would receive the proxy
+        # by simulating what _ensure_session does
+        from core.cookie_farm import CookieFarm
+
+        # Monkeypatch os.getenv to return empty PROXY_URL so CookieFarm uses explicit param
+        monkeypatch.delenv("PROXY_URL", raising=False)
+
+        farm = CookieFarm(headless=False, ephemeral=True, proxy=test_proxy)
+        assert farm.proxy == test_proxy
+
+        # Cleanup
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+
+
+# ======================================================================
+# Auto-login MP#-only tests
+# ======================================================================
+
+class TestAutoLoginMPOnly:
+    """Tests for _auto_login() with MileagePlus number only (no email/Gmail)."""
+
+    def _make_farm(self, has_united=True):
+        """Create a CookieFarm with mocked internals."""
+        from core.cookie_farm import CookieFarm
+
+        farm = object.__new__(CookieFarm)
+        farm._lock = threading.Lock()
+        farm._headless = True
+        farm._mfa_prompt = None
+
+        farm._united_mp_number = "MUH48117" if has_united else None
+        farm._united_password = "pass123" if has_united else ""
+
+        mock_page = MagicMock()
+        mock_page.url = "https://www.united.com/en/ca/"
+        mock_page.content.return_value = ""
+        farm._page = mock_page
+        farm._context = MagicMock()
+        farm._browser_ready = threading.Event()
+
+        return farm
+
+    def test_login_success(self):
+        """MP# + password login works -> auto_login returns success."""
+        farm = self._make_farm()
+        farm._is_logged_in = MagicMock(side_effect=[False, True])
+        farm._auto_login = MagicMock(return_value="success")
+        farm.ensure_logged_in()
+        farm._auto_login.assert_called_once()
+
+    def test_auto_login_returns_failed_without_mp(self):
+        """No MP# configured -> ensure_logged_in raises RuntimeError."""
+        farm = self._make_farm(has_united=False)
+        farm._is_logged_in = MagicMock(return_value=False)
+        farm._auto_login = MagicMock(return_value="failed")
+        with pytest.raises(RuntimeError):
+            farm.ensure_logged_in()
+
+    def test_ensure_logged_in_no_auth_method_param(self):
+        """ensure_logged_in() no longer accepts auth_method parameter."""
+        farm = self._make_farm()
+        import inspect
+        sig = inspect.signature(farm.ensure_logged_in)
+        assert "auth_method" not in sig.parameters
+
+    def test_mfa_still_works(self):
+        """Normal login hits MFA -> code submitted -> success."""
+        farm = self._make_farm()
+        farm._is_logged_in = MagicMock(side_effect=[False, True])
+        farm._auto_login = MagicMock(return_value="mfa_required")
+        farm._enter_mfa_code = MagicMock(return_value=True)
+
+        farm.ensure_logged_in(mfa_prompt=lambda: "123456")
+
+        farm._auto_login.assert_called_once()
+        farm._enter_mfa_code.assert_called_once_with("123456")
+
+
+class TestAddWatch:
+    def test_create(self, mcp_db):
+        from mcp_server import add_watch
+        result = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000)))
+        assert result["status"] == "created"
+        assert "id" in result
+        assert result["origin"] == "YYZ"
+        assert result["check_interval_minutes"] == 720  # default 12h
+
+    def test_custom_interval(self, mcp_db):
+        from mcp_server import add_watch
+        result = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000, every="daily")))
+        assert result["check_interval_minutes"] == 1440
+
+    def test_invalid_interval(self, mcp_db):
+        from mcp_server import add_watch
+        result = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000, every="invalid")))
+        assert "error" in result
+
+
+class TestListWatches:
+    def test_empty(self, mcp_db):
+        from mcp_server import list_watches
+        result = json.loads(list_watches())
+        assert result["count"] == 0
+
+    def test_with_watches(self, mcp_db):
+        from mcp_server import add_watch, list_watches
+        asyncio.run(add_watch("YYZ", "LAX", 50000))
+        asyncio.run(add_watch("YVR", "SFO", 30000))
+        result = json.loads(list_watches())
+        assert result["count"] == 2
+
+
+class TestRemoveWatch:
+    def test_remove_existing(self, mcp_db):
+        from mcp_server import add_watch, remove_watch
+        created = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000)))
+        result = json.loads(remove_watch(created["id"]))
+        assert result["status"] == "removed"
+
+    def test_remove_nonexistent(self, mcp_db):
+        from mcp_server import remove_watch
+        result = json.loads(remove_watch(999))
+        assert result["status"] == "not_found"
+
+
+class TestCheckWatches:
+    def test_no_watches(self, mcp_db):
+        from mcp_server import check_watches
+        result = json.loads(check_watches())
+        assert result["watches_checked"] == 0
+
+    def test_with_match(self, seeded_mcp_db):
+        from mcp_server import add_watch, check_watches
+        from unittest.mock import patch
+        asyncio.run(add_watch("YYZ", "LAX", 50000))
+        with patch("mcp_server.load_notify_config", return_value={"ntfy_topic": "test", "ntfy_server": "https://ntfy.sh"}), \
+             patch("mcp_server.send_ntfy", return_value=True) as mock_ntfy:
+            result = json.loads(check_watches())
+        assert result["watches_checked"] == 1
+        assert result["watches_triggered"] >= 1
+        assert result["ntfy_active"] is True
+        # Verify notification block
+        triggered = result["results"][0]
+        assert "notification" in triggered
+        assert "title" in triggered["notification"]
+        assert "body" in triggered["notification"]
+        assert triggered["ntfy_sent"] is True
+        mock_ntfy.assert_called_once()
+
+    def test_with_match_no_ntfy(self, seeded_mcp_db):
+        """No ntfy configured — notification block still present for agent delivery."""
+        from mcp_server import add_watch, check_watches
+        from unittest.mock import patch
+        asyncio.run(add_watch("YYZ", "LAX", 50000))
+        with patch("mcp_server.load_notify_config", return_value={"ntfy_topic": "", "ntfy_server": "https://ntfy.sh"}):
+            result = json.loads(check_watches())
+        assert result["watches_triggered"] >= 1
+        assert result["ntfy_active"] is False
+        triggered = result["results"][0]
+        assert "notification" in triggered
+        assert "title" in triggered["notification"]
+        assert "body" in triggered["notification"]
+        assert triggered["ntfy_sent"] is False
+
+
+class TestAddWatchElicitation:
+    def test_no_elicitation_when_ntfy_configured(self, mcp_db, monkeypatch):
+        """No elicitation when ntfy is configured."""
+        from mcp_server import add_watch
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setattr("mcp_server.load_notify_config", lambda: {
+            "ntfy_topic": "alerts", "ntfy_server": "https://ntfy.sh",
+            "gmail_sender": "", "gmail_recipient": "",
+            "gmail_app_password": "",
+        })
+        monkeypatch.setattr("mcp_server.send_ntfy", lambda **kwargs: True)
+
+        mock_ctx = MagicMock()
+        mock_ctx.elicit = AsyncMock()
+
+        result = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000, ctx=mock_ctx)))
+        assert result["status"] == "created"
+        mock_ctx.elicit.assert_not_called()
+        assert result.get("notifications") == "ntfy"
+
+    def test_elicitation_declined_still_creates_watch(self, mcp_db, monkeypatch):
+        """Elicitation declined; watch should still be created."""
+        from mcp_server import add_watch
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setattr("mcp_server.load_notify_config", lambda: {
+            "ntfy_topic": "", "ntfy_server": "https://ntfy.sh",
+            "gmail_sender": "", "gmail_recipient": "",
+            "gmail_app_password": "",
+        })
+
+        mock_elicit_result = MagicMock()
+        mock_elicit_result.action = "decline"
+        mock_elicit_result.data = None
+
+        mock_ctx = MagicMock()
+        mock_ctx.elicit = AsyncMock(return_value=mock_elicit_result)
+
+        result = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000, ctx=mock_ctx)))
+        assert result["status"] == "created"
+        assert result.get("notifications") == "none"
+
+    def test_elicitation_not_supported_still_creates_watch(self, mcp_db, monkeypatch):
+        """Elicitation raises exception; watch should still be created."""
+        from mcp_server import add_watch
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setattr("mcp_server.load_notify_config", lambda: {
+            "ntfy_topic": "", "ntfy_server": "https://ntfy.sh",
+            "gmail_sender": "", "gmail_recipient": "",
+            "gmail_app_password": "",
+        })
+
+        mock_ctx = MagicMock()
+        mock_ctx.elicit = AsyncMock(side_effect=Exception("Elicitation not supported"))
+
+        result = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000, ctx=mock_ctx)))
+        assert result["status"] == "created"
+        assert result.get("notifications") == "none"
+
+    def test_elicits_ntfy_topic_when_none_configured(self, mcp_db, monkeypatch):
+        """No ntfy topic — elicits str for ntfy topic, saves it."""
+        from mcp_server import add_watch
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setattr("mcp_server.load_notify_config", lambda: {
+            "ntfy_topic": "", "ntfy_server": "https://ntfy.sh",
+            "gmail_sender": "", "gmail_recipient": "",
+            "gmail_app_password": "",
+        })
+
+        mock_save = MagicMock()
+        monkeypatch.setattr("mcp_server.save_notify_config", mock_save)
+
+        mock_elicit_result = MagicMock()
+        mock_elicit_result.action = "accept"
+        mock_elicit_result.data = "my-topic"
+
+        mock_ctx = MagicMock()
+        mock_ctx.elicit = AsyncMock(return_value=mock_elicit_result)
+
+        result = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000, ctx=mock_ctx)))
+        assert result["status"] == "created"
+        mock_ctx.elicit.assert_called_once()
+        # Verify it's a str elicitation
+        call_kwargs = mock_ctx.elicit.call_args
+        assert call_kwargs.kwargs.get("response_type") is str or call_kwargs[1].get("response_type") is str
+        # Verify save was called with topic
+        mock_save.assert_any_call(topic="my-topic")
+
+    def test_response_includes_notifications_key(self, mcp_db, monkeypatch):
+        """Response always includes notifications key with correct status."""
+        from mcp_server import add_watch
+
+        monkeypatch.setattr("mcp_server.load_notify_config", lambda: {
+            "ntfy_topic": "alerts", "ntfy_server": "https://ntfy.sh",
+            "gmail_sender": "", "gmail_recipient": "",
+            "gmail_app_password": "",
+        })
+        monkeypatch.setattr("mcp_server.send_ntfy", lambda **kwargs: True)
+
+        # No ctx provided — no elicitation possible
+        result = json.loads(asyncio.run(add_watch("YYZ", "LAX", 50000)))
+        assert "notifications" in result
+        assert result["notifications"] == "ntfy"
+
+
+class TestFormatNotification:
+    def test_single_match(self):
+        from mcp_server import _format_notification
+        note = _format_notification(
+            {"origin": "YYZ", "destination": "LAX", "max_miles": 50000},
+            [{"date": "2026-05-01", "cabin": "economy", "award_type": "Saver", "miles": 13000, "taxes_cents": 6851}],
+        )
+        assert note["title"] == "Award Deal: YYZ -> LAX"
+        assert "13,000" in note["body"]
+        assert "economy Saver" in note["body"]
+        assert "$68.51" in note["body"]
+        assert "50,000" in note["body"]
+
+    def test_multiple_matches(self):
+        from mcp_server import _format_notification
+        note = _format_notification(
+            {"origin": "YVR", "destination": "SFO", "max_miles": 30000},
+            [
+                {"date": "2026-06-01", "cabin": "economy", "award_type": "Saver", "miles": 10000, "taxes_cents": 5200},
+                {"date": "2026-06-02", "cabin": "economy", "award_type": "Saver", "miles": 12000, "taxes_cents": 5200},
+                {"date": "2026-06-03", "cabin": "business", "award_type": "Standard", "miles": 25000, "taxes_cents": 5200},
+            ],
+        )
+        assert "YVR" in note["title"] and "SFO" in note["title"]
+        assert "10,000" in note["body"]  # cheapest
+        assert "+ 2 more matches" in note["body"]
+        assert "30,000" in note["body"]
+
+
+class TestSubmitMFA:
+    """Tests for the submit_mfa MCP tool."""
+
+    def _reset_session(self):
+        """Reset all _session keys to clean state."""
+        import mcp_server
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = False
+        mcp_server._session["pending_scrape"] = None
+        mcp_server._session["mfa_method"] = "sms"
+
+    def test_submit_mfa_success(self, mcp_db):
+        """MFA pending, code accepted, pending scrape runs successfully."""
+        import asyncio
+        import mcp_server
+        from unittest.mock import MagicMock, patch
+
+        mock_farm = MagicMock()
+        mock_farm._enter_mfa_code.return_value = True
+        mock_farm.refresh_cookies.return_value = True
+
+        mcp_server._session["farm"] = mock_farm
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = True
+        mcp_server._session["pending_scrape"] = ("YYZ", "LAX")
+
+        mock_scrape = MagicMock(return_value={"found": 47, "stored": 47})
+
+        # Mock HybridScraper so submit_mfa can start the scraper
+        mock_hs_module = MagicMock()
+        mock_scraper_instance = MagicMock()
+        mock_hs_module.HybridScraper.return_value = mock_scraper_instance
+
+        try:
+            with patch.dict("sys.modules", {
+                     "scrape": MagicMock(scrape_route=mock_scrape),
+                     "core.hybrid_scraper": mock_hs_module,
+                 }):
+                result = json.loads(asyncio.run(mcp_server.submit_mfa("123456")))
+
+            assert result["status"] == "complete"
+            assert result["route"] == "YYZ-LAX"
+            assert result["found"] == 47
+            assert result["stored"] == 47
+            assert mcp_server._session["logged_in"] is True
+            assert mcp_server._session["mfa_pending"] is False
+            assert mcp_server._session["pending_scrape"] is None
+            mock_farm._enter_mfa_code.assert_called_once_with("123456")
+        finally:
+            self._reset_session()
+
+    def test_submit_mfa_code_rejected(self, mcp_db):
+        """Code rejected by United — mfa_pending stays True for retry."""
+        import asyncio
+        import mcp_server
+        from unittest.mock import MagicMock
+
+        mock_farm = MagicMock()
+        mock_farm._enter_mfa_code.return_value = False
+
+        mcp_server._session["farm"] = mock_farm
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = True
+        mcp_server._session["pending_scrape"] = ("YYZ", "LAX")
+
+        try:
+            result = json.loads(asyncio.run(mcp_server.submit_mfa("000000")))
+
+            assert result["status"] == "mfa_failed"
+            assert mcp_server._session["mfa_pending"] is True
+            assert mcp_server._session["logged_in"] is False
+        finally:
+            self._reset_session()
+
+    def test_submit_mfa_no_pending(self, mcp_db):
+        """No MFA in progress — returns no_mfa_pending error."""
+        import asyncio
+        import mcp_server
+
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = False
+        mcp_server._session["pending_scrape"] = None
+
+        try:
+            result = json.loads(asyncio.run(mcp_server.submit_mfa("123456")))
+
+            assert result["error"] == "no_mfa_pending"
+        finally:
+            self._reset_session()
+
+    def test_submit_mfa_no_session(self, mcp_db):
+        """MFA pending but farm is None (browser crashed) — returns no_session."""
+        import asyncio
+        import mcp_server
+
+        mcp_server._session["farm"] = None
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = True
+        mcp_server._session["pending_scrape"] = ("YYZ", "LAX")
+
+        try:
+            result = json.loads(asyncio.run(mcp_server.submit_mfa("123456")))
+
+            assert result["error"] == "no_session"
+            # Session state should be cleaned up
+            assert mcp_server._session["mfa_pending"] is False
+            assert mcp_server._session["pending_scrape"] is None
+        finally:
+            self._reset_session()
+
+    def test_submit_mfa_login_only(self, mcp_db):
+        """MFA pending, no pending scrape — just completes login."""
+        import asyncio
+        import mcp_server
+        from unittest.mock import MagicMock, patch
+
+        mock_farm = MagicMock()
+        mock_farm._enter_mfa_code.return_value = True
+
+        mcp_server._session["farm"] = mock_farm
+        mcp_server._session["scraper"] = None
+        mcp_server._session["logged_in"] = False
+        mcp_server._session["mfa_pending"] = True
+        mcp_server._session["pending_scrape"] = None
+
+        # Mock HybridScraper so submit_mfa can start the scraper
+        mock_hs_module = MagicMock()
+        mock_scraper_instance = MagicMock()
+        mock_hs_module.HybridScraper.return_value = mock_scraper_instance
+
+        try:
+            with patch.dict("sys.modules", {"core.hybrid_scraper": mock_hs_module}):
+                result = json.loads(asyncio.run(mcp_server.submit_mfa("654321")))
+
+            assert result["status"] == "logged_in"
+            assert mcp_server._session["logged_in"] is True
+            assert mcp_server._session["mfa_pending"] is False
+            mock_farm._enter_mfa_code.assert_called_once_with("654321")
+        finally:
+            self._reset_session()

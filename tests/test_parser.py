@@ -1,13 +1,8 @@
 """Tests for united_api.parse_calendar_solutions — parser logic with synthetic data."""
 
-import sys
-import os
-
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts", "experiments"))
-
-from united_api import parse_calendar_solutions, CABIN_TYPE_MAP
+from core.united_api import parse_calendar_solutions, CABIN_TYPE_MAP
 
 
 def _make_day(date_value, solutions):

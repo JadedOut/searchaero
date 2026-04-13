@@ -2,13 +2,9 @@
 
 import datetime
 import sqlite3
-import sys
-import os
 from datetime import timezone, timedelta
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.db import create_schema, upsert_availability, record_scrape_job, get_route_summary, get_scrape_stats, query_availability, get_job_stats, query_history, get_history_stats, create_alert, list_alerts, get_alert, remove_alert, check_alert_matches, update_alert_notification, expire_past_alerts, get_route_freshness
 from core.models import AwardResult

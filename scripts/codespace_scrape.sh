@@ -8,10 +8,10 @@
 #
 # Prerequisites:
 #   - gh CLI installed and authenticated
-#   - Codespace secrets set: UNITED_EMAIL, UNITED_PASSWORD
+#   - Codespace secrets set: UNITED_MP_NUMBER, UNITED_PASSWORD
 #
 # Set these secrets once:
-#   gh secret set UNITED_EMAIL --app codespaces
+#   gh secret set UNITED_MP_NUMBER --app codespaces
 #   gh secret set UNITED_PASSWORD --app codespaces
 
 set -euo pipefail
@@ -130,7 +130,7 @@ CS_NAME=$(gh codespace create \
     -m "$MACHINE_TYPE" \
     --retention-period "$RETENTION" \
     --default-permissions \
-    2>&1) || die "Failed to create Codespace. Check that secrets are configured:\n  gh secret set UNITED_EMAIL --app codespaces\n  gh secret set UNITED_PASSWORD --app codespaces"
+    2>&1) || die "Failed to create Codespace. Check that secrets are configured:\n  gh secret set UNITED_MP_NUMBER --app codespaces\n  gh secret set UNITED_PASSWORD --app codespaces"
 
 echo "    Created: $CS_NAME"
 

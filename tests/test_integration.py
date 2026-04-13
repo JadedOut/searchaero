@@ -2,16 +2,10 @@
 
 import datetime
 import sqlite3
-import sys
-import os
 
 import pytest
 
-# Path setup (same pattern as test_parser.py)
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts", "experiments"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from united_api import parse_calendar_solutions
+from core.united_api import parse_calendar_solutions
 from core.models import validate_solution
 from core.db import (
     create_schema,

@@ -7,15 +7,11 @@ including error handling, crash detection, price history, and date edge cases.
 import datetime
 import io
 import json
-import os
 import sqlite3
 import sys
 from datetime import date, timedelta
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts", "experiments"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from scrape import scrape_route, _scrape_with_crash_detection, detect_browser_crash
 from cli import main

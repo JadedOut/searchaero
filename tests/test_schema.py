@@ -1,14 +1,10 @@
 """Tests for core/schema.py -- command schema introspection."""
 
 import json
-import os
-import sys
 import datetime
 import sqlite3
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.schema import get_schema, get_all_commands, COMMAND_SCHEMAS
 from cli import main

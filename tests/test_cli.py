@@ -4,11 +4,9 @@ import json
 import os
 import sqlite3
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from cli import main, cmd_setup
 
@@ -89,6 +87,86 @@ class TestSetupCommand:
         assert "Credentials" in captured.out
         assert "Result:" in captured.out
 
+    @patch('sys.stdin', new_callable=lambda: MagicMock(isatty=lambda: False))
+    @patch("importlib.metadata.version", return_value="1.40.0")
+    @patch("cli.subprocess.run")
+    @patch("cli.glob.glob")
+    def test_setup_auto_installs_chromium(self, mock_glob, mock_subproc, mock_pw_ver, mock_stdin, tmp_path, capsys):
+        """Auto-installs Chromium when package present but browsers missing."""
+        # First glob call: browsers missing; second call (after install): browsers present
+        mock_glob.side_effect = [[], ["chromium-1234"]]
+        mock_subproc.return_value = MagicMock(returncode=0, stderr="")
+        db_file = str(tmp_path / "test.db")
+        main(["setup", "--db-path", db_file])
+        # subprocess.run should have been called with playwright install chromium
+        mock_subproc.assert_called_once()
+        call_args = mock_subproc.call_args[0][0]
+        assert call_args == [sys.executable, "-m", "playwright", "install", "chromium"]
+        captured = capsys.readouterr()
+        assert "install" in captured.out.lower()
+
+    @patch('sys.stdin', new_callable=lambda: MagicMock(isatty=lambda: False))
+    @patch("importlib.metadata.version", return_value="1.40.0")
+    @patch("cli.subprocess.run")
+    @patch("cli.glob.glob")
+    def test_setup_auto_install_failure(self, mock_glob, mock_subproc, mock_pw_ver, mock_stdin, tmp_path, capsys):
+        """Reports failure when auto-install returns non-zero."""
+        mock_glob.return_value = []
+        mock_subproc.return_value = MagicMock(returncode=1, stderr="error msg")
+        db_file = str(tmp_path / "test.db")
+        main(["setup", "--db-path", db_file])
+        captured = capsys.readouterr()
+        assert "failed" in captured.out.lower() or "error" in captured.out.lower()
+
+    @patch('sys.stdin', new_callable=lambda: MagicMock(isatty=lambda: False))
+    @patch("importlib.metadata.version", return_value="1.40.0")
+    @patch("cli.subprocess.run")
+    @patch("cli.glob.glob")
+    def test_setup_no_browser_install_flag(self, mock_glob, mock_subproc, mock_pw_ver, mock_stdin, tmp_path, capsys):
+        """--no-browser-install skips auto-install."""
+        mock_glob.return_value = []
+        db_file = str(tmp_path / "test.db")
+        main(["setup", "--db-path", db_file, "--no-browser-install"])
+        mock_subproc.assert_not_called()
+        captured = capsys.readouterr()
+        assert "skipped" in captured.out.lower()
+
+    @patch('sys.stdin', new_callable=lambda: MagicMock(isatty=lambda: False))
+    @patch("importlib.metadata.version", return_value="1.40.0")
+    @patch("cli.glob.glob")
+    def test_setup_json_includes_auto_install_key(self, mock_glob, mock_pw_ver, mock_stdin, tmp_path, capsys):
+        """JSON output includes browsers_auto_installed key."""
+        mock_glob.return_value = ["chromium-1234"]
+        db_file = str(tmp_path / "test.db")
+        main(["setup", "--db-path", db_file, "--json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert "browsers_auto_installed" in data["playwright"]
+        assert data["playwright"]["browsers_auto_installed"] is False
+
+    @patch('sys.stdin', new_callable=lambda: MagicMock(isatty=lambda: False))
+    @patch("importlib.metadata.version", return_value="1.40.0")
+    @patch("cli.subprocess.run")
+    @patch("cli.glob.glob")
+    def test_setup_skips_install_when_browsers_present(self, mock_glob, mock_subproc, mock_pw_ver, mock_stdin, tmp_path, capsys):
+        """Does not auto-install when browsers are already present."""
+        mock_glob.return_value = ["chromium-1234"]
+        db_file = str(tmp_path / "test.db")
+        main(["setup", "--db-path", db_file])
+        mock_subproc.assert_not_called()
+
+    @patch('sys.stdin', new_callable=lambda: MagicMock(isatty=lambda: False))
+    @patch("cli.subprocess.run")
+    @patch("cli.glob.glob")
+    def test_setup_skips_install_when_package_missing(self, mock_glob, mock_subproc, mock_stdin, tmp_path, capsys):
+        """Does not auto-install when Playwright package is not installed."""
+        import importlib.metadata
+        mock_glob.return_value = []
+        db_file = str(tmp_path / "test.db")
+        with patch("importlib.metadata.version", side_effect=importlib.metadata.PackageNotFoundError("playwright")):
+            main(["setup", "--db-path", db_file])
+        mock_subproc.assert_not_called()
+
 
 class TestSearchCommand:
     def test_help_shows_search(self, capsys):
@@ -150,7 +228,7 @@ class TestSearchCommand:
         )
         db_file = str(tmp_path / "test.db")
         main(["search", "--headless", "YYZ", "LAX", "--db-path", db_file])
-        MockFarm.assert_called_once_with(headless=True, ephemeral=True)
+        MockFarm.assert_called_once_with(headless=True, ephemeral=True, proxy=None)
 
     @patch("cli._scrape_with_crash_detection")
     @patch("cli.HybridScraper")
@@ -1014,37 +1092,392 @@ class TestStatusCommand:
         mock_conn.assert_called_once_with(db_file)
 
 
-class TestScrapeParserFlags:
-    """Tests for scrape.py build_parser() window and session flags."""
+class TestWatchCommand:
+    def test_watch_no_subcommand(self, capsys):
+        """watch with no subcommand prints usage."""
+        exit_code = main(["watch"])
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "usage" in captured.out.lower() or "add" in captured.out.lower()
 
-    def test_scrape_parser_window_flags(self):
-        """--start-window and --max-windows are parsed correctly."""
-        from scrape import build_parser
+    @patch("cli.db.create_watch")
+    @patch("cli.db.get_connection")
+    def test_watch_add_basic(self, mock_conn, mock_create, capsys):
+        """watch add creates watch and prints confirmation."""
+        mock_conn.return_value = MagicMock()
+        mock_create.return_value = 1
+        exit_code = main(["watch", "add", "YYZ", "LAX", "--max-miles", "50000"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "Watch #1 created" in captured.out
+        assert "50,000" in captured.out
 
-        args = build_parser().parse_args(
-            ["--route", "YYZ", "LAX", "--start-window", "10", "--max-windows", "3"]
+    @patch("cli.db.create_watch")
+    @patch("cli.db.get_connection")
+    def test_watch_add_with_all_options(self, mock_conn, mock_create, capsys):
+        """watch add with cabin, dates, and interval stores all options."""
+        mock_conn.return_value = MagicMock()
+        mock_create.return_value = 2
+        exit_code = main(["watch", "add", "YYZ", "LAX", "--max-miles", "50000",
+                          "--cabin", "business", "--from", "2026-05-01", "--to", "2026-06-01",
+                          "--every", "6h"])
+        assert exit_code == 0
+        mock_create.assert_called_once()
+        _, kwargs = mock_create.call_args
+        assert kwargs.get("cabin") == "business"
+        assert kwargs.get("date_from") == "2026-05-01"
+        assert kwargs.get("date_to") == "2026-06-01"
+        assert kwargs.get("check_interval_minutes") == 360
+
+    @patch("cli.db.create_watch")
+    @patch("cli.db.get_connection")
+    def test_watch_add_json(self, mock_conn, mock_create, capsys):
+        """watch add --json outputs JSON with check_interval_minutes."""
+        mock_conn.return_value = MagicMock()
+        mock_create.return_value = 1
+        exit_code = main(["watch", "add", "YYZ", "LAX", "--max-miles", "50000", "--json"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["id"] == 1
+        assert data["status"] == "created"
+        assert data["check_interval_minutes"] == 720
+
+    def test_watch_add_invalid_iata(self, capsys):
+        """watch add with invalid IATA code errors."""
+        exit_code = main(["watch", "add", "XX", "LAX", "--max-miles", "50000"])
+        assert exit_code == 1
+
+    def test_watch_add_negative_miles(self, capsys):
+        """watch add with negative max-miles errors."""
+        exit_code = main(["watch", "add", "YYZ", "LAX", "--max-miles", "-100"])
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "positive" in captured.out.lower()
+
+    def test_watch_add_from_after_to(self, capsys):
+        """watch add --from after --to is an error."""
+        exit_code = main(["watch", "add", "YYZ", "LAX", "--max-miles", "50000",
+                          "--from", "2026-06-01", "--to", "2026-05-01"])
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "before" in captured.out.lower()
+
+    @patch("cli.db.list_watches")
+    @patch("cli.db.get_connection")
+    def test_watch_list_empty(self, mock_conn, mock_list, capsys):
+        """watch list with no watches prints message."""
+        mock_conn.return_value = MagicMock()
+        mock_list.return_value = []
+        exit_code = main(["watch", "list"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "no active watches" in captured.out.lower()
+
+    @patch("cli.db.list_watches")
+    @patch("cli.db.get_connection")
+    def test_watch_list_with_data(self, mock_conn, mock_list, capsys):
+        """watch list prints formatted table."""
+        mock_conn.return_value = MagicMock()
+        mock_list.return_value = [
+            {"id": 1, "origin": "YYZ", "destination": "LAX", "cabin": "economy",
+             "max_miles": 50000, "check_interval_minutes": 720,
+             "date_from": None, "date_to": None,
+             "created_at": "2026-04-07", "last_checked_at": None,
+             "last_notified_at": None, "last_notified_hash": None, "active": 1},
+        ]
+        exit_code = main(["watch", "list"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "YYZ-LAX" in captured.out
+        assert "economy" in captured.out
+        assert "50,000" in captured.out
+
+    @patch("cli.db.list_watches")
+    @patch("cli.db.get_connection")
+    def test_watch_list_json(self, mock_conn, mock_list, capsys):
+        """watch list --json outputs JSON array."""
+        mock_conn.return_value = MagicMock()
+        mock_list.return_value = [
+            {"id": 1, "origin": "YYZ", "destination": "LAX", "cabin": "economy",
+             "max_miles": 50000, "check_interval_minutes": 720,
+             "date_from": None, "date_to": None,
+             "created_at": "2026-04-07", "last_checked_at": None,
+             "last_notified_at": None, "last_notified_hash": None, "active": 1},
+        ]
+        exit_code = main(["watch", "list", "--json"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+        assert len(data) == 1
+
+    @patch("cli.db.list_watches")
+    @patch("cli.db.get_connection")
+    def test_watch_list_all_flag(self, mock_conn, mock_list, capsys):
+        """watch list --all passes active_only=False."""
+        mock_conn.return_value = MagicMock()
+        mock_list.return_value = []
+        main(["watch", "list", "--all"])
+        mock_list.assert_called_once_with(mock_conn.return_value, active_only=False)
+
+    @patch("cli.db.remove_watch")
+    @patch("cli.db.get_connection")
+    def test_watch_remove_success(self, mock_conn, mock_remove, capsys):
+        """watch remove prints confirmation."""
+        mock_conn.return_value = MagicMock()
+        mock_remove.return_value = True
+        exit_code = main(["watch", "remove", "1"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "removed" in captured.out.lower()
+
+    @patch("cli.db.remove_watch")
+    @patch("cli.db.get_connection")
+    def test_watch_remove_not_found(self, mock_conn, mock_remove, capsys):
+        """watch remove nonexistent ID returns 1."""
+        mock_conn.return_value = MagicMock()
+        mock_remove.return_value = False
+        exit_code = main(["watch", "remove", "999"])
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "not found" in captured.out.lower()
+
+    @patch("cli.db.remove_watch")
+    @patch("cli.db.get_connection")
+    def test_watch_remove_json(self, mock_conn, mock_remove, capsys):
+        """watch remove --json outputs JSON."""
+        mock_conn.return_value = MagicMock()
+        mock_remove.return_value = True
+        exit_code = main(["watch", "remove", "1", "--json"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["status"] == "removed"
+
+    @patch("cli.db.remove_watch")
+    @patch("cli.db.get_connection")
+    def test_watch_remove_not_found_json(self, mock_conn, mock_remove, capsys):
+        """watch remove nonexistent ID --json outputs error JSON."""
+        mock_conn.return_value = MagicMock()
+        mock_remove.return_value = False
+        exit_code = main(["watch", "remove", "999", "--json"])
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["error"] == "not_found"
+
+    @patch("core.watchlist.check_watches")
+    @patch("cli.db.get_connection")
+    def test_watch_check(self, mock_conn, mock_check_watches, capsys):
+        """watch check prints summary."""
+        mock_conn.return_value = MagicMock()
+        mock_check_watches.return_value = {
+            "watches_checked": 2, "watches_triggered": 1,
+            "scrapes_triggered": 0, "notifications_sent": 1,
+        }
+        exit_code = main(["watch", "check"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "2" in captured.out
+        assert "1" in captured.out
+
+    @patch("core.watchlist.check_watches")
+    @patch("cli.db.get_connection")
+    def test_watch_check_json(self, mock_conn, mock_check_watches, capsys):
+        """watch check --json outputs structured JSON."""
+        mock_conn.return_value = MagicMock()
+        mock_check_watches.return_value = {
+            "watches_checked": 2, "watches_triggered": 1,
+            "scrapes_triggered": 0, "notifications_sent": 1,
+        }
+        exit_code = main(["watch", "check", "--json"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["watches_checked"] == 2
+        assert data["watches_triggered"] == 1
+        assert data["notifications_sent"] == 1
+
+    @patch("core.notify.save_notify_config")
+    def test_watch_setup(self, mock_save, capsys):
+        """watch setup configures ntfy."""
+        exit_code = main(["watch", "setup", "--ntfy-topic", "test-topic"])
+        assert exit_code == 0
+        mock_save.assert_called_once_with(
+            topic="test-topic", server="https://ntfy.sh",
+            gmail_sender=None, gmail_recipient=None,
         )
-        assert args.start_window == 10
-        assert args.max_windows == 3
+        captured = capsys.readouterr()
+        assert "test-topic" in captured.out
 
-    def test_scrape_parser_session_budget(self):
-        """--session-budget is parsed correctly."""
-        from scrape import build_parser
+    @patch("core.notify.save_notify_config")
+    def test_watch_setup_json(self, mock_save, capsys):
+        """watch setup --json outputs structured JSON."""
+        exit_code = main(["watch", "setup", "--ntfy-topic", "test-topic", "--json"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["status"] == "configured"
+        assert data["ntfy_topic"] == "test-topic"
+        assert "ntfy_server" not in data  # default server is omitted
 
-        args = build_parser().parse_args(
-            ["--route", "YYZ", "LAX", "--session-budget", "8"]
+    @patch("core.notify.save_notify_config")
+    def test_watch_setup_custom_server(self, mock_save, capsys):
+        """watch setup with custom server."""
+        exit_code = main(["watch", "setup", "--ntfy-topic", "my-topic",
+                          "--ntfy-server", "https://my-ntfy.example.com"])
+        assert exit_code == 0
+        mock_save.assert_called_once_with(
+            topic="my-topic", server="https://my-ntfy.example.com",
+            gmail_sender=None, gmail_recipient=None,
         )
-        assert args.session_budget == 8
 
-    def test_scrape_parser_defaults(self):
-        """Default values for window and session flags."""
-        from scrape import build_parser
+    @patch("core.notify.save_notify_config")
+    def test_watch_setup_gmail(self, mock_save, capsys):
+        """watch setup with gmail flags."""
+        exit_code = main(["watch", "setup",
+                          "--gmail-sender", "me@gmail.com",
+                          "--gmail-recipient", "you@example.com"])
+        assert exit_code == 0
+        mock_save.assert_called_once_with(
+            topic=None, server="https://ntfy.sh",
+            gmail_sender="me@gmail.com", gmail_recipient="you@example.com",
+        )
+        captured = capsys.readouterr()
+        assert "me@gmail.com" in captured.out
+        assert "you@example.com" in captured.out
 
-        args = build_parser().parse_args(["--route", "YYZ", "LAX"])
-        assert args.start_window == 1
-        assert args.max_windows == 12
-        assert args.session_budget == 30
-        assert args.session_pause == 60
+    @patch("core.notify.save_notify_config")
+    def test_watch_setup_gmail_json(self, mock_save, capsys):
+        """watch setup --gmail-sender --json outputs gmail fields."""
+        exit_code = main(["watch", "setup",
+                          "--gmail-sender", "me@gmail.com",
+                          "--gmail-recipient", "you@example.com",
+                          "--json"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["status"] == "configured"
+        assert data["gmail_sender"] == "me@gmail.com"
+        assert data["gmail_recipient"] == "you@example.com"
+        assert "ntfy_topic" not in data  # no ntfy configured
+
+    @patch("core.notify.save_notify_config")
+    def test_watch_setup_no_channels_warns(self, mock_save, capsys):
+        """watch setup with no flags prints warning to stderr."""
+        exit_code = main(["watch", "setup"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "Warning" in captured.err
+        assert "No notification settings changed." in captured.out
+
+
+class TestDoctorCommand:
+    """Tests for seataero doctor diagnostic command."""
+
+    @patch("cli.db.get_connection")
+    @patch("os.path.isfile", return_value=True)
+    @patch("os.path.getsize", return_value=1048576)
+    @patch("builtins.open", mock_open(read_data="UNITED_MP_NUMBER=12345\nUNITED_PASSWORD=secret\n"))
+    def test_doctor_healthy(self, mock_size, mock_isfile, mock_conn, capsys):
+        """doctor with healthy db, creds, playwright prints all-green summary."""
+        conn = MagicMock()
+        conn.execute = MagicMock(side_effect=[
+            MagicMock(fetchone=MagicMock(return_value=("ok",))),       # integrity
+            MagicMock(fetchone=MagicMock(return_value=(100,))),        # row count
+            MagicMock(fetchone=MagicMock(return_value=("2026-04-13T12:00:00",))),  # max scraped_at
+            MagicMock(fetchone=MagicMock(return_value=(5,))),          # route count
+        ])
+        mock_conn.return_value = conn
+        exit_code = main(["doctor"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "seataero doctor" in captured.out
+
+    @patch("os.path.isfile", return_value=False)
+    def test_doctor_no_database(self, mock_isfile, capsys):
+        """doctor with missing database reports issue."""
+        exit_code = main(["doctor"])
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "not found" in captured.out.lower()
+
+    def test_doctor_returns_nonzero_on_issues(self, capsys):
+        """doctor returns exit code 1 when issues are found."""
+        with patch("os.path.isfile", return_value=False):
+            exit_code = main(["doctor"])
+        assert exit_code == 1
+
+
+class TestHelpTopicCommand:
+    """Tests for seataero help <topic> command."""
+
+    def test_help_lists_topics(self, capsys):
+        """help with no topic lists all available topics."""
+        exit_code = main(["help"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "mfa" in captured.out
+        assert "proxy" in captured.out
+        assert "watches" in captured.out
+        assert "alerts" in captured.out
+        assert "scraping" in captured.out
+
+    def test_help_mfa_topic(self, capsys):
+        """help mfa prints MFA-specific guidance."""
+        exit_code = main(["help", "mfa"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "SMS" in captured.out
+        assert "verification" in captured.out.lower() or "Verification" in captured.out
+
+    def test_help_proxy_topic(self, capsys):
+        """help proxy prints proxy guidance."""
+        exit_code = main(["help", "proxy"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "proxy" in captured.out.lower() or "Proxy" in captured.out
+        assert "Akamai" in captured.out or "akamai" in captured.out
+
+    def test_help_watches_topic(self, capsys):
+        """help watches prints watchlist guidance."""
+        exit_code = main(["help", "watches"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "watch" in captured.out.lower()
+        assert "ntfy" in captured.out.lower()
+
+    def test_help_alerts_topic(self, capsys):
+        """help alerts prints alert guidance."""
+        exit_code = main(["help", "alerts"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "alert" in captured.out.lower()
+
+    def test_help_scraping_topic(self, capsys):
+        """help scraping prints scraping guidance."""
+        exit_code = main(["help", "scraping"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "scrape" in captured.out.lower() or "Scrape" in captured.out
+
+    def test_help_invalid_topic(self, capsys):
+        """help with unknown topic lists available topics."""
+        exit_code = main(["help", "nonexistent"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "Available help topics" in captured.out
+
+    def test_no_subcommand_shows_friendly_output(self, capsys):
+        """Running with no args shows friendly command overview, not argparse help."""
+        exit_code = main([])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "Get started" in captured.out
+        assert "Monitor prices" in captured.out
+        assert "Diagnostics" in captured.out
+        assert "doctor" in captured.out
 
 
 class TestMFAFileHandoff:

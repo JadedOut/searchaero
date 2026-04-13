@@ -1,14 +1,10 @@
 """Tests for HybridScraper reset behaviors and session budget defaults."""
 
-import sys
-import os
 from unittest.mock import MagicMock
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts", "experiments"))
-
-from hybrid_scraper import HybridScraper
+from core.hybrid_scraper import HybridScraper
 
 
 @pytest.fixture

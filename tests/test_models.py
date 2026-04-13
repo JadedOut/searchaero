@@ -1,12 +1,8 @@
 """Tests for core.models — AwardResult dataclass and validation logic."""
 
 import datetime
-import sys
-import os
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.models import (
     AwardResult,
