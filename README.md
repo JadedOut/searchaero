@@ -131,9 +131,17 @@ uv pip install -e . pytest
 
 To let your agent send you flight summaries via email (e.g., *"send me an email of the summary"*), add a standalone email MCP server. Seataero handles flight data — email delivery is a separate plug that the agent orchestrates between.
 
+First, add the server and connect it to Gmail SMTP:
+
 ```bash
+# Step 1: Add the server
+claude mcp add email -- npx -y mcp-mail-server
+
+# Step 2: Add environment variables (one at a time)
 claude mcp add email -e SMTP_HOST=smtp.gmail.com -e SMTP_PORT=465 -e SMTP_SECURE=true -e IMAP_HOST=imap.gmail.com -e IMAP_PORT=993 -e IMAP_SECURE=true -e EMAIL_USER=you@gmail.com -e EMAIL_PASS=your-app-password -- npx -y mcp-mail-server
 ```
+
+> **PowerShell users:** If the combined command fails with `unknown option '-y'`, run them as two steps — first `claude mcp add email -- npx -y mcp-mail-server`, then `claude mcp remove email` and re-add with the `-e` flags from a **bash** shell (Git Bash, WSL, or the terminal inside Claude Code).
 
 Replace `you@gmail.com` with your Gmail address and `your-app-password` with a [Gmail app password](https://myaccount.google.com/apppasswords) (not your regular password).
 
