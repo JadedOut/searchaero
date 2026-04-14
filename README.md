@@ -127,6 +127,18 @@ uv pip install -e . pytest
 
 </details>
 
+### 4. Email notifications (optional)
+
+To let your agent send you flight summaries via email (e.g., *"send me an email of the summary"*), add a standalone email MCP server. Seataero handles flight data — email delivery is a separate plug that the agent orchestrates between.
+
+```bash
+claude mcp add email -e SMTP_HOST=smtp.gmail.com -e SMTP_PORT=465 -e SMTP_SECURE=true -e IMAP_HOST=imap.gmail.com -e IMAP_PORT=993 -e IMAP_SECURE=true -e EMAIL_USER=you@gmail.com -e EMAIL_PASS=your-app-password -- npx -y mcp-mail-server
+```
+
+Replace `you@gmail.com` with your Gmail address and `your-app-password` with a [Gmail app password](https://myaccount.google.com/apppasswords) (not your regular password).
+
+> **Why a separate server?** Each MCP server does one thing. Seataero provides flight data, the email server handles delivery, and the agent pipes data between them. This keeps both servers simple and composable — if you prefer Slack or ntfy, swap in a different notification MCP without touching seataero.
+
 ## Tools
 
 Once connected, your agent can use:
