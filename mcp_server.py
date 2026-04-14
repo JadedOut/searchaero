@@ -70,7 +70,7 @@ IMPORTANT: When query_flights returns no_results, your next action MUST be searc
 
 Before calling search_route for any reason (no_results or stale data), tell the user: "Starting a fresh scrape — this takes about 2 minutes." Then immediately call search_route without waiting for a response.
 
-In autonomous/loop mode, skip the query_flights-first rule — call search_route directly since the goal is fresh data each iteration.
+In loop/cron workflows where the goal is fresh data each iteration, skip the query_flights-first rule — call search_route directly with mfa_method="email".
 
 Presentation:
 After calling a data tool (query_flights, get_flight_details, get_price_trend, find_deals),
@@ -882,7 +882,6 @@ async def search_route(
     ctx: Context,
     progress: Progress = Progress(),
     mfa_method: MfaMethod = "sms",
-    autonomous: Annotated[bool, Field(description="Skip interactive MFA prompts; forces email MFA")] = False,
 ) -> str:
     """Scrape fresh award flight data from United for a single route. Takes ~2 minutes.
 
@@ -898,37 +897,30 @@ async def search_route(
     Args:
         origin: 3-letter IATA airport code (e.g., YYZ)
         destination: 3-letter IATA airport code (e.g., LAX)
-        mfa_method: MFA delivery channel — "sms" (default) or "email"
-        autonomous: Skip interactive MFA prompts; forces email MFA for automated/loop workflows"""
+        mfa_method: MFA delivery channel — "sms" (default) or "email". Use "email" for automated/loop workflows."""
     origin, destination = origin.upper(), destination.upper()
-    if autonomous:
-        mfa_method = "email"
     with _session_lock:
         _session["mfa_method"] = mfa_method
     loop = asyncio.get_running_loop()
 
     # Sync->async bridge for MFA elicitation
-    if autonomous:
-        def sync_mfa_prompt(timeout: int = 300) -> str:
-            raise RuntimeError("Autonomous mode — MFA code submitted via submit_mfa")
+    if mfa_method == "email":
+        _elicit_msg = "United sent a verification code to your email. Enter it:"
     else:
-        if mfa_method == "email":
-            _elicit_msg = "United sent a verification code to your email. Enter it:"
-        else:
-            _elicit_msg = "United sent an SMS code to your phone. Enter it:"
+        _elicit_msg = "United sent an SMS code to your phone. Enter it:"
 
-        def sync_mfa_prompt(timeout: int = 300) -> str:
-            future = asyncio.run_coroutine_threadsafe(
-                ctx.elicit(_elicit_msg, response_type=str),
-                loop,
-            )
-            result = future.result(timeout=timeout)
-            if result.action == "accept":
-                return result.data
-            elif result.action == "decline":
-                raise RuntimeError("MFA declined by user")
-            else:
-                raise RuntimeError("MFA cancelled by user")
+    def sync_mfa_prompt(timeout: int = 300) -> str:
+        future = asyncio.run_coroutine_threadsafe(
+            ctx.elicit(_elicit_msg, response_type=str),
+            loop,
+        )
+        result = future.result(timeout=timeout)
+        if result.action == "accept":
+            return result.data
+        elif result.action == "decline":
+            raise RuntimeError("MFA declined by user")
+        else:
+            raise RuntimeError("MFA cancelled by user")
 
     # Sync->async bridge for progress reporting
     window_count = 0

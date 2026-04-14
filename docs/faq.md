@@ -55,7 +55,7 @@ United requires two-factor authentication on login. By default, United sends a 6
 Two modes:
 
 - **SMS (default):** The agent asks you to type the 6-digit code in the chat.
-- **Email (autonomous):** The agent calls `search_route` with `autonomous=true`, which forces email MFA. United sends the code to your email. The agent then searches Gmail (via Gmail MCP tools) for the most recent email from `united@united.com` with "verification" in the subject, extracts the 6-digit code, and calls `submit_mfa`.
+- **Email:** The agent calls `search_route` with `mfa_method="email"`. United sends the code to your email. The agent then searches Gmail (via Gmail MCP tools) for the most recent email from `united@united.com` with "verification" in the subject, extracts the 6-digit code, and calls `submit_mfa`. This is useful for automated/loop workflows where no one is watching the chat.
 
 Email MFA requires that your agent has access to Gmail MCP tools (`gmail_search_messages`, `gmail_read_message`). If you're using Claude Code, add the Gmail MCP server alongside seataero.
 

@@ -181,7 +181,7 @@ MCP servers load all tool schemas into your agent's context on connect — even 
 4. Results are stored in SQLite. Subsequent queries are instant (no scraping needed)
 5. The browser session stays warm between scrapes — MFA is typically only needed once per session
 
-**Rate limiting:** Seataero adds delays between requests to avoid triggering United's bot detection. For recurring scrapes (autonomous mode, watch daemon, agent loops), use a minimum interval of **10 minutes** between runs. Shorter intervals (e.g., 2 minutes) will trigger Akamai's rate limiting — you'll see progressively fewer results per cycle until all requests are blocked.
+**Rate limiting:** Seataero adds delays between requests to avoid triggering United's bot detection. For recurring scrapes (watch daemon, agent loops), use a minimum interval of **10 minutes** between runs. Shorter intervals (e.g., 2 minutes) will trigger Akamai's rate limiting — you'll see progressively fewer results per cycle until all requests are blocked.
 
 ## Troubleshooting
 
