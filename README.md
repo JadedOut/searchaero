@@ -31,18 +31,20 @@ The agent will see if data exists, trigger a scrape if needed, and present the a
 ### 1. Install
 
 ```bash
-uv pip install seataero
+uv tool install seataero
 ```
+
+This installs seataero globally so `seataero` and `seataero-mcp` are available as commands everywhere — no venv activation needed. Requires [uv](https://docs.astral.sh/uv/) (`pip install uv` or see [install docs](https://docs.astral.sh/uv/getting-started/installation/)).
 
 Or install from source:
 
 ```bash
 git clone https://github.com/JadedOut/seatsaero.git
 cd seatsaero
-uv pip install .
+uv tool install .
 ```
 
-> **Why uv?** One dependency (`bezier`, used for human-like mouse movement) doesn't ship Python 3.13 wheels yet. `uv` handles the source build automatically; regular `pip` will fail unless you set `BEZIER_IGNORE_VERSION_CHECK=1 BEZIER_NO_EXTENSION=1` first. Install uv with `pip install uv` or see [uv docs](https://docs.astral.sh/uv/).
+> **Why uv?** One dependency (`bezier`) doesn't ship Python 3.13 wheels yet. `uv` handles the source build automatically; regular `pip` fails without workarounds.
 
 ### 2. Credentials
 
@@ -120,7 +122,7 @@ git clone https://github.com/JadedOut/seatsaero.git
 cd seatsaero
 uv venv --python 3.13
 source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-uv pip install -e .
+uv pip install -e . pytest
 ```
 
 </details>
