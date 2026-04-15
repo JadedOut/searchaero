@@ -16,6 +16,15 @@ You ask a question in natural language, your AI agent calls seataero's MCP tools
 ```
 You  →  AI Agent (Claude Code, etc.)  →  seataero MCP tools  →  United data + SQLite
 ```
+Then try asking things like:
+
+- *"Scrape fresh data for cheapest business class from New York to London in July"*
+- *"Show me a price chart for YYZ to LAX for the next year"*
+- *"Find deals under 30K miles from any airport I've scraped"*
+- *"Set up a watchlist for paris to sanfran, business class, under 70K miles"*
+- *"Fresh scrape YYZ to LAX for this summer. Give summary, then give a price graph. Then, send me an email of the summary but not the price graph"*
+
+The agent will see if data exists, trigger a scrape if needed, and present the answer.
 
 ## Setup
 
@@ -63,14 +72,47 @@ claude mcp add seataero -- seataero-mcp
 
 Then try:
 
-- *"What's the cheapest flight from Toronto to LA next month?"*
-- *"Scrape fresh data for cheapest business class from New York to London in July"*
-- *"Show me a price chart for YYZ to LAX for the next year"*
-- *"Find deals under 30K miles from any airport I've scraped"*
-- *"Set up a watchlist for paris to sanfran, business class, under 70K miles"*
-- *"Fresh scrape YYZ to LAX for this summer. Give summary, then give a price graph. Then, send me an email of the summary but not the price graph"*
+```
+What's the cheapest flight from Toronto to LA next month?
+```
 
-The agent will check cached data, trigger a scrape if needed, and present the answer. On your first run, United will send an SMS verification code to your phone — enter it in the chat when prompted. After that, MFA is not needed again until the browser session expires.
+The agent will check cached data, trigger a scrape if needed, and return results. On your first run, United will send an SMS verification code to your phone — enter it in the chat when prompted. After that, MFA is not needed again until the browser session expires.
+
+#### VS Code (Copilot / Continue / Cline)
+
+Add to your `.vscode/mcp.json` (create it if it doesn't exist):
+
+```json
+{
+  "servers": {
+    "seataero": {
+      "command": "seataero-mcp"
+    }
+  }
+}
+```
+
+#### Cursor
+
+Add to your project's `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "seataero": {
+      "command": "seataero-mcp"
+    }
+  }
+}
+```
+
+#### Any MCP client
+
+The MCP server runs over stdio. Launch with:
+
+```bash
+seataero-mcp
+```
 
 <details>
 <summary>Developer setup (contributing)</summary>
