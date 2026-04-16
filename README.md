@@ -62,12 +62,15 @@ Or invoke the skill directly with `/flights`.
 
 ## See it work
 
+You ask a question. The agent checks cached data, scrapes if needed, handles MFA, and presents the answer. One skill, end to end.
+
 ```
 You:    What's the cheapest business class from Toronto to London next month?
 
 Claude: Checking cached data... no results for YYZ-LHR.
         Starting a fresh scrape — this takes about 2 minutes.
         [MFA code requested — enter the 6-digit code from your phone]
+        YYZ-LHR: 342 found, 342 stored across 337 days
 
         ┌──────────┬──────────┬─────────┬──────────┐
         │ Date     │ Cabin    │ Miles   │ Stops    │
@@ -97,8 +100,6 @@ You:    Set up a watch — notify me if business drops under 50K.
 Claude: [runs searchaero watch add YYZ LHR --max-miles 50000 --cabin business]
         Done. I'll check every 12 hours and notify you via ntfy.
 ```
-
-You ask a question. The agent checks cached data, scrapes if needed, handles MFA, and presents the answer. One skill, end to end.
 
 **Example prompts:**
 - *"Scrape fresh data for cheapest business class from New York to London in July"*
