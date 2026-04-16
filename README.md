@@ -1,6 +1,6 @@
 # Searchaero
 
-Award flight search that costs $0. Ask for flights, and your agent handles the entire workflow: it scrapes United Airlines' Mileageplus, interprets results, graphs trends, watches for price drops, and notifies you via email or ntfy. Totally local, no API keys, and no subscriptions.
+Track United MileagePlus award pricing for $0. Tell your agent where you want to go, and it handles the entire workflow: it scrapes United Airlines' Mileageplus, interprets results, graphs trends, watches for price drops, and notifies you via email or ntfy. Totally local, no API keys, and no subscriptions.
 
 ## Scope
 
