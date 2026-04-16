@@ -1,6 +1,6 @@
 # Searchaero
 
-Track United MileagePlus award pricing for $0. Tell your agent where you want to go, and it handles the entire workflow: it scrapes United Airlines' Mileageplus, interprets results, graphs trends, watches for price drops, and notifies you via email or ntfy. Totally local, no API keys, and no subscriptions.
+Track United MileagePlus award pricing for free. Tell your agent where you want to go, and it handles the entire workflow: it scrapes United Airlines' MileagePlus, interprets results, graphs trends, watches for price drops, and notifies you via email or ntfy. Totally local, no API keys, and no subscriptions.
 
 ## Scope
 
@@ -13,11 +13,11 @@ Track United MileagePlus award pricing for $0. Tell your agent where you want to
 
 Open Claude Code and paste this. Claude does the rest.
 
-> Install searchaero: run `uv tool install searchaero` to install the CLI, then run `searchaero setup` to configure credentials and verify Playwright. After setup, ask me to find cheap flights.
+> Install searchaero: run `git clone https://github.com/JadedOut/searchaero.git ~/.claude/skills/searchaero && cd ~/.claude/skills/searchaero && uv tool install . && searchaero setup` to install the CLI and configure credentials. After setup, try: find the cheapest business class from YYZ to LAX next month.
 
 Requirements: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Python 3.13+, [uv](https://docs.astral.sh/uv/)
 
-That's it. The `/flights` skill ships with this repo — when you clone it, Claude already knows how to use searchaero.
+The `/flights` skill ships with this repo — cloning to `~/.claude/skills/` makes it available automatically. To update: `cd ~/.claude/skills/searchaero && git pull && uv tool install .`
 
 <details>
 <summary>Manual install (without Claude)</summary>
