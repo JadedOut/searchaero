@@ -71,7 +71,8 @@ Claude: Checking cached data... no results for YYZ-LHR.
         Starting a fresh scrape — this takes about 2 minutes.
         [MFA code requested — enter the 6-digit code from your phone]
         YYZ-LHR: 342 found, 342 stored across 337 days
-
+        
+        Cheapest: 
         ┌──────────┬──────────┬─────────┬──────────┐
         │ Date     │ Cabin    │ Miles   │ Stops    │
         ├──────────┼──────────┼─────────┼──────────┤
