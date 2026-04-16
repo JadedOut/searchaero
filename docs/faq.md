@@ -16,7 +16,7 @@ In short:
 - **Playwright** — used once to log in and harvest cookies
 - **curl_cffi** — used for everything else (all flight queries, all data fetching), with browser-grade TLS fingerprints to avoid bot detection
 
-Note: Playwright **cannot run in headless mode** — Akamai will block headless browsers. You need a headed (visible) browser session for cookie farming.
+Note: Playwright runs in headless mode by default for batch scrapes (`--headless`). A headed (visible) browser is only needed if you want to watch the login flow.
 
 ## Scraping
 
@@ -62,7 +62,7 @@ You have about 5 minutes to enter the code. If it expires, just re-run the comma
 
 ### Do I need to enter the code every time?
 
-No. MFA is only required once per browser session. If you're scraping multiple routes in one batch, you'll only be prompted once. The session typically stays valid for several hours.
+MFA is required once per `searchaero search` invocation. If you're scraping multiple routes in one batch, you'll only be prompted once.
 
 ## Database
 

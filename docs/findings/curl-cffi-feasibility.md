@@ -1,5 +1,7 @@
 # curl_cffi Feasibility Assessment
 
+> **Staleness note:** References to "Gmail MFA" and "email login" below are historical. As of step 16f (April 2026), login uses MileagePlus number only, and MFA defaults to SMS.
+
 ## Verdict: NOT VIABLE for FetchAwardCalendar
 
 curl_cffi with Chrome TLS impersonation bypasses Cloudflare for public pages and some API endpoints (ShopValidate), but **cannot reliably access the authenticated FetchAwardCalendar endpoint**. United uses Akamai Bot Manager (not just Cloudflare) on internal API endpoints, which requires browser-executed JavaScript sensor data that curl_cffi cannot provide.

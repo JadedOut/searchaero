@@ -1,5 +1,7 @@
 # Hybrid Architecture: curl_cffi + Playwright Cookie Farm
 
+> **Staleness note:** References to "Gmail MFA" and "email login" below are historical. As of step 16f (April 2026), login uses MileagePlus number only, and MFA defaults to SMS.
+
 ## Summary
 
 The hybrid architecture combines curl_cffi's speed for API calls (~300ms per request) with Playwright's ability to maintain fresh Akamai cookies via real browser JavaScript execution. Playwright runs in the background as a "cookie farm" — it doesn't make API calls, but keeps `_abck` cookies valid by periodically navigating to united.com. curl_cffi pulls fresh cookies from the farm before each batch of requests.

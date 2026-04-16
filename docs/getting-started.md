@@ -6,12 +6,12 @@ A step-by-step walkthrough from zero to your first award flight query.
 
 - Python 3.13+
 - A United MileagePlus account (free to create at united.com)
-- A phone number linked to your MP account for SMS verification
+- A phone number or email linked to your MP account for verification (SMS is the default; email is also supported)
 
 ## Step 1: Install
 
 ```bash
-pip install searchaero
+uv tool install searchaero
 ```
 
 Or install from source:
@@ -19,7 +19,7 @@ Or install from source:
 ```bash
 git clone https://github.com/JadedOut/searchaero.git
 cd searchaero
-pip install .
+uv tool install .
 ```
 
 ## Step 2: Set up credentials and verify
@@ -77,6 +77,7 @@ searchaero search YYZ LAX
    [14:32:01] SMS verification code sent to your phone
    Enter SMS code: 123456
    ```
+   > **Tip:** For automated workflows, use `--mfa-method email` — the agent reads the verification code from Gmail automatically, no manual input needed.
 4. The scraper fetches award availability (~12 API calls covering 337 days)
 5. Results are saved to your local database
 
@@ -85,7 +86,7 @@ You'll see:
 YYZ-LAX: 342 found, 342 stored, 0 rejected, 0 errors
 ```
 
-**MFA is only needed once per session.** If you scrape more routes in the same session, no code is required.
+**MFA is required once per scrape invocation.** If you scrape multiple routes in one batch (e.g., `--file`), you'll only be prompted once.
 
 ## Step 4: Query your results
 

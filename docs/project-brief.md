@@ -18,7 +18,7 @@ This is a reference document, not a working document.
 
 # Project brief: United award flight search CLI
 
-> **Note (April 2026):** The MCP server (`mcp_server.py`) was removed in commit `917a514`. Searchaero now uses a CLI + Claude Code agent skill architecture. The `/flights` skill teaches Claude the CLI workflow directly. References to MCP tools below are historical — they describe the original design, not the current implementation.
+> **Note (April 2026):** The primary interface is now the CLI + `/flights` agent skill. The MCP server (`mcp_server.py`) still exists and is functional but is not the recommended integration path. References to MCP below describe a working but secondary interface.
 
 ## What this project is
 
@@ -34,7 +34,7 @@ Core principles:
 
 1. **Terminal-only.** No web UI. Everything happens in the terminal. The CLI can return structured data (`--json`, `--csv`) for agents to parse, or formatted tables/graphs for direct human reading. Future work may include prompt-engineering hints that help agents render rich terminal visualizations (sparklines, charts, color-coded tables).
 
-2. **Agent/AI agnostic.** The CLI must not be coupled to any specific AI framework. An MCP server (`mcp_server.py`) exposes searchaero commands as typed tools over the Model Context Protocol — any MCP-compatible agent (Claude Code, ChatGPT, Cursor, VS Code Copilot, etc.) discovers and calls searchaero without manual configuration. Agents without MCP support can still call the CLI directly — `searchaero schema` provides runtime introspection, `--json` provides structured output. Works with shell scripts, cron, or a human typing commands.
+2. **Agent/AI agnostic.** The CLI must not be coupled to any specific AI framework. An MCP server (`mcp_server.py`) exposes searchaero commands as typed tools over the Model Context Protocol (this is a secondary interface; the primary path is the CLI + agent skill) — any MCP-compatible agent (Claude Code, ChatGPT, Cursor, VS Code Copilot, etc.) discovers and calls searchaero without manual configuration. Agents without MCP support can still call the CLI directly — `searchaero schema` provides runtime introspection, `--json` provides structured output. Works with shell scripts, cron, or a human typing commands.
 
 3. **Light built-in scheduling.** The CLI includes basic scheduling (e.g., `searchaero schedule` for daily scrapes + alert checks) so it works standalone. But users can swap in their own scheduler — cron, Task Scheduler, OpenClaw cron skills, whatever. The built-in scheduler is a convenience default, not a lock-in.
 

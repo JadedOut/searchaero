@@ -46,7 +46,7 @@ searchaero setup
 
 Creates the database, checks Playwright, and prompts for your MileagePlus number and password. Just your MP number and password — no API keys needed. If all three checks show green, you're ready.
 
-> **Heads up:** United requires verification on your first login. When you trigger your first scrape, you'll be prompted for a code. This is a one-time step per browser session.
+> **Heads up:** United requires verification when you log in. Each time you run a scrape, you'll be prompted for a code (SMS by default, or automatic via email — see [Getting Started](docs/getting-started.md)).
 
 ### 3. Ask Claude
 
@@ -71,7 +71,7 @@ Claude: Checking cached data... no results for YYZ-LHR.
         Starting a fresh scrape — this takes about 2 minutes.
         [MFA code requested — enter the 6-digit code from your phone]
         YYZ-LHR: 342 found, 342 stored across 337 days
-        
+
         Cheapest: 
         ┌──────────┬──────────┬─────────┬──────────┐
         │ Date     │ Cabin    │ Miles   │ Stops    │
@@ -129,11 +129,11 @@ The agent uses these commands under the hood. You can also run them directly:
 
 ## How scraping works
 
-1. Seataero opens a Chromium browser via Playwright and logs into united.com with your MP number
-2. United may send a verification code — the agent handles this automatically (email via Gmail) or asks you (SMS)
-3. Once logged in, searchaero scrapes the award calendar API (one request returns ~30 days of pricing)
-4. Results are stored in SQLite. Subsequent queries are instant (no scraping needed)
-5. The browser session stays warm between scrapes — MFA is typically only needed once per session
+1. Seataero opens a Chromium browser via Playwright and logs into united.com with your MP number. Playwright is required to avoid getting blocked by United's bot detectors.
+2. United sends a verification code (defaults to SMS) — the agent will ask you for the code or handle it automatically via email (see [Getting Started](docs/getting-started.md)) 
+3. Once logged in, searchaero uses curl_cffi to scrape the award calendar API (one request returns ~30 days of pricing)
+4. Results are stored in SQLite. Subsequent queries are read-only (no scraping needed)
+5. MFA is required once per scrape invocation — if you scrape multiple routes in one batch, you'll only be prompted once
 
 **Rate limiting:** Seataero adds delays between requests to avoid triggering United's bot detection. For recurring scrapes, use a minimum interval of **10 minutes** between runs.
 

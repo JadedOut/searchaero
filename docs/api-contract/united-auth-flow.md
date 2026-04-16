@@ -22,24 +22,23 @@ United's award search API requires authentication via a bearer token passed in a
 
 **Key facts:**
 - Auth mechanism: `x-authorization-api: bearer {token}` header
-- Login method: MileagePlus email + password via the web UI
-- **Gmail MFA required**: After entering email + password, United sends a verification code to the registered Gmail. This must be completed manually or via IMAP automation.
+- Login method: MileagePlus number + password via Playwright
+- **MFA required**: United sends a verification code via SMS (default) or email. SMS prompts in the terminal; email can be handled automatically via Gmail tools.
 - No cookies required for the API calls themselves (the bearer token is sufficient)
 - Token is ~207 characters, base64-like format starting with "DAAAA..."
 - Sessions persist for hours; the hourly scrape cadence naturally keeps them warm
 
-### Phase 1 Authentication Strategy (decided)
+### Authentication Strategy (current)
 
-Manual token acquisition:
+Automated via Playwright:
 
-1. User logs into united.com in Chrome, completing Gmail MFA manually.
-2. User opens DevTools (Network tab), copies the bearer token from any `x-authorization-api` header on a `/api/flight/*` request.
-3. Token is pasted into `.env` for the scraper to use.
-4. Token expires after several hours — one manual login per day covers a full Canada sweep (~2 hours of scraping).
+1. `searchaero search` launches a Chromium browser via Playwright.
+2. Playwright enters the MileagePlus number and password automatically.
+3. United sends an MFA code (SMS by default, or email with `--mfa-method email`).
+4. SMS: the agent prompts the user in the terminal. Email: the agent reads the code from Gmail automatically.
+5. Session persists for the duration of the scrape invocation. Subsequent routes in the same batch reuse the session without re-authentication.
 
-At Canada scale (1 account, 1 daily sweep), this is ~60 seconds of daily manual effort.
-
-**Future:** Automate token acquisition via Playwright + IMAP email reading for Gmail MFA codes, deferred until scaling beyond daily manual login becomes burdensome.
+No manual token copying or DevTools interaction is required.
 
 ---
 
@@ -55,7 +54,7 @@ The user navigates to united.com. The page sets initial tracking cookies and Clo
 
 ### Step 2: Enter Email Address
 
-The login flow is two-step. First, the user enters their MileagePlus email address (or MileagePlus number). The UI sends a request to validate the account identifier.
+The login flow is two-step. First, the user's MileagePlus number is entered automatically by Playwright. The UI sends a request to validate the account identifier.
 
 The email entry step may trigger a Cloudflare JavaScript challenge if the browser fingerprint is suspicious. Standard Chrome with a real user-agent passes this automatically.
 
@@ -157,7 +156,7 @@ These headers match a real Chrome browser request and reduce the chance of Cloud
 
 When using `curl_cffi` for direct HTTP (the recommended primary approach per Scraperly), the TLS fingerprint is automatically matched to Chrome. This means the `sec-*` headers should correspond to the Chrome version being impersonated. Mismatched versions between TLS fingerprint and headers are a detection signal.
 
-**Note:** Pure curl_cffi authentication (replaying login POST requests) is NOT feasible because United's login requires Gmail MFA — a verification code sent to the user's Gmail that must be entered in the browser. Token acquisition requires either manual browser login or Playwright with IMAP-based MFA code retrieval. curl_cffi is used only for API calls after a token has been obtained through other means.
+**Note:** Pure curl_cffi authentication (replaying login POST requests) is NOT feasible because United's login requires MFA (SMS or email) — a verification code sent to the user's Gmail that must be entered in the browser. Token acquisition requires either manual browser login or Playwright with IMAP-based MFA code retrieval. curl_cffi is used only for API calls after a token has been obtained through other means.
 
 ---
 
