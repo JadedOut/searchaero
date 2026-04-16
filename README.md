@@ -1,12 +1,12 @@
 # Searchaero
 
-Award flight search for Claude Code. Scrapes United MileagePlus award pricing, stores results in a local SQLite database, and exposes a `/flights` skill that teaches Claude the full workflow — scrape, handle MFA, query, alert, watch.
+Award flight search that costs $0. Ask for flights, and your agent handles the entire workflow: it scrapes United Airlines' Mileageplus, interprets results, graphs trends, watches for price drops, and notifies you via email or ntfy. Totally local, no API keys, and no subscriptions.
 
 ## Scope
 
-- **Airline:** United MileagePlus only
+- **Airline:** United MileagePlus only (Aeroplan coming soon!)
 - **Routes:** Any origin/destination United serves
-- **Coverage:** Full 337-day booking window, economy/business/first
+- **Coverage:** Full 337-day booking window, all cabin types
 - **Not supported:** Partner awards, cash fares
 
 ## Quick start
