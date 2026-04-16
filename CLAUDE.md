@@ -1,21 +1,21 @@
-# Seataero Project
+# Searchaero Project
 
 ## Python Environment
-- Python venv path: `C:\Users\jiami\local_workspace\seataero\scripts\experiments\.venv`
-- Python executable: `C:\Users\jiami\local_workspace\seataero\scripts\experiments\.venv\Scripts\python.exe`
+- Python venv path: `C:\Users\jiami\local_workspace\searchaero\scripts\experiments\.venv`
+- Python executable: `C:\Users\jiami\local_workspace\searchaero\scripts\experiments\.venv\Scripts\python.exe`
 - Always use this venv for running scripts and tests
 
 ## Running Tests
 ```bash
-cd C:/Users/jiami/local_workspace/seataero
-C:/Users/jiami/local_workspace/seataero/scripts/experiments/.venv/Scripts/python.exe -m pytest tests/ -v
+cd C:/Users/jiami/local_workspace/searchaero
+C:/Users/jiami/local_workspace/searchaero/scripts/experiments/.venv/Scripts/python.exe -m pytest tests/ -v
 ```
 
 ## Agent Integration
-For flight queries and scraping, use the `/flights` skill or call seataero CLI commands directly. Do not use raw SQL or import core modules directly.
+For flight queries and scraping, use the `/flights` skill or call searchaero CLI commands directly. Do not use raw SQL or import core modules directly.
 
 ## Project Structure
-- `cli.py` — Main CLI entry point (`seataero` command)
+- `cli.py` — Main CLI entry point (`searchaero` command)
 - `core/` — Data models, database layer, scraper modules (cookie_farm, hybrid_scraper, united_api), shared logic (matching, routes)
 - `scrape.py` — Single-route scraper (called by CLI search)
 - `scripts/burn_in.py` — Multi-route runner with JSONL logging (supports `--one-shot` for single-pass and `--burn-limit` for auto-exit on cookie burns)
@@ -44,6 +44,6 @@ scripts/experiments/.venv/Scripts/python.exe scripts/analyze_burn_in.py logs/bur
 ```
 
 ## Database
-- SQLite at `~/.seataero/data.db` (default)
-- Override with `--db-path` flag or `SEATAERO_DB` env var
-- Schema created via `seataero setup` or `--create-schema` flag
+- SQLite at `~/.searchaero/data.db` (default)
+- Override with `--db-path` flag or `SEARCHAERO_DB` env var
+- Schema created via `searchaero setup` or `--create-schema` flag

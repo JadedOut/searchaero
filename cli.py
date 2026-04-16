@@ -1,4 +1,4 @@
-"""seataero CLI entry point."""
+"""searchaero CLI entry point."""
 
 import argparse
 import glob
@@ -33,19 +33,20 @@ def _prompt_sms_code() -> str:
     return input("Enter SMS code: ").strip()
 
 
-_MFA_DIR = os.path.join(os.path.expanduser("~"), ".seataero")
+_MFA_DIR = os.path.join(os.path.expanduser("~"), ".searchaero")
 _MFA_REQUEST = os.path.join(_MFA_DIR, "mfa_request")
 _MFA_RESPONSE = os.path.join(_MFA_DIR, "mfa_response")
 
 
-def _prompt_sms_file(timeout: int = 300) -> str:
+def _prompt_sms_file(timeout: int = 300, mfa_method: str = "email") -> str:
     """Wait for MFA code via filesystem handoff.
 
-    Writes a request to ~/.seataero/mfa_request, then polls
-    ~/.seataero/mfa_response until the code appears or timeout.
+    Writes a request to ~/.searchaero/mfa_request, then polls
+    ~/.searchaero/mfa_response until the code appears or timeout.
 
     Args:
         timeout: Maximum seconds to wait (default: 300).
+        mfa_method: MFA delivery channel — "sms" or "email" (default: "email").
 
     Returns:
         The MFA code string.
@@ -62,7 +63,8 @@ def _prompt_sms_file(timeout: int = 300) -> str:
     # Write request file
     request = {
         "requested_at": datetime.now().isoformat(),
-        "message": "Enter SMS verification code",
+        "message": "Enter verification code",
+        "mfa_method": mfa_method,
         "response_file": _MFA_RESPONSE,
     }
     with open(_MFA_REQUEST, "w") as f:
@@ -100,7 +102,8 @@ def _prompt_sms_file(timeout: int = 300) -> str:
 def _get_mfa_prompt(args) -> callable:
     """Return the appropriate MFA prompt callable based on CLI flags."""
     if getattr(args, "mfa_file", False):
-        return _prompt_sms_file
+        mfa_method = getattr(args, "mfa_method", "email")
+        return lambda: _prompt_sms_file(mfa_method=mfa_method)
     return _prompt_sms_code
 
 
@@ -131,7 +134,7 @@ def cmd_setup(args):
     """
     # Migration: check for credentials at old location
     old_env = os.path.join(_CLI_DIR, "scripts", "experiments", ".env")
-    new_env = os.path.join(os.path.expanduser("~"), ".seataero", ".env")
+    new_env = os.path.join(os.path.expanduser("~"), ".searchaero", ".env")
     if os.path.isfile(old_env) and not os.path.isfile(new_env):
         print(f"Credentials found at old location. Run:\n  cp {old_env} {new_env}", file=sys.stderr)
 
@@ -146,11 +149,11 @@ def cmd_setup(args):
     try:
         conn = db.get_connection(db_path)
         db.ensure_schema(conn)
-        actual_path = db_path or os.getenv("SEATAERO_DB", db.DEFAULT_DB_PATH)
+        actual_path = db_path or os.getenv("SEARCHAERO_DB", db.DEFAULT_DB_PATH)
         results["database"] = {"path": actual_path, "status": "ok"}
         conn.close()
     except Exception as e:
-        actual_path = db_path or os.getenv("SEATAERO_DB", db.DEFAULT_DB_PATH)
+        actual_path = db_path or os.getenv("SEARCHAERO_DB", db.DEFAULT_DB_PATH)
         results["database"] = {"path": actual_path, "status": f"error: {e}"}
 
     # ------------------------------------------------------------------
@@ -204,7 +207,7 @@ def cmd_setup(args):
     # ------------------------------------------------------------------
     # Check 3: Credentials
     # ------------------------------------------------------------------
-    env_file = os.path.join(os.path.expanduser("~"), ".seataero", ".env")
+    env_file = os.path.join(os.path.expanduser("~"), ".searchaero", ".env")
     required_keys = [
         "UNITED_MP_NUMBER",
         "UNITED_PASSWORD",
@@ -284,7 +287,7 @@ def cmd_setup(args):
         console.print("[bold yellow]⚠ Credentials missing.[/bold yellow] Cannot prompt (non-interactive mode).")
         console.print(f"  Copy the template:  [bold]cp {env_sample} {env_file}[/bold]")
         console.print(f"  Then edit:          [bold]{env_file}[/bold]")
-        console.print("  Or re-run [bold]seataero setup[/bold] in an interactive terminal.")
+        console.print("  Or re-run [bold]searchaero setup[/bold] in an interactive terminal.")
 
     results["credentials"] = creds
 
@@ -327,7 +330,7 @@ def cmd_setup(args):
 def _print_setup_report(results):
     """Print a human-readable setup report with Rich formatting."""
     console = get_console()
-    console.print("[bold]seataero setup[/bold]")
+    console.print("[bold]searchaero setup[/bold]")
     console.print()
 
     # Database
@@ -527,8 +530,8 @@ def _search_single_inproc(args):
                           f"{totals['rejected']} rejected, "
                           f"{totals['errors']} errors")
             console.print()
-            console.print(f"  [dim]→ Query results:[/dim] seataero query {orig} {dest}")
-            console.print(f"  [dim]→ Business class:[/dim] seataero query {orig} {dest} --cabin business --sort miles")
+            console.print(f"  [dim]→ Query results:[/dim] searchaero query {orig} {dest}")
+            console.print(f"  [dim]→ Business class:[/dim] searchaero query {orig} {dest} --cabin business --sort miles")
 
         return 0
 
@@ -873,12 +876,12 @@ def cmd_query(args):
 
     if not rows:
         if args.json:
-            print(json.dumps({"error": "no_results", "message": f"No availability found for {origin}-{dest}", "suggestion": "Run 'seataero search' to scrape data first"}))
+            print(json.dumps({"error": "no_results", "message": f"No availability found for {origin}-{dest}", "suggestion": "Run 'searchaero search' to scrape data first"}))
         else:
             console = get_console()
             console.print(f"No availability found for [bold]{origin}-{dest}[/bold]")
-            console.print(f"  [dim]→ Scrape data first:[/dim] seataero search {origin} {dest}")
-            console.print(f"  [dim]→ Or auto-scrape:[/dim]   seataero query {origin} {dest} --refresh")
+            console.print(f"  [dim]→ Scrape data first:[/dim] searchaero search {origin} {dest}")
+            console.print(f"  [dim]→ Or auto-scrape:[/dim]   searchaero query {origin} {dest} --refresh")
         return 1
 
     # Apply sort
@@ -945,7 +948,7 @@ def _cmd_query_history(args, origin, dest, cabin_filter):
             rows = db.query_history(conn, origin, dest, date=args.date, cabin=cabin_filter)
             if not rows:
                 if args.json:
-                    print(json.dumps({"error": "no_results", "message": f"No price history for {origin}-{dest} on {args.date}", "suggestion": "Run 'seataero search' to scrape data first"}))
+                    print(json.dumps({"error": "no_results", "message": f"No price history for {origin}-{dest} on {args.date}", "suggestion": "Run 'searchaero search' to scrape data first"}))
                 else:
                     print(f"No price history for {origin}-{dest} on {args.date}")
                 return 1
@@ -968,7 +971,7 @@ def _cmd_query_history(args, origin, dest, cabin_filter):
             stats = db.get_history_stats(conn, origin, dest, cabin=cabin_filter)
             if not stats:
                 if args.json:
-                    print(json.dumps({"error": "no_results", "message": f"No price history for {origin}-{dest}", "suggestion": "Run 'seataero search' to scrape data first"}))
+                    print(json.dumps({"error": "no_results", "message": f"No price history for {origin}-{dest}", "suggestion": "Run 'searchaero search' to scrape data first"}))
                 else:
                     print(f"No price history for {origin}-{dest}")
                 return 1
@@ -1190,7 +1193,7 @@ def _format_size(size_bytes):
 def _print_status_report(stats):
     """Print a human-readable status report with Rich formatting."""
     console = get_console()
-    console.print("[bold]seataero status[/bold]")
+    console.print("[bold]searchaero status[/bold]")
     console.print()
 
     # Database
@@ -1204,7 +1207,7 @@ def _print_status_report(stats):
     avail = stats["availability"]
     console.print("[bold]Availability[/bold]")
     if avail["total_rows"] == 0:
-        console.print("  [dim]No data yet. Run 'seataero search' to scrape availability.[/dim]")
+        console.print("  [dim]No data yet. Run 'searchaero search' to scrape availability.[/dim]")
     else:
         console.print(f"  Records:       [green]{avail['total_rows']:,}[/green]")
         console.print(f"  Routes:        [green]{avail['routes_covered']:,}[/green]")
@@ -1231,14 +1234,14 @@ def cmd_status(args):
     Returns:
         int: 0 always (status is informational).
     """
-    actual_path = args.db_path or os.getenv("SEATAERO_DB", db.DEFAULT_DB_PATH)
+    actual_path = args.db_path or os.getenv("SEARCHAERO_DB", db.DEFAULT_DB_PATH)
 
     if not os.path.exists(actual_path):
         if args.json:
             print(json.dumps({"error": "no_database", "path": actual_path}))
         else:
             print(f"No database found at {actual_path}")
-            print("Run 'seataero setup' to initialize.")
+            print("Run 'searchaero setup' to initialize.")
         return 0
 
     conn = db.get_connection(args.db_path)
@@ -1270,8 +1273,8 @@ def cmd_status(args):
 def cmd_alert(args):
     """Manage price alerts."""
     if not args.alert_command:
-        print("Usage: seataero alert {add,list,remove,check}")
-        print("Run 'seataero alert <command> --help' for details.")
+        print("Usage: searchaero alert {add,list,remove,check}")
+        print("Run 'searchaero alert <command> --help' for details.")
         return 1
 
     if args.alert_command == "add":
@@ -1475,8 +1478,8 @@ def _alert_check(args):
 def cmd_watch(args):
     """Manage watched routes with ntfy notifications."""
     if not args.watch_command:
-        print("Usage: seataero watch {add,list,remove,check,run,setup}")
-        print("Run 'seataero watch <command> --help' for details.")
+        print("Usage: searchaero watch {add,list,remove,check,run,setup}")
+        print("Run 'searchaero watch <command> --help' for details.")
         return 1
 
     if args.watch_command == "add":
@@ -1702,7 +1705,7 @@ def _watch_setup(args):
     has_gmail = bool(args.gmail_sender)
     if not has_ntfy and not has_gmail:
         print("Warning: no notification channels configured. "
-              "Set --ntfy-topic and/or --gmail-sender + SEATAERO_GMAIL_APP_PASSWORD env var.",
+              "Set --ntfy-topic and/or --gmail-sender + SEARCHAERO_GMAIL_APP_PASSWORD env var.",
               file=sys.stderr)
 
     if args.json:
@@ -1734,13 +1737,13 @@ def _watch_setup(args):
 def cmd_doctor(args):
     """Run comprehensive diagnostics — database, credentials, Playwright, ntfy, data freshness."""
     console = get_console()
-    console.print("[bold]seataero doctor[/bold]")
+    console.print("[bold]searchaero doctor[/bold]")
     console.print()
     issues = []
 
     # 1. Database health
     console.print("[bold]Database[/bold]")
-    db_path = args.db_path or os.getenv("SEATAERO_DB", db.DEFAULT_DB_PATH)
+    db_path = args.db_path or os.getenv("SEARCHAERO_DB", db.DEFAULT_DB_PATH)
     if os.path.isfile(db_path):
         size_mb = os.path.getsize(db_path) / (1024 * 1024)
         console.print(f"  Path:   [dim]{db_path}[/dim]")
@@ -1753,7 +1756,7 @@ def cmd_doctor(args):
                 console.print("  Health: [green]✓ integrity check passed[/green]")
             else:
                 console.print(f"  Health: [red]✗ integrity check failed: {result[0]}[/red]")
-                issues.append("Database integrity check failed — consider deleting and recreating with 'seataero setup'")
+                issues.append("Database integrity check failed — consider deleting and recreating with 'searchaero setup'")
 
             # Row count and freshness
             row_count = conn.execute("SELECT COUNT(*) FROM availability").fetchone()[0]
@@ -1776,7 +1779,7 @@ def cmd_doctor(args):
                 route_count = conn.execute("SELECT COUNT(DISTINCT origin || '-' || destination) FROM availability").fetchone()[0]
                 console.print(f"  Routes: {route_count}")
             else:
-                console.print("  [dim]No data yet — run 'seataero search' to scrape.[/dim]")
+                console.print("  [dim]No data yet — run 'searchaero search' to scrape.[/dim]")
                 issues.append("No data in database")
             conn.close()
         except Exception as e:
@@ -1785,7 +1788,7 @@ def cmd_doctor(args):
     else:
         console.print(f"  Path:   [dim]{db_path}[/dim]")
         console.print("  Status: [red]✗ not found[/red]")
-        console.print("  [dim]Run 'seataero setup' to create it.[/dim]")
+        console.print("  [dim]Run 'searchaero setup' to create it.[/dim]")
         issues.append("Database not found")
     console.print()
 
@@ -1813,7 +1816,7 @@ def cmd_doctor(args):
 
     # 3. Credentials
     console.print("[bold]Credentials[/bold]")
-    env_file = os.path.join(os.path.expanduser("~"), ".seataero", ".env")
+    env_file = os.path.join(os.path.expanduser("~"), ".searchaero", ".env")
     if os.path.isfile(env_file):
         console.print(f"  File:     [green]✓ {env_file}[/green]")
         with open(env_file, "r") as f:
@@ -1823,11 +1826,11 @@ def cmd_doctor(args):
         console.print(f"  MP#:      {'[green]✓ set[/green]' if has_mp else '[red]✗ not set[/red]'}")
         console.print(f"  Password: {'[green]✓ set[/green]' if has_pw else '[red]✗ not set[/red]'}")
         if not has_mp or not has_pw:
-            issues.append("Credentials incomplete — run 'seataero setup' to configure")
+            issues.append("Credentials incomplete — run 'searchaero setup' to configure")
     else:
         console.print(f"  File:     [red]✗ not found[/red] [dim]({env_file})[/dim]")
-        console.print("  [dim]Run 'seataero setup' to create it interactively.[/dim]")
-        issues.append("Credentials file missing — run 'seataero setup'")
+        console.print("  [dim]Run 'searchaero setup' to create it interactively.[/dim]")
+        issues.append("Credentials file missing — run 'searchaero setup'")
     console.print()
 
     # 4. ntfy notifications
@@ -1841,12 +1844,12 @@ def cmd_doctor(args):
             server = cfg.get("ntfy_server", "https://ntfy.sh")
             console.print(f"  Server: [dim]{server}[/dim]")
         else:
-            env_topic = os.getenv("SEATAERO_NTFY_TOPIC")
+            env_topic = os.getenv("SEARCHAERO_NTFY_TOPIC")
             if env_topic:
                 console.print(f"  Topic:  [green]✓ {env_topic} (from env)[/green]")
             else:
                 console.print("  Topic:  [dim]not configured (optional)[/dim]")
-                console.print("  [dim]Set up with: seataero watch setup --ntfy-topic YOUR_TOPIC[/dim]")
+                console.print("  [dim]Set up with: searchaero watch setup --ntfy-topic YOUR_TOPIC[/dim]")
     except Exception:
         console.print("  [dim]not configured (optional)[/dim]")
     console.print()
@@ -1870,14 +1873,14 @@ United requires two-factor authentication via SMS on first login.
 
 [bold]What happens:[/bold]
   1. You run a search (CLI or agent)
-  2. Seataero logs into united.com with your credentials
+  2. Searchaero logs into united.com with your credentials
   3. United sends a 6-digit SMS code to your phone
   4. You enter the code when prompted
 
 [bold]How to enter the code:[/bold]
   • CLI: Type it at the "Enter SMS code:" prompt
   • Agent (MCP): The agent asks you in the chat — just type the 6 digits
-  • Headless/automated: Use --mfa-file flag; write code to ~/.seataero/mfa_response
+  • Headless/automated: Use --mfa-file flag; write code to ~/.searchaero/mfa_response
 
 [bold]Tips:[/bold]
   • MFA is only needed once per browser session (usually several hours)
@@ -1897,7 +1900,7 @@ United's Akamai bot detection can block your IP after repeated scraping.
 [bold]Solutions (easiest first):[/bold]
   1. [bold]Wait and retry[/bold] — blocks are usually temporary (10-15 min)
   2. [bold]Use a proxy:[/bold]
-     seataero search YYZ LAX --proxy socks5://user:pass@host:port
+     searchaero search YYZ LAX --proxy socks5://user:pass@host:port
      Or set the PROXY_URL environment variable.
 [bold]For heavy use:[/bold]
   • Parallel scraping (--workers 3) is fine but increases block risk
@@ -1910,17 +1913,17 @@ Watches automatically monitor routes and notify you when prices drop.
 
 [bold]Setup:[/bold]
   1. Configure ntfy (optional, for push notifications):
-     seataero watch setup --ntfy-topic your-random-topic-name
+     searchaero watch setup --ntfy-topic your-random-topic-name
      Then subscribe in the ntfy app on your phone.
 
   2. Add a watch:
-     seataero watch add YYZ LAX --max-miles 20000 --cabin economy --every 12h
+     searchaero watch add YYZ LAX --max-miles 20000 --cabin economy --every 12h
 
   3. Run the daemon:
-     seataero watch run     (foreground, Ctrl+C to stop)
+     searchaero watch run     (foreground, Ctrl+C to stop)
 
   Or run a one-shot check:
-     seataero watch check
+     searchaero watch check
 
 [bold]How it works:[/bold]
   • The daemon checks your watches on their schedule (e.g., every 12h)
@@ -1929,8 +1932,8 @@ Watches automatically monitor routes and notify you when prices drop.
   • ntfy push + agent email delivery are both supported
 
 [bold]Manage watches:[/bold]
-  seataero watch list          — see all active watches
-  seataero watch remove <id>   — remove a watch
+  searchaero watch list          — see all active watches
+  searchaero watch remove <id>   — remove a watch
 """,
     "alerts": """
 [bold]Price Alerts[/bold]
@@ -1938,17 +1941,17 @@ Watches automatically monitor routes and notify you when prices drop.
 Alerts are one-shot checks against cached data (no daemon needed).
 
 [bold]Add an alert:[/bold]
-  seataero alert add YYZ LAX --max-miles 70000 --cabin business
-  seataero alert add YYZ LHR --max-miles 50000 --from 2026-06-01 --to 2026-08-31
+  searchaero alert add YYZ LAX --max-miles 70000 --cabin business
+  searchaero alert add YYZ LHR --max-miles 50000 --from 2026-06-01 --to 2026-08-31
 
 [bold]Check alerts:[/bold]
-  seataero alert check         — evaluate all active alerts
-  seataero alert check --json  — machine-readable output
+  searchaero alert check         — evaluate all active alerts
+  searchaero alert check --json  — machine-readable output
 
 [bold]Manage:[/bold]
-  seataero alert list           — see all active alerts
-  seataero alert list --all     — include expired ones
-  seataero alert remove <id>    — delete an alert
+  searchaero alert list           — see all active alerts
+  searchaero alert list --all     — include expired ones
+  searchaero alert remove <id>    — delete an alert
 
 [bold]Alerts vs Watches:[/bold]
   • Alerts: manual check, no notifications, no auto-scrape
@@ -1958,16 +1961,16 @@ Alerts are one-shot checks against cached data (no daemon needed).
     "scraping": """
 [bold]Scraping Guide[/bold]
 
-Seataero scrapes United's award calendar API via a headless browser.
+Searchaero scrapes United's award calendar API via a headless browser.
 
 [bold]Single route:[/bold]
-  seataero search YYZ LAX                    (~2 min, 12 API calls)
+  searchaero search YYZ LAX                    (~2 min, 12 API calls)
 
 [bold]Batch (from file):[/bold]
-  seataero search --file routes/canada_test.txt    (15 routes, ~30 min)
+  searchaero search --file routes/canada_test.txt    (15 routes, ~30 min)
 
 [bold]Parallel:[/bold]
-  seataero search --file routes/canada_us_all.txt --workers 3
+  searchaero search --file routes/canada_us_all.txt --workers 3
 
 [bold]Options:[/bold]
   --headless        Run browser without GUI (default for batch/parallel)
@@ -1983,7 +1986,7 @@ Seataero scrapes United's award calendar API via a headless browser.
 
 [bold]Data freshness:[/bold]
   • Data doesn't auto-refresh — re-scrape when you need fresh prices
-  • Use --refresh on queries: seataero query YYZ LAX --refresh
+  • Use --refresh on queries: searchaero query YYZ LAX --refresh
   • Or set up watches for automatic re-scraping
 """,
 }
@@ -2003,7 +2006,7 @@ def cmd_help_topic(args):
         console.print("  [bold]alerts[/bold]     Price alert setup and usage")
         console.print("  [bold]scraping[/bold]   How scraping works, options, timing")
         console.print()
-        console.print("[dim]Usage: seataero help <topic>[/dim]")
+        console.print("[dim]Usage: searchaero help <topic>[/dim]")
         return 0
 
     console.print(_HELP_TOPICS[topic])
@@ -2047,12 +2050,12 @@ def main(argv=None):
     """
     # Shared parent parser for flags common to all subcommands.
     # Using parents=[] on each subparser lets --json/--meta/--db-path appear
-    # after the subcommand name (e.g., "seataero query YYZ LAX --json").
+    # after the subcommand name (e.g., "searchaero query YYZ LAX --json").
     shared_parser = argparse.ArgumentParser(add_help=False)
     shared_parser.add_argument(
         "--db-path",
         default=None,
-        help="Path to SQLite database (default: ~/.seataero/data.db)",
+        help="Path to SQLite database (default: ~/.searchaero/data.db)",
     )
     shared_parser.add_argument(
         "--json",
@@ -2068,7 +2071,7 @@ def main(argv=None):
     )
 
     parser = argparse.ArgumentParser(
-        prog="seataero",
+        prog="searchaero",
         description="United MileagePlus award flight search CLI",
     )
 
@@ -2089,8 +2092,8 @@ def main(argv=None):
     search_parser.add_argument("--delay", type=float, default=3.0, help="Seconds between API calls (default: 3.0)")
     search_parser.add_argument("--skip-scanned", "--no-skip-scanned", action=argparse.BooleanOptionalAction, default=True, help="Skip already-scanned routes (parallel mode)")
     search_parser.add_argument("--mfa-file", action="store_true", default=False,
-                               help="Use file-based MFA handoff (~/.seataero/mfa_response) instead of stdin prompt")
-    search_parser.add_argument("--mfa-method", choices=["sms", "email"], default="sms",
+                               help="Use file-based MFA handoff (~/.searchaero/mfa_response) instead of stdin prompt")
+    search_parser.add_argument("--mfa-method", choices=["sms", "email"], default="email",
                                help="MFA delivery channel (default: sms). Use 'email' for automated workflows.")
     search_parser.add_argument("--ephemeral", action="store_true", default=False,
                                help="Use ephemeral browser profile (default: persistent)")
@@ -2121,7 +2124,7 @@ def main(argv=None):
                               help="Hours before cached data is considered stale (default: 12)")
     query_parser.add_argument("--mfa-file", action="store_true", default=False,
                               help="Use file-based MFA handoff for --refresh scrapes")
-    query_parser.add_argument("--mfa-method", choices=["sms", "email"], default="sms",
+    query_parser.add_argument("--mfa-method", choices=["sms", "email"], default="email",
                               help="MFA delivery channel for --refresh scrapes (default: sms)")
     query_parser.add_argument("--graph", action="store_true", default=False,
                               help="Show price trend as ASCII chart")
@@ -2232,23 +2235,23 @@ def main(argv=None):
 
     if not args.command:
         console = get_console()
-        console.print("[bold]seataero[/bold] — United MileagePlus award flight search")
+        console.print("[bold]searchaero[/bold] — United MileagePlus award flight search")
         console.print()
         console.print("[bold]Get started:[/bold]")
-        console.print("  seataero setup                  Check environment and configure credentials")
-        console.print("  seataero search YYZ LAX         Scrape award availability for a route")
-        console.print("  seataero query YYZ LAX          Query cached results")
+        console.print("  searchaero setup                  Check environment and configure credentials")
+        console.print("  searchaero search YYZ LAX         Scrape award availability for a route")
+        console.print("  searchaero query YYZ LAX          Query cached results")
         console.print()
         console.print("[bold]Monitor prices:[/bold]")
-        console.print("  seataero watch add YYZ LAX --max-miles 20000")
-        console.print("  seataero alert add YYZ LAX --max-miles 70000 --cabin business")
+        console.print("  searchaero watch add YYZ LAX --max-miles 20000")
+        console.print("  searchaero alert add YYZ LAX --max-miles 70000 --cabin business")
         console.print()
         console.print("[bold]Diagnostics:[/bold]")
-        console.print("  seataero doctor                 Run comprehensive health checks")
-        console.print("  seataero status                 Show database stats and coverage")
-        console.print("  seataero help <topic>           Help on: mfa, proxy, watches, alerts, scraping")
+        console.print("  searchaero doctor                 Run comprehensive health checks")
+        console.print("  searchaero status                 Show database stats and coverage")
+        console.print("  searchaero help <topic>           Help on: mfa, proxy, watches, alerts, scraping")
         console.print()
-        console.print("[dim]Use 'seataero <command> --help' for detailed usage of any command.[/dim]")
+        console.print("[dim]Use 'searchaero <command> --help' for detailed usage of any command.[/dim]")
         return 0
 
     if args.command == "setup":

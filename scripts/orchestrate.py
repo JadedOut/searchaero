@@ -1,4 +1,4 @@
-"""Parallel orchestrator for seataero burn-in workers.
+"""Parallel orchestrator for searchaero burn-in workers.
 
 Splits a master route list across N parallel burn_in.py processes,
 each with its own United account credentials.
@@ -259,7 +259,7 @@ def aggregate_summary(num_workers):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Orchestrate parallel burn-in workers for seataero. Splits a "
+            "Orchestrate parallel burn-in workers for searchaero. Splits a "
             "master route list across N burn_in.py processes, each with its "
             "own United credentials."
         ),
@@ -302,7 +302,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--db-path",
         type=str,
         default=None,
-        help="Path to SQLite database file (overrides SEATAERO_DB env var)",
+        help="Path to SQLite database file (overrides SEARCHAERO_DB env var)",
     )
     parser.add_argument(
         "--skip-scanned",
@@ -437,7 +437,7 @@ def main():
         # 8. Print banner
         print()
         print("=" * 60)
-        print("  SEATAERO ORCHESTRATOR")
+        print("  SEARCHAERO ORCHESTRATOR")
         print("=" * 60)
         print(f"  Time:          {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"  Routes file:   {args.routes_file}")

@@ -1,4 +1,4 @@
-"""Route scraping logic for seataero award availability.
+"""Route scraping logic for searchaero award availability.
 
 Provides scrape_route() for fetching United award calendar data across
 date windows and storing validated results in the database.

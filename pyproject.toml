@@ -3,8 +3,8 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "seataero"
-version = "0.1.1"
+name = "searchaero"
+version = "0.2.0"
 description = "United MileagePlus award flight search CLI"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -26,4 +26,4 @@ packages = ["core"]
 pythonpath = ["."]
 
 [project.scripts]
-seataero = "cli:main"
+searchaero = "cli:main"

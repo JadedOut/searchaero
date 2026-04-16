@@ -1,204 +1,155 @@
-# Seataero
+# Searchaero
 
-MCP server for United MileagePlus award flight search. Scrapes United's award calendar API, stores results in a local SQLite database, and exposes tools via MCP for any compatible AI agent (Claude Code, VS Code Copilot, Cursor, etc.).
+Award flight search for Claude Code. Scrapes United MileagePlus award pricing, stores results in a local SQLite database, and exposes a `/flights` skill that teaches Claude the full workflow — scrape, handle MFA, query, alert, watch.
 
 ## Scope
 
-- **Airline:** United MileagePlus only (AeroPlan coming soon!)
+- **Airline:** United MileagePlus only
 - **Routes:** Any origin/destination United serves
 - **Coverage:** Full 337-day booking window, economy/business/first
 - **Not supported:** Partner awards, cash fares
 
-## How it works
+## Quick start
 
-You ask a question in natural language, your AI agent calls seataero's MCP tools to scrape United and query the database, and presents the answer.
+Open Claude Code and paste this. Claude does the rest.
 
-```
-You  →  AI Agent (Claude Code, etc.)  →  seataero MCP tools  →  United data + SQLite
-```
-Then try asking things like:
+> Install searchaero: run `uv tool install searchaero` to install the CLI, then run `searchaero setup` to configure credentials and verify Playwright. After setup, ask me to find cheap flights.
 
-- *"Scrape fresh data for cheapest business class from New York to London in July"*
-- *"Show me a price chart for YYZ to LAX for the next year"*
-- *"Find deals under 30K miles from any airport I've scraped"*
-- *"Set up a watchlist for paris to sanfran, business class, under 70K miles"*
-- *"Fresh scrape YYZ to LAX for this summer. Give summary, then give a price graph. Then, send me an email of the summary but not the price graph"*
+Requirements: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Python 3.13+, [uv](https://docs.astral.sh/uv/)
 
-The agent will see if data exists, trigger a scrape if needed, and present the answer.
+That's it. The `/flights` skill ships with this repo — when you clone it, Claude already knows how to use searchaero.
 
-## Setup
+<details>
+<summary>Manual install (without Claude)</summary>
 
 ### 1. Install
 
 ```bash
-uv tool install seataero
-```
-
-This installs seataero globally so `seataero` and `seataero-mcp` are available as commands everywhere — no venv activation needed. Requires [uv](https://docs.astral.sh/uv/) (`pip install uv` or see [install docs](https://docs.astral.sh/uv/getting-started/installation/)).
-
-Or install from source:
-
-```bash
-git clone https://github.com/JadedOut/seatsaero.git
-cd seatsaero
-uv tool install .
+uv tool install searchaero
 ```
 
 > **Why uv?** One dependency (`bezier`) doesn't ship Python 3.13 wheels yet. `uv` handles the source build automatically; regular `pip` fails without workarounds.
 
-### 2. Credentials
+Or install from source:
 
 ```bash
-seataero setup
+git clone https://github.com/JadedOut/searchaero.git
+cd searchaero
+uv tool install .
 ```
 
-This creates the database, checks Playwright, and prompts for your MileagePlus number and password if `~/.seataero/.env` doesn't exist yet. Just your MP number and password — no API keys needed.
-
-If all three checks show green, you're ready.
-
-> **Manual alternative:** Create `~/.seataero/.env` yourself with `UNITED_MP_NUMBER=...` and `UNITED_PASSWORD=...`, then run `seataero setup` to verify.
-
-> **Heads up:** United requires SMS verification on your first login. When you trigger your first scrape (via CLI or agent), you'll be prompted for the code. This is a one-time step per browser session.
-
-### 3. Connect your agent
-
-Seataero exposes its tools via [MCP (Model Context Protocol)](https://modelcontextprotocol.io), so any compatible AI agent can discover and call them automatically.
-
-#### Claude Code
+### 2. Set up credentials
 
 ```bash
-claude mcp add seataero -- seataero-mcp
+searchaero setup
 ```
 
-Then try:
+Creates the database, checks Playwright, and prompts for your MileagePlus number and password. Just your MP number and password — no API keys needed. If all three checks show green, you're ready.
+
+> **Heads up:** United requires verification on your first login. When you trigger your first scrape, you'll be prompted for a code. This is a one-time step per browser session.
+
+### 3. Ask Claude
+
+In Claude Code, just ask:
 
 ```
 What's the cheapest flight from Toronto to LA next month?
 ```
 
-The agent will check cached data, trigger a scrape if needed, and return results. On your first run, United will send an SMS verification code to your phone — enter it in the chat when prompted. After that, MFA is not needed again until the browser session expires.
-
-#### VS Code (Copilot / Continue / Cline)
-
-Add to your `.vscode/mcp.json` (create it if it doesn't exist):
-
-```json
-{
-  "servers": {
-    "seataero": {
-      "command": "seataero-mcp"
-    }
-  }
-}
-```
-
-#### Cursor
-
-Add to your project's `.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "seataero": {
-      "command": "seataero-mcp"
-    }
-  }
-}
-```
-
-#### Any MCP client
-
-The MCP server runs over stdio. Launch with:
-
-```bash
-seataero-mcp
-```
-
-<details>
-<summary>Developer setup (contributing)</summary>
-
-```bash
-git clone https://github.com/JadedOut/seatsaero.git
-cd seatsaero
-uv venv --python 3.13
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-uv pip install -e . pytest
-```
+Or invoke the skill directly with `/flights`.
 
 </details>
 
-### 4. Email notifications (optional)
-
-To let your agent send you flight summaries via email (e.g., *"send me an email of the summary"*), add a standalone email MCP server:
+## See it work
 
 ```
-claude mcp add email npx mcp-mail-server -e SMTP_HOST=smtp.gmail.com -e SMTP_PORT=465 -e SMTP_SECURE=true -e IMAP_HOST=imap.gmail.com -e IMAP_PORT=993 -e IMAP_SECURE=true -e EMAIL_USER=you@gmail.com -e EMAIL_PASS=your-app-password
+You:    What's the cheapest business class from Toronto to London next month?
+
+Claude: Checking cached data... no results for YYZ-LHR.
+        Starting a fresh scrape — this takes about 2 minutes.
+        [MFA code requested — enter the 6-digit code from your phone]
+
+        ┌──────────┬──────────┬─────────┬──────────┐
+        │ Date     │ Cabin    │ Miles   │ Stops    │
+        ├──────────┼──────────┼─────────┼──────────┤
+        │ Jul 12   │ Business │ 55,000  │ Nonstop  │
+        │ Jul 15   │ Business │ 45,000  │ 1 stop   │
+        │ Jul 19   │ Business │ 60,000  │ Nonstop  │
+        └──────────┴──────────┴─────────┴──────────┘
+
+You:    Show me the price trend as a graph.
+
+Claude: YYZ -> LHR  |  Business  |  Price Trend
+
+         80,000 ┤
+         75,000 ┤          ╭╮
+         70,000 ┤       ╭──╯│
+         65,000 ┤      ╭╯   ╰╮
+         60,000 ┼──╮  ╭╯     ╰╮
+         55,000 ┤  ╰╮╭╯       │
+         50,000 ┤   ╰╯        ╰╮
+         45,000 ┤              ╰──
+                Jul 01    Jul 15    Jul 29
+
+        Min: 45,000 mi  Avg: 59,167 mi  8 dates
+
+You:    Set up a watch — notify me if business drops under 50K.
+Claude: [runs searchaero watch add YYZ LHR --max-miles 50000 --cabin business]
+        Done. I'll check every 12 hours and notify you via ntfy.
 ```
 
-Replace `you@gmail.com` with your Gmail address and `your-app-password` with a [Gmail app password](https://myaccount.google.com/apppasswords) (not your regular password). Restart Claude Code after adding.
+You ask a question. The agent checks cached data, scrapes if needed, handles MFA, and presents the answer. One skill, end to end.
 
-> **Why a separate server?** Each MCP server does one thing. Seataero provides flight data, the email server handles delivery, and the agent pipes data between them. This keeps both servers simple and composable — if you prefer Slack or ntfy, swap in a different notification MCP without touching seataero.
+**Example prompts:**
+- *"Scrape fresh data for cheapest business class from New York to London in July"*
+- *"Show me a price chart for YYZ to LAX for the next year"*
+- *"Find deals under 30K miles from any airport I've scraped"*
+- *"Set up a watchlist for paris to sanfran, business class, under 70K miles"*
 
-## Tools
+## CLI reference
 
-Once connected, your agent can use:
+The agent uses these commands under the hood. You can also run them directly:
 
-| Tool | What it does |
-|------|-------------|
-| `query_flights` | Search cached availability (instant, ~150 token summary) |
-| `get_flight_details` | Paginated raw rows for building tables |
-| `get_price_trend` | Per-date cheapest miles for graphing |
-| `find_deals` | Cross-route deal discovery (below-average pricing) |
-| `flight_status` | Data freshness and coverage |
-| `search_route` | Scrape fresh data from United (~2 min, may require SMS MFA) |
-| `submit_mfa` | Submit SMS verification code during scrape |
-| `add_alert` | Create a price alert |
-| `check_alerts` | Evaluate alerts against current data |
-| `add_watch` | Watch a route with ntfy push notifications |
-| `list_watches` | List active watched routes |
-| `remove_watch` | Remove a watch |
-| `check_watches` | Evaluate watches — returns pre-formatted notifications for agent delivery; sends ntfy if configured |
-
-You don't need to remember these — the agent discovers them automatically via MCP.
-
-## Context window cost
-
-MCP servers load all tool schemas into your agent's context on connect — even tools that won't be used that session. seataero is designed to keep this small:
-
-| Component | Tokens |
-|-----------|--------|
-| Server instructions | ~100 |
-| 18 tool schemas (names, docstrings, params) | ~970 |
-| Protocol overhead | ~200 |
-| **Total on connect** | **~1,270** |
-
+| Action | Command |
+|--------|---------|
+| Check cache | `searchaero query ORIG DEST --json` |
+| Show table | `searchaero query ORIG DEST` |
+| Show graph | `searchaero query ORIG DEST --graph` |
+| Show summary | `searchaero query ORIG DEST --summary` |
+| Find deals | `searchaero deals --json` |
+| DB status | `searchaero status --json` |
+| Scrape fresh | `searchaero search ORIG DEST --mfa-file --mfa-method email` |
+| Add alert | `searchaero alert add ORIG DEST --max-miles N` |
+| Check alerts | `searchaero alert check --json` |
+| Add watch | `searchaero watch add ORIG DEST --max-miles N` |
+| Check watches | `searchaero watch check --json` |
+| Diagnostics | `searchaero doctor` |
 
 ## How scraping works
 
 1. Seataero opens a Chromium browser via Playwright and logs into united.com with your MP number
-2. United may send an SMS verification code — the agent will ask you for it in chat
-3. Once logged in, seataero scrapes the award calendar API (one request returns ~30 days of pricing)
+2. United may send a verification code — the agent handles this automatically (email via Gmail) or asks you (SMS)
+3. Once logged in, searchaero scrapes the award calendar API (one request returns ~30 days of pricing)
 4. Results are stored in SQLite. Subsequent queries are instant (no scraping needed)
 5. The browser session stays warm between scrapes — MFA is typically only needed once per session
 
-**Rate limiting:** Seataero adds delays between requests to avoid triggering United's bot detection. For recurring scrapes (watch daemon, agent loops), use a minimum interval of **10 minutes** between runs. Shorter intervals (e.g., 2 minutes) will trigger Akamai's rate limiting — you'll see progressively fewer results per cycle until all requests are blocked.
+**Rate limiting:** Seataero adds delays between requests to avoid triggering United's bot detection. For recurring scrapes, use a minimum interval of **10 minutes** between runs.
 
 ## Troubleshooting
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| `BROWSER CRASH detected` | United's Akamai bot detection blocked your IP | Wait 10 minutes and retry, or use `--proxy`. See `seataero help proxy`. |
-| MFA code times out | The 5-minute SMS code window expired | Re-run the search — United will send a new code. |
-| `No availability found` | No scraped data for this route yet | Ask your agent to scrape it, or run `seataero search ORIGIN DEST`. |
-| Database errors | Corrupted SQLite file | Delete `~/.seataero/data.db` and run `seataero setup` to recreate. |
-| Repeated Akamai blocks | Your home IP is flagged | Wait 10–15 minutes and retry, or use `--proxy`. See `seataero help proxy`. |
-| `playwright install chromium` fails | Network/permission issue | Try with `--with-deps` flag, or install manually. |
+| `BROWSER CRASH detected` | United's Akamai bot detection blocked your IP | Wait 10 minutes and retry, or use `--proxy` |
+| MFA code times out | The 5-minute code window expired | Re-run the search — United will send a new code |
+| `No availability found` | No scraped data for this route yet | Ask your agent to scrape it, or run `searchaero search ORIGIN DEST` |
+| Database errors | Corrupted SQLite file | Delete `~/.searchaero/data.db` and run `searchaero setup` |
+| Repeated Akamai blocks | Your home IP is flagged | Wait 10–15 minutes, or use `--proxy`. See `searchaero help proxy` |
 
-Run `seataero doctor` for a comprehensive diagnostic check.
+Run `searchaero doctor` for a comprehensive diagnostic check.
 
 ## More documentation
 
 - [Getting Started](docs/getting-started.md) — full walkthrough from install to first query
-- [CLI Reference](docs/commands.md) — seataero also has a full CLI 
+- [CLI Reference](docs/commands.md) — every command and flag
 - [FAQ](docs/faq.md) — common questions and troubleshooting
 - [Push Notifications](docs/getting-started.md#step-6-set-up-price-alerts-optional) — set up ntfy for phone alerts

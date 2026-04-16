@@ -1,4 +1,4 @@
-"""Notification functions for seataero watchlist alerts via ntfy and email."""
+"""Notification functions for searchaero watchlist alerts via ntfy and email."""
 
 import json
 import os
@@ -13,7 +13,7 @@ from email.mime.text import MIMEText
 # Config
 # ---------------------------------------------------------------------------
 
-_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".seataero")
+_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".searchaero")
 _CONFIG_FILE = os.path.join(_CONFIG_DIR, "config.json")
 
 
@@ -52,23 +52,23 @@ def load_notify_config() -> dict:
             print(f"Warning: failed to read config: {exc}", file=sys.stderr)
 
     # Env var overrides
-    env_topic = os.getenv("SEATAERO_NTFY_TOPIC")
+    env_topic = os.getenv("SEARCHAERO_NTFY_TOPIC")
     if env_topic is not None:
         config["ntfy_topic"] = env_topic
 
-    env_server = os.getenv("SEATAERO_NTFY_SERVER")
+    env_server = os.getenv("SEARCHAERO_NTFY_SERVER")
     if env_server is not None:
         config["ntfy_server"] = env_server
 
-    env_gmail_sender = os.getenv("SEATAERO_GMAIL_SENDER")
+    env_gmail_sender = os.getenv("SEARCHAERO_GMAIL_SENDER")
     if env_gmail_sender is not None:
         config["gmail_sender"] = env_gmail_sender
 
-    env_gmail_recipient = os.getenv("SEATAERO_GMAIL_RECIPIENT")
+    env_gmail_recipient = os.getenv("SEARCHAERO_GMAIL_RECIPIENT")
     if env_gmail_recipient is not None:
         config["gmail_recipient"] = env_gmail_recipient
 
-    env_gmail_password = os.getenv("SEATAERO_GMAIL_APP_PASSWORD")
+    env_gmail_password = os.getenv("SEARCHAERO_GMAIL_APP_PASSWORD")
     if env_gmail_password is not None:
         config["gmail_app_password"] = env_gmail_password
 
@@ -249,7 +249,7 @@ def notify_watch_matches(watch: dict, matches: list, config: dict) -> bool:
     gmail_password = config.get("gmail_app_password", "")
     gmail_recipient = config.get("gmail_recipient", "")
     if gmail_sender and gmail_password and gmail_recipient:
-        email_subject = f"[seataero] {title}"
+        email_subject = f"[searchaero] {title}"
         if send_email(sender=gmail_sender, password=gmail_password,
                       recipient=gmail_recipient, subject=email_subject, body=message):
             sent_any = True

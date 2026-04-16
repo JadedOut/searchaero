@@ -1,4 +1,4 @@
-"""Verification script for seataero award availability data.
+"""Verification script for searchaero award availability data.
 
 Queries the database and prints a formatted report for manual
 cross-checking against united.com award calendar.
@@ -168,7 +168,7 @@ def print_stats(conn):
 def main():
     """Parse arguments and run the verification report or stats."""
     parser = argparse.ArgumentParser(
-        description="Verify seataero award availability data against united.com."
+        description="Verify searchaero award availability data against united.com."
     )
     parser.add_argument(
         "--route",
@@ -179,7 +179,7 @@ def main():
     parser.add_argument(
         "--db-path",
         default=None,
-        help="Path to SQLite database file (overrides SEATAERO_DB env var)",
+        help="Path to SQLite database file (overrides SEARCHAERO_DB env var)",
     )
     parser.add_argument(
         "--stats",
@@ -200,7 +200,7 @@ def main():
         print(f"Details: {e}", file=sys.stderr)
         print(file=sys.stderr)
         print("Hint: Check that the database file exists at the given path", file=sys.stderr)
-        print("or that SEATAERO_DB is set correctly.", file=sys.stderr)
+        print("or that SEARCHAERO_DB is set correctly.", file=sys.stderr)
         sys.exit(1)
 
     try:

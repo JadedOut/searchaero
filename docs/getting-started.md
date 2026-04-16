@@ -1,51 +1,51 @@
-# Getting Started with Seataero
+# Getting Started with Searchaero
 
 A step-by-step walkthrough from zero to your first award flight query.
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - A United MileagePlus account (free to create at united.com)
 - A phone number linked to your MP account for SMS verification
 
 ## Step 1: Install
 
 ```bash
-pip install seataero
+pip install searchaero
 ```
 
 Or install from source:
 
 ```bash
-git clone https://github.com/JadedOut/seatsaero.git
-cd seatsaero
+git clone https://github.com/JadedOut/searchaero.git
+cd searchaero
 pip install .
 ```
 
 ## Step 2: Set up credentials and verify
 
 ```bash
-seataero setup
+searchaero setup
 ```
 
 This does three things:
 
-1. **Creates the database** at `~/.seataero/data.db`
+1. **Creates the database** at `~/.searchaero/data.db`
 2. **Installs Playwright browsers** (Chromium) if not already present
-3. **Prompts for credentials** — if `~/.seataero/.env` is missing or incomplete, it asks for your MileagePlus number and password interactively and creates the file for you
+3. **Prompts for credentials** — if `~/.searchaero/.env` is missing or incomplete, it asks for your MileagePlus number and password interactively and creates the file for you
 
 You should see three green checkmarks when done:
 
 ```
 Database
-  Path:    ~/.seataero/data.db
+  Path:    ~/.searchaero/data.db
   Status:  ✓ Created (schema initialized)
 
 Playwright
   Package:  ✓ installed
   Browsers: ✓ installed
 
-Credentials (~/.seataero/.env)
+Credentials (~/.searchaero/.env)
   UNITED_MP_NUMBER:  ✓ set
   UNITED_PASSWORD:   ✓ set
 
@@ -54,19 +54,19 @@ Result: 3/3 checks passed
 
 If anything shows red, follow the hint next to it. Use `--no-browser-install` if you manage browsers externally (CI/Docker).
 
-> **Manual alternative:** If you prefer, create `~/.seataero/.env` yourself with two lines:
+> **Manual alternative:** If you prefer, create `~/.searchaero/.env` yourself with two lines:
 > ```
 > UNITED_MP_NUMBER=AB123456
 > UNITED_PASSWORD=your_password_here
 > ```
-> Then run `seataero setup` to verify.
+> Then run `searchaero setup` to verify.
 
 ## Step 3: Your first scrape
 
 Let's scrape Toronto (YYZ) to Los Angeles (LAX):
 
 ```bash
-seataero search YYZ LAX
+searchaero search YYZ LAX
 ```
 
 **What happens:**
@@ -91,29 +91,21 @@ YYZ-LAX: 342 found, 342 stored, 0 rejected, 0 errors
 
 ```bash
 # See all availability
-seataero query YYZ LAX
+searchaero query YYZ LAX
 
 # Filter to business class, sorted by price
-seataero query YYZ LAX --cabin business --sort miles
+searchaero query YYZ LAX --cabin business --sort miles
 
 # Check a specific date
-seataero query YYZ LAX --date 2026-07-15
+searchaero query YYZ LAX --date 2026-07-15
 
 # Get JSON output (for scripts or agents)
-seataero query YYZ LAX --json
+searchaero query YYZ LAX --json
 ```
 
-## Step 5: Connect to an AI agent
+## Step 5: Use with Claude Code
 
-This is where seataero really shines. Instead of memorizing CLI flags, just ask questions in natural language.
-
-### Claude Code
-
-```bash
-claude mcp add seataero -- seataero-mcp
-```
-
-Then try asking things like:
+In Claude Code, just ask about flights:
 
 - *"What's the cheapest business class from Toronto to London in July?"*
 - *"Find deals under 30K miles from any airport I've scraped"*
@@ -121,21 +113,9 @@ Then try asking things like:
 - *"Set up a watch for YYZ-LHR business under 70K miles"*
 - *"Scrape fresh data for Vancouver to Tokyo"*
 
-The agent will call `query_flights`, see if data exists, trigger a `search_route` scrape if needed, and present the answer.
+The `/flights` skill teaches Claude the full workflow: check cache, scrape if needed, handle MFA, present results.
 
-### VS Code / Cursor
-
-Add to `.vscode/mcp.json` or `.cursor/mcp.json`:
-
-```json
-{
-  "servers": {
-    "seataero": {
-      "command": "seataero-mcp"
-    }
-  }
-}
-```
+You can also invoke the skill directly with `/flights`.
 
 ## Step 6: Set up price alerts (optional)
 
@@ -143,33 +123,75 @@ Get notified when prices drop below a threshold:
 
 ```bash
 # Watch YYZ-LAX economy under 20,000 miles, check every 12 hours
-seataero watch add YYZ LAX --max-miles 20000 --cabin economy --every 12h
+searchaero watch add YYZ LAX --max-miles 20000 --cabin economy --every 12h
 
 # Start the background daemon
-seataero watch run
+searchaero watch run
 ```
 
 For push notifications to your phone, set up ntfy (see the README's "Push notifications" section).
 
+## Step 7: Set up email delivery (optional)
+
+Have Claude email you flight summaries directly. This uses a local SMTP/IMAP MCP server.
+
+**1. Create a Gmail App Password:**
+- Go to [Google App Passwords](https://myaccount.google.com/apppasswords)
+- Generate a new app password for "Mail"
+- Copy the 16-character password (looks like `xxxx xxxx xxxx xxxx`)
+
+**2. Add the email MCP server:**
+
+```bash
+claude mcp add email \
+  -s user \
+  -e SMTP_HOST=smtp.gmail.com \
+  -e SMTP_PORT=465 \
+  -e SMTP_SECURE=true \
+  -e IMAP_HOST=imap.gmail.com \
+  -e IMAP_PORT=993 \
+  -e IMAP_SECURE=true \
+  -e EMAIL_USER=you@gmail.com \
+  -e "EMAIL_PASS=your app password here" \
+  -- npx mcp-mail-server
+```
+
+Replace `you@gmail.com` and the app password with your own.
+
+**3. Verify it connects:**
+
+```bash
+claude mcp list
+```
+
+You should see `email: ... ✓ Connected`. If it shows `✗ Failed`, check that:
+- Your app password is correct (not your regular Gmail password)
+- IMAP is enabled in Gmail settings (Settings → See all settings → Forwarding and POP/IMAP → Enable IMAP)
+
+**4. Try it:**
+
+Ask Claude: *"Scrape YYZ to LAX and email me the cheapest options"*
+
+The email will be sent directly from your Gmail account.
+
 ## What to do next
 
-- **Scrape more routes:** `seataero search --file routes/canada_test.txt` (15 test routes)
-- **Check data coverage:** `seataero status`
+- **Scrape more routes:** `searchaero search --file routes/canada_test.txt` (15 test routes)
+- **Check data coverage:** `searchaero status`
 - **Find deals across all routes:** Use your agent: *"Find the cheapest deals across all scraped routes"*
-- **Run diagnostics:** `seataero doctor` (checks database, credentials, Playwright, ntfy)
-- **Browse help topics:** `seataero help mfa`, `seataero help proxy`, `seataero help watches`
+- **Run diagnostics:** `searchaero doctor` (checks database, credentials, Playwright, ntfy)
+- **Browse help topics:** `searchaero help mfa`, `searchaero help proxy`, `searchaero help watches`
 
 ## Common gotchas
 
 1. **SMS code expired?** Re-run the search — United sends a new code each time.
 2. **Akamai blocked your IP?** Wait 10 minutes and retry.
-3. **Data looks stale?** Data doesn't auto-refresh. Re-scrape with `seataero search` or use `seataero query --refresh`.
-4. **Any route?** Yes — seataero works with any origin/destination that United serves. Just `seataero search ORIGIN DEST`.
-5. **Don't run multiple MCP servers at once.** If you have several Claude Code sessions or IDE windows each spawning their own `seataero-mcp`, that means multiple browsers hitting United simultaneously from the same IP. Akamai will flag this almost instantly and block your IP. One MCP server at a time — kill stale ones before starting a new session (see #6).
-6. **Stale MCP server processes accumulating?** This is a [known Claude Code bug](https://github.com/anthropics/claude-code/issues/1935). When Claude Code exits or restarts, it does not reliably kill MCP child processes — especially on Windows. Old `seataero-mcp` processes pile up, each holding ~30-50MB RAM (more if a browser was open). **Workaround:** periodically check for and kill stale processes manually (`tasklist | grep python` on Windows, `ps aux | grep seataero-mcp` on Mac/Linux). On Mac, orphaned processes are reparented to PID 1 and can be detected; on Windows they're invisible without checking the process list. If the MCP scraper behaves oddly (login failures, stale data), the first thing to try is killing all `seataero-mcp` processes and letting Claude Code spawn a fresh one.
+3. **Data looks stale?** Data doesn't auto-refresh. Re-scrape with `searchaero search` or use `searchaero query --refresh`.
+4. **Any route?** Yes — searchaero works with any origin/destination that United serves. Just `searchaero search ORIGIN DEST`.
+5. **Don't run multiple scrapes at once.** Multiple simultaneous browser sessions from the same IP will trigger Akamai's rate limiting. One scrape at a time.
 
 ## More documentation
 
 - [Command Reference](commands.md) — every CLI command, flag, and example
 - [FAQ](faq.md) — common questions and troubleshooting
-- [README](../README.md) — project overview, MCP setup, architecture
+- [README](../README.md) — project overview

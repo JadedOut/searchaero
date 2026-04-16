@@ -1,4 +1,4 @@
-"""Database operations for seataero award availability."""
+"""Database operations for searchaero award availability."""
 
 import os
 import sqlite3
@@ -10,20 +10,20 @@ from datetime import datetime, timezone, timedelta
 # Connection
 # ---------------------------------------------------------------------------
 
-DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".seataero", "data.db")
+DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".searchaero", "data.db")
 
 
 def get_connection(db_path=None):
     """Get a SQLite connection.
 
     Args:
-        db_path: Path to the SQLite database file. Falls back to SEATAERO_DB
-                 env var, then to the default ~/.seataero/data.db.
+        db_path: Path to the SQLite database file. Falls back to SEARCHAERO_DB
+                 env var, then to the default ~/.searchaero/data.db.
 
     Returns:
         sqlite3.Connection with row_factory=sqlite3.Row.
     """
-    path = db_path or os.getenv("SEATAERO_DB", DEFAULT_DB_PATH)
+    path = db_path or os.getenv("SEARCHAERO_DB", DEFAULT_DB_PATH)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row

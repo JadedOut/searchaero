@@ -1,4 +1,4 @@
-"""Rich-based output module for the seataero CLI.
+"""Rich-based output module for the searchaero CLI.
 
 Provides colored tables, sparklines, structured JSON output,
 and auto-TTY detection.

@@ -1,4 +1,4 @@
-"""Command schema introspection for the seataero CLI.
+"""Command schema introspection for the searchaero CLI.
 
 Provides structured JSON descriptions of every CLI command, its parameters,
 and output fields so AI agents can discover capabilities at runtime without
@@ -19,7 +19,7 @@ COMMAND_SCHEMAS = {
             "db-path": {
                 "type": "string",
                 "required": False,
-                "description": "Path to SQLite database (default: ~/.seataero/data.db)",
+                "description": "Path to SQLite database (default: ~/.searchaero/data.db)",
             },
             "json": {
                 "type": "boolean",
@@ -216,12 +216,12 @@ COMMAND_SCHEMAS = {
             },
         },
         "examples": [
-            "seataero query YYZ LAX",
-            "seataero query YYZ LAX --json",
-            "seataero query YYZ LAX --cabin business --from 2026-05-01 --to 2026-06-01 --json",
-            "seataero query YYZ LAX --history --json",
-            "seataero query YYZ LAX --refresh --json",
-            "seataero query YYZ LAX --refresh --ttl 6 --json",
+            "searchaero query YYZ LAX",
+            "searchaero query YYZ LAX --json",
+            "searchaero query YYZ LAX --cabin business --from 2026-05-01 --to 2026-06-01 --json",
+            "searchaero query YYZ LAX --history --json",
+            "searchaero query YYZ LAX --refresh --json",
+            "searchaero query YYZ LAX --refresh --ttl 6 --json",
         ],
     },
     "status": {
@@ -231,7 +231,7 @@ COMMAND_SCHEMAS = {
             "db-path": {
                 "type": "string",
                 "required": False,
-                "description": "Path to SQLite database (default: ~/.seataero/data.db)",
+                "description": "Path to SQLite database (default: ~/.searchaero/data.db)",
             },
             "json": {
                 "type": "boolean",
@@ -320,7 +320,7 @@ COMMAND_SCHEMAS = {
             "db-path": {
                 "type": "string",
                 "required": False,
-                "description": "Path to SQLite database (default: ~/.seataero/data.db)",
+                "description": "Path to SQLite database (default: ~/.searchaero/data.db)",
             },
             "json": {
                 "type": "boolean",

@@ -1,65 +1,65 @@
 # CLI Command Reference
 
-Quick reference for every `seataero` command. All commands support `--json` for machine-readable output and `--db-path` to override the default database.
+Quick reference for every `searchaero` command. All commands support `--json` for machine-readable output and `--db-path` to override the default database.
 
 ## Setup & Diagnostics
 
-### `seataero setup`
+### `searchaero setup`
 
 Check environment and create the database. Prompts for credentials interactively if `.env` is missing.
 
 ```bash
-seataero setup
-seataero setup --json
+searchaero setup
+searchaero setup --json
 ```
 
-### `seataero doctor`
+### `searchaero doctor`
 
 Run comprehensive diagnostics: database integrity, Playwright, credentials, ntfy, data freshness.
 
 ```bash
-seataero doctor
+searchaero doctor
 ```
 
-### `seataero status`
+### `searchaero status`
 
 Show database statistics and route coverage.
 
 ```bash
-seataero status
-seataero status --json
+searchaero status
+searchaero status --json
 ```
 
-### `seataero help <topic>`
+### `searchaero help <topic>`
 
 Focused mini-guides on specific topics.
 
 ```bash
-seataero help              # list all topics
-seataero help mfa          # SMS verification
-seataero help proxy        # IP rotation / Akamai blocks
-seataero help watches      # Watchlist and notifications
-seataero help alerts       # Price alerts
-seataero help scraping     # How scraping works
+searchaero help              # list all topics
+searchaero help mfa          # SMS verification
+searchaero help proxy        # IP rotation / Akamai blocks
+searchaero help watches      # Watchlist and notifications
+searchaero help alerts       # Price alerts
+searchaero help scraping     # How scraping works
 ```
 
 ---
 
 ## Scraping
 
-### `seataero search`
+### `searchaero search`
 
 Scrape award availability from United.
 
 ```bash
 # Single route (~2 min)
-seataero search YYZ LAX
+searchaero search YYZ LAX
 
 # Batch from file
-seataero search --file routes/canada_test.txt
+searchaero search --file routes/canada_test.txt
 
 # Parallel workers
-seataero search --file routes/canada_us_all.txt --workers 3
+searchaero search --file routes/canada_us_all.txt --workers 3
 ```
 
 | Flag | Default | Description |
@@ -78,33 +78,33 @@ seataero search --file routes/canada_us_all.txt --workers 3
 
 ## Querying
 
-### `seataero query`
+### `searchaero query`
 
 Query cached availability data.
 
 ```bash
 # Basic query
-seataero query YYZ LAX
+searchaero query YYZ LAX
 
 # Filter by cabin and sort by price
-seataero query YYZ LAX --cabin business --sort miles
+searchaero query YYZ LAX --cabin business --sort miles
 
 # Date range
-seataero query YYZ LAX --from 2026-06-01 --to 2026-08-31
+searchaero query YYZ LAX --from 2026-06-01 --to 2026-08-31
 
 # Specific date detail
-seataero query YYZ LAX --date 2026-07-15
+searchaero query YYZ LAX --date 2026-07-15
 
 # Price history
-seataero query YYZ LAX --history
-seataero query YYZ LAX --date 2026-07-15 --history
+searchaero query YYZ LAX --history
+searchaero query YYZ LAX --date 2026-07-15 --history
 
 # Auto-refresh stale data
-seataero query YYZ LAX --refresh
+searchaero query YYZ LAX --refresh
 
 # Export formats
-seataero query YYZ LAX --json
-seataero query YYZ LAX --csv
+searchaero query YYZ LAX --json
+searchaero query YYZ LAX --csv
 ```
 
 | Flag | Default | Description |
@@ -128,11 +128,11 @@ seataero query YYZ LAX --csv
 
 One-shot checks against cached data. No daemon needed.
 
-### `seataero alert add`
+### `searchaero alert add`
 
 ```bash
-seataero alert add YYZ LAX --max-miles 70000
-seataero alert add YYZ LAX --max-miles 70000 --cabin business --from 2026-06-01 --to 2026-08-31
+searchaero alert add YYZ LAX --max-miles 70000
+searchaero alert add YYZ LAX --max-miles 70000 --cabin business --from 2026-06-01 --to 2026-08-31
 ```
 
 | Flag | Description |
@@ -142,25 +142,25 @@ seataero alert add YYZ LAX --max-miles 70000 --cabin business --from 2026-06-01 
 | `--cabin, -c` | Optional cabin filter |
 | `--from` / `--to` | Optional travel date window |
 
-### `seataero alert list`
+### `searchaero alert list`
 
 ```bash
-seataero alert list          # active alerts only
-seataero alert list --all    # include expired
-seataero alert list --json
+searchaero alert list          # active alerts only
+searchaero alert list --all    # include expired
+searchaero alert list --json
 ```
 
-### `seataero alert check`
+### `searchaero alert check`
 
 ```bash
-seataero alert check
-seataero alert check --json
+searchaero alert check
+searchaero alert check --json
 ```
 
-### `seataero alert remove`
+### `searchaero alert remove`
 
 ```bash
-seataero alert remove 1
+searchaero alert remove 1
 ```
 
 ---
@@ -169,19 +169,19 @@ seataero alert remove 1
 
 Automated monitoring with push notifications via [ntfy.sh](https://ntfy.sh).
 
-### `seataero watch setup`
+### `searchaero watch setup`
 
 ```bash
-seataero watch setup --ntfy-topic seataero-a7f3b9c2e1d4f856
-seataero watch setup --ntfy-topic my-topic --ntfy-server https://my-ntfy.example.com
-seataero watch setup --gmail-sender me@gmail.com --gmail-recipient you@example.com
+searchaero watch setup --ntfy-topic searchaero-a7f3b9c2e1d4f856
+searchaero watch setup --ntfy-topic my-topic --ntfy-server https://my-ntfy.example.com
+searchaero watch setup --gmail-sender me@gmail.com --gmail-recipient you@example.com
 ```
 
-### `seataero watch add`
+### `searchaero watch add`
 
 ```bash
-seataero watch add YYZ LAX --max-miles 20000
-seataero watch add YYZ LAX --max-miles 70000 --cabin business --every 6h
+searchaero watch add YYZ LAX --max-miles 20000
+searchaero watch add YYZ LAX --max-miles 70000 --cabin business --every 6h
 ```
 
 | Flag | Default | Description |
@@ -192,57 +192,52 @@ seataero watch add YYZ LAX --max-miles 70000 --cabin business --every 6h
 | `--from` / `--to` | — | Travel date window |
 | `--every` | 12h | Check frequency: `hourly`, `6h`, `12h`, `daily`, `twice-daily` |
 
-### `seataero watch list`
+### `searchaero watch list`
 
 ```bash
-seataero watch list
-seataero watch list --all    # include expired
+searchaero watch list
+searchaero watch list --all    # include expired
 ```
 
-### `seataero watch check`
+### `searchaero watch check`
 
 ```bash
-seataero watch check
-seataero watch check --no-scrape   # skip scraping stale routes
-seataero watch check --no-notify   # skip sending notifications
+searchaero watch check
+searchaero watch check --no-scrape   # skip scraping stale routes
+searchaero watch check --no-notify   # skip sending notifications
 ```
 
-### `seataero watch remove`
+### `searchaero watch remove`
 
 ```bash
-seataero watch remove 1
+searchaero watch remove 1
 ```
 
-### `seataero watch run`
+### `searchaero watch run`
 
 Start the watch daemon (foreground, Ctrl+C to stop). Checks watches on their schedule.
 
 ```bash
-seataero watch run
+searchaero watch run
 ```
 
 ---
 
 ## Other
 
-### `seataero schema`
+### `searchaero schema`
 
 Print command schemas for agent introspection.
 
 ```bash
-seataero schema              # all commands
-seataero schema query        # single command
+searchaero schema              # all commands
+searchaero schema query        # single command
 ```
 
 ---
 
-## MCP Server
+## Agent Skill
 
-The MCP server (`seataero-mcp`) is used by AI agents, not directly by users.
+The `/flights` agent skill teaches Claude Code how to use these CLI commands automatically. You don't need to memorize flags — just ask about flights in natural language.
 
-```bash
-seataero-mcp                 # start server (stdio)
-seataero-mcp --list-tools    # print all 13 tools
-seataero-mcp --health        # run health checks
-seataero-mcp --help          # show usage
-```
+The skill file lives at `.claude/skills/flights/SKILL.md`.

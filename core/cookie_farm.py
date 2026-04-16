@@ -31,7 +31,7 @@ import logging
 log = logging.getLogger(__name__)
 
 # Debug file log — visible even when stdout is redirected (MCP stdio transport)
-_debug_log_path = Path.home() / ".seataero" / "cookie_farm_debug.log"
+_debug_log_path = Path.home() / ".searchaero" / "cookie_farm_debug.log"
 def _dbg(msg):
     """Write timestamped debug line to file + stderr."""
     import time as _t
@@ -58,7 +58,7 @@ class CookieFarm:
     def __init__(self, user_data_dir=None, headless=False, ephemeral=True, env_file=None, proxy=None):
         if ephemeral and user_data_dir is None:
             self._ephemeral = True
-            self._user_data_dir = Path(tempfile.mkdtemp(prefix="seataero-browser-"))
+            self._user_data_dir = Path(tempfile.mkdtemp(prefix="searchaero-browser-"))
             self._all_ephemeral_dirs = [self._user_data_dir]
         else:
             self._ephemeral = False
@@ -85,7 +85,7 @@ class CookieFarm:
 
     def _load_credentials(self, env_file=None):
         """Load login credentials from .env file."""
-        load_dotenv(env_file or (Path.home() / ".seataero" / ".env"))
+        load_dotenv(env_file or (Path.home() / ".searchaero" / ".env"))
 
         self._united_mp_number = os.getenv("UNITED_MP_NUMBER", "").strip()
         self._united_password = os.getenv("UNITED_PASSWORD", "").strip()
@@ -190,7 +190,7 @@ class CookieFarm:
         # Rotate ephemeral profile (don't reuse potentially flagged cookies)
         if self._ephemeral:
             old_dir = self._user_data_dir
-            self._user_data_dir = Path(tempfile.mkdtemp(prefix="seataero-browser-"))
+            self._user_data_dir = Path(tempfile.mkdtemp(prefix="searchaero-browser-"))
             self._all_ephemeral_dirs.append(self._user_data_dir)
             try:
                 shutil.rmtree(old_dir, ignore_errors=True)

@@ -39,7 +39,7 @@ class CookieFarm:
     def __init__(self, user_data_dir=None, headless=False, ephemeral=True, env_file=None, proxy=None):
         if ephemeral and user_data_dir is None:
             self._ephemeral = True
-            self._user_data_dir = Path(tempfile.mkdtemp(prefix="seataero-browser-"))
+            self._user_data_dir = Path(tempfile.mkdtemp(prefix="searchaero-browser-"))
         else:
             self._ephemeral = False
             self._user_data_dir = Path(user_data_dir) if user_data_dir else DEFAULT_USER_DATA_DIR
@@ -163,7 +163,7 @@ class CookieFarm:
         # Rotate ephemeral profile (don't reuse potentially flagged cookies)
         if self._ephemeral:
             old_dir = self._user_data_dir
-            self._user_data_dir = Path(tempfile.mkdtemp(prefix="seataero-browser-"))
+            self._user_data_dir = Path(tempfile.mkdtemp(prefix="searchaero-browser-"))
             try:
                 shutil.rmtree(old_dir, ignore_errors=True)
             except Exception:

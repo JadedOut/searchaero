@@ -1,4 +1,4 @@
-"""Continuous burn-in runner for the seataero scraper.
+"""Continuous burn-in runner for the searchaero scraper.
 
 Loops through a route list, scrapes all 12 calendar windows per route,
 logs every result as JSONL, handles session expiry/recovery, and supports
@@ -74,7 +74,7 @@ def _capture_scrape_route(origin, dest, conn, scraper, delay, start_window=1, ma
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Burn-in test runner for seataero. Continuously scrapes a list of "
+            "Burn-in test runner for searchaero. Continuously scrapes a list of "
             "routes, logging results as JSONL for later analysis."
         ),
     )
@@ -133,7 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--db-path",
         type=str,
         default=None,
-        help="Path to SQLite database file (overrides SEATAERO_DB env var)",
+        help="Path to SQLite database file (overrides SEARCHAERO_DB env var)",
     )
     parser.add_argument(
         "--env-file",
@@ -253,7 +253,7 @@ def main():
 
     # Banner
     print("=" * 60)
-    print("Seataero Burn-In Runner")
+    print("Searchaero Burn-In Runner")
     if args.worker_id:
         print(f"Worker ID:         {args.worker_id}")
     print(f"Time:              {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")

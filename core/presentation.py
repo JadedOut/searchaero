@@ -1,4 +1,4 @@
-"""Pure presentation/formatting functions for seataero.
+"""Pure presentation/formatting functions for searchaero.
 
 No MCP imports, no DB imports. All functions accept plain data
 (dicts, lists) and return formatted strings.

@@ -1,4 +1,4 @@
-"""Data models and validation for seataero award availability."""
+"""Data models and validation for searchaero award availability."""
 
 import datetime
 import re
