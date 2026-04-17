@@ -118,12 +118,13 @@ Display the output verbatim.
 - Specific date: `$SEARCHAERO query ORIG DEST --date YYYY-MM-DD` shows detail for one date
 - Date range: `$SEARCHAERO query ORIG DEST --from YYYY-MM-DD --to YYYY-MM-DD`
 - Cabin filter: add `--cabin economy|business|first` to any query
+- **Important:** CLI output (tables, graphs, summaries) is collapsed behind "ctrl+o to expand" in the UI. The user may not see it. After running any presentation command, reproduce the key output in your response text so the user sees it without expanding.
 
 ## Post-Scrape Actions
 
 After displaying results, the user may ask for follow-up actions:
 
-- **"email me the results" / "send to my email"**: Look for an available MCP tool that can **send** an email (not just draft). Check all email-related MCP servers for a tool whose description mentions sending via SMTP — this is typically a tool named something like `send_email` or `send_mail`. Prefer any local SMTP-capable email MCP over the Anthropic-hosted `claude.ai Gmail` integration, which can only create drafts. Format a clean HTML email with a summary table of cheapest options (route, date, miles, taxes) and include the price chart if requested. If no send-capable tool is available, fall back to the `claude.ai Gmail` MCP to create a draft, and tell the user: "No email MCP with send capability is connected — I've created a draft in Gmail instead. You can review and send it from there."
+- **"email me the results" / "send to my email"**: Look for an available MCP tool that can **send** an email (not just draft). Check all email-related MCP servers for a tool whose description mentions sending via SMTP — this is typically a tool named something like `send_email` or `send_mail`. Prefer any local SMTP-capable email MCP over the Anthropic-hosted `claude.ai Gmail` integration, which can only create drafts. Format a clean HTML email with a summary table of cheapest options (route, date, miles, taxes) and include the price chart if requested. When including ASCII graphs in emails, paste the EXACT CLI output into a `<pre>` block — never manually truncate, rewrite, or shorten lines, as this breaks the character alignment. If no send-capable tool is available, fall back to the `claude.ai Gmail` MCP to create a draft, and tell the user: "No email MCP with send capability is connected — I've created a draft in Gmail instead. You can review and send it from there."
 - **"save to file" / "export"**: Run `$SEARCHAERO query ORIG DEST --csv > filename.csv` or `$SEARCHAERO query ORIG DEST --json > filename.json`.
 - **"set an alert"**: Use the alert commands in the Alerts section below.
 - **"watch this route"**: Use the watch commands in the Watches section below.
