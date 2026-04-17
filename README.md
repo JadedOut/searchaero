@@ -1,6 +1,6 @@
 # Searchaero
 
-Track United MileagePlus award pricing for free. Tell your agent where you want to go, and it handles the entire workflow: it scrapes United Airlines' MileagePlus, interprets results, graphs trends, watches for price drops, and notifies you via email or ntfy. Totally local, no API keys, and no subscriptions.
+Claude Code skill that tracks United MileagePlus award pricing for free. Tell your agent where you want to go, and it handles the entire workflow: it scrapes United Airlines' MileagePlus, interprets results, graphs trends, watches for price drops, and notifies you via email or ntfy. Totally local, no API keys, and no subscriptions.
 
 ## Scope
 
@@ -13,7 +13,7 @@ Track United MileagePlus award pricing for free. Tell your agent where you want 
 
 Open Claude Code and paste this. Claude does the rest.
 
-> Install searchaero: run `git clone https://github.com/JadedOut/searchaero.git ~/.claude/skills/searchaero && cd ~/.claude/skills/searchaero && uv tool install . && searchaero setup` to install the CLI and configure credentials. After setup, try: find the cheapest business class from YYZ to LAX next month.
+> Install searchaero: run `git clone https://github.com/JadedOut/searchaero.git ~/.claude/skills/searchaero && cd ~/.claude/skills/searchaero && uv tool install . && searchaero setup && test -f .claude/skills/flights/SKILL.md && echo '/flights skill: ready'` to install the CLI and configure credentials. After setup, try: find the cheapest business class from YYZ to LAX next month.
 
 Requirements: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Python 3.13+, [uv](https://docs.astral.sh/uv/)
 
@@ -65,7 +65,7 @@ Or invoke the skill directly with `/flights`.
 You ask a question. The agent checks cached data, scrapes if needed, handles MFA, and presents the answer. One skill, end to end.
 
 ```
-You:    What's the cheapest business class from Toronto to London next month?
+You:    /flights What's the cheapest business class from Toronto to London next month?
 
 Claude: Checking cached data... no results for YYZ-LHR.
         Starting a fresh scrape — this takes about 2 minutes.

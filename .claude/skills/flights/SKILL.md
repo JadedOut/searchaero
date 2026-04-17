@@ -156,6 +156,8 @@ $SEARCHAERO watch run  # foreground daemon
 - When query returns no results, AUTOMATICALLY start a scrape without asking for confirmation
 - Default to `--mfa-method sms` for interactive sessions. Only use `--mfa-method email` for unattended/cron workflows (see Unattended Mode section).
 - Display CLI output verbatim — do not reformat Rich tables or ASCII charts
+- After any scrape completes, you MUST run `$SEARCHAERO query ORIG DEST` and display results to the user BEFORE taking any post-scrape action (email, alert, watch, export)
+- For email delivery, ALWAYS prefer `mcp__email__send_email` (SMTP send) over `mcp__claude_ai_Gmail__create_draft` (draft only). Only use the Gmail draft MCP if `mcp__email__send_email` is not available.
 
 ## Unattended / Cron Mode
 
