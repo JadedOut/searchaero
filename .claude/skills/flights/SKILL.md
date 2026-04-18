@@ -22,6 +22,14 @@ else
 fi
 # Check database
 [ -f ~/.searchaero/data.db ] && echo "DB: ok" || echo "DB: missing"
+# Check credentials
+if [ -f ~/.searchaero/.env ]; then
+  grep -q "UNITED_MP_NUMBER=.\+" ~/.searchaero/.env && \
+  grep -q "UNITED_PASSWORD=.\+" ~/.searchaero/.env && \
+  echo "CREDS: ok" || echo "CREDS: incomplete"
+else
+  echo "CREDS: missing"
+fi
 echo "SEARCHAERO: ${SEARCHAERO:-NONE}"
 ```
 
@@ -35,6 +43,13 @@ Do not proceed with any scrape or query commands until a valid invocation method
 
 If `DB` is `missing`: tell the user the database hasn't been initialized. Suggest running `$SEARCHAERO setup` first.
 
+If `CREDS` is `missing` or `incomplete`: United login credentials are not configured. Ask the user in chat for their MileagePlus number and password. Then write the `.env` file:
+```bash
+mkdir -p ~/.searchaero
+printf 'UNITED_MP_NUMBER=%s\nUNITED_PASSWORD=%s\n' "MP_NUMBER_HERE" "PASSWORD_HERE" > ~/.searchaero/.env
+```
+Do not proceed with any scrape commands until credentials are confirmed written.
+
 ## Quick Reference
 
 | Action | Command |
@@ -46,10 +61,12 @@ If `DB` is `missing`: tell the user the database hasn't been initialized. Sugges
 | Find deals | `$SEARCHAERO deals --json` |
 | DB status | `$SEARCHAERO status --json` |
 | Scrape fresh | `$SEARCHAERO search ORIG DEST --mfa-file --mfa-method sms` |
+| Fresh browser | `$SEARCHAERO search ORIG DEST --ephemeral --mfa-file --mfa-method sms` |
 | Add alert | `$SEARCHAERO alert add ORIG DEST --max-miles N` |
 | Check alerts | `$SEARCHAERO alert check --json` |
 | Add watch | `$SEARCHAERO watch add ORIG DEST --max-miles N` |
 | Check watches | `$SEARCHAERO watch check --json` |
+| Programs view | `$SEARCHAERO query ORIG DEST --table-view programs` |
 
 ## Workflow
 
@@ -76,12 +93,13 @@ Wait 5 seconds, then read the first 10 lines of the background command's output:
 - If there is no output yet: wait 5 more seconds and check again. If still no output after 15 seconds total, check if the process exited (failed silently).
 
 ### Step 3: Handle MFA
-Poll for MFA request every 10 seconds, up to 6 times (60 seconds):
+Poll for login/MFA status every 10 seconds, up to 6 times (60 seconds):
 ```bash
 cat ~/.searchaero/mfa_request 2>/dev/null || echo "NO_MFA"
 ```
 - If output is `NO_MFA`: wait 10 seconds and poll again.
-- If output is JSON: MFA is required. Ask the user directly in chat: "United sent a verification code via SMS. Please type the 6-digit code:" — do NOT use `AskUserQuestion` for this, since MFA codes require free-text input. The user will reply with their code in the next message. Extract exactly 6 digits from their reply.
+- If output is JSON with `"status": "logged_in"`: login succeeded without MFA (persistent browser profile was already authenticated). Skip MFA handling and proceed to Step 4 — wait for the background search command to complete.
+- If output is JSON with `"message"` key: MFA is required. Ask the user directly in chat: "United sent a verification code via SMS. Please type the 6-digit code:" — do NOT use `AskUserQuestion` for this, since MFA codes require free-text input. The user will reply with their code in the next message. Extract exactly 6 digits from their reply.
 - Write the code:
   ```bash
   echo -n "DIGITS_HERE" > ~/.searchaero/mfa_response
@@ -107,19 +125,33 @@ Display the output verbatim.
 ## Presentation
 
 - Default: `$SEARCHAERO query ORIG DEST` shows a Rich table
-- Price trend: `$SEARCHAERO query ORIG DEST --graph` shows ASCII chart
+- Price trend: `$SEARCHAERO query ORIG DEST --graph` shows ASCII chart (auto-fits terminal width)
 - Deal summary: `$SEARCHAERO query ORIG DEST --summary` shows summary card
 - Cross-route deals: `$SEARCHAERO deals` shows best deals across all routes
 - Specific date: `$SEARCHAERO query ORIG DEST --date YYYY-MM-DD` shows detail for one date
 - Date range: `$SEARCHAERO query ORIG DEST --from YYYY-MM-DD --to YYYY-MM-DD`
+- Programs view: `$SEARCHAERO query ORIG DEST --table-view programs` shows per-program flat table
 - Cabin filter: add `--cabin economy|business|first` to any query
-- **Important:** CLI output (tables, graphs, summaries) is collapsed behind "ctrl+o to expand" in the UI. The user may not see it. After running any presentation command, reproduce the key output in your response text so the user sees it without expanding.
+- **CRITICAL:** CLI output (tables, graphs, summaries) is collapsed behind "ctrl+o to expand" in the UI — the user will NOT see it unless they manually expand. You MUST paste the full output (graphs, tables, summary cards) directly into your response text as a code block. Never tell the user to "expand" or "ctrl+o" — just include the content inline. This applies to every `--graph`, `--summary`, default table, and `--table-view` command.
+
+### When to use which format
+
+Choose the output format based on what the user is asking for:
+
+| User says | Use | Why |
+|-----------|-----|-----|
+| "graph", "chart", "trend", "price over time" | `--graph` | ASCII chart, auto-fits terminal width |
+| "cheapest", "find deals", "best price" | default table | Shows dates + prices at a glance |
+| "summary", "overview", "quick look" | `--summary` | Box-drawn card with key stats |
+| "compare programs", "show all programs" | `--table-view programs` | Multi-program flat table (future-ready) |
+| "email me", "send results" | `--graph` for body | Capture to temp file, paste into `<pre>` block; see Post-Scrape Actions |
+| "export", "save", "csv" | `--csv` or `--json` | Machine-readable formats |
 
 ## Post-Scrape Actions
 
 After displaying results, the user may ask for follow-up actions:
 
-- **"email me the results" / "send to my email"**: Look for an available MCP tool that can **send** an email (not just draft). Check all email-related MCP servers for a tool whose description mentions sending via SMTP — this is typically a tool named something like `send_email` or `send_mail`. Prefer any local SMTP-capable email MCP over the Anthropic-hosted `claude.ai Gmail` integration, which can only create drafts. Format a clean HTML email with a summary table of cheapest options (route, date, miles, taxes) and include the price chart if requested. When including ASCII graphs in emails, paste the EXACT CLI output into a `<pre>` block — never manually truncate, rewrite, or shorten lines, as this breaks the character alignment. If no send-capable tool is available, fall back to the `claude.ai Gmail` MCP to create a draft, and tell the user: "No email MCP with send capability is connected — I've created a draft in Gmail instead. You can review and send it from there."
+- **"email me the results" / "send to my email"**: Look for an available MCP tool that can **send** an email (not just draft). Check all email-related MCP servers for a tool whose description mentions sending via SMTP — this is typically a tool named something like `send_email` or `send_mail`. Prefer any local SMTP-capable email MCP over the Anthropic-hosted `claude.ai Gmail` integration, which can only create drafts. Format a clean HTML email with a summary table of cheapest options (route, date, miles, taxes). For price trend charts in email, capture to a temp file first (`$SEARCHAERO query ORIG DEST --graph > /tmp/graph_ORIG_DEST.txt 2>&1`), then read the file content and paste into a `<pre style="font-family: 'Courier New', monospace; font-size: 11px;">` block. Never copy graph output directly from collapsed tool call results — always use the temp file approach. If no send-capable tool is available, fall back to the `claude.ai Gmail` MCP to create a draft, and tell the user: "No email MCP with send capability is connected — I've created a draft in Gmail instead. You can review and send it from there."
 - **"save to file" / "export"**: Run `$SEARCHAERO query ORIG DEST --csv > filename.csv` or `$SEARCHAERO query ORIG DEST --json > filename.json`.
 - **"set an alert"**: Use the alert commands in the Alerts section below.
 - **"watch this route"**: Use the watch commands in the Watches section below.

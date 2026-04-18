@@ -81,21 +81,12 @@ Claude: Checking cached data... no results for YYZ-LHR.
         │ Jul 19   │ Business │ 60,000  │ Nonstop  │
         └──────────┴──────────┴─────────┴──────────┘
 
-You:    Show me the price trend as a graph.
+You:    Show me the price trend.
 
-Claude: YYZ -> LHR  |  Business  |  Price Trend
+Claude: YYZ -> LHR  |  Sparkline
 
-         80,000 ┤
-         75,000 ┤          ╭╮
-         70,000 ┤       ╭──╯│
-         65,000 ┤      ╭╯   ╰╮
-         60,000 ┼──╮  ╭╯     ╰╮
-         55,000 ┤  ╰╮╭╯       │
-         50,000 ┤   ╰╯        ╰╮
-         45,000 ┤              ╰──
-                Jul 01    Jul 15    Jul 29
-
-        Min: 45,000 mi  Avg: 59,167 mi  8 dates
+        Business: ▅▃▂▁▁▂▃▅▆▇█▇▅▃▂▁▁▂▃▅▆█▇▅▃▂▁
+        Low: 45,000 (Jul 15) → High: 80,000 (Jul 22) | Avg: 59,167
 
 You:    Set up a watch — notify me if business drops under 50K.
 Claude: [runs searchaero watch add YYZ LHR --max-miles 50000 --cabin business]
@@ -116,8 +107,10 @@ The agent uses these commands under the hood. You can also run them directly:
 |--------|---------|
 | Check cache | `searchaero query ORIG DEST --json` |
 | Show table | `searchaero query ORIG DEST` |
+| Show sparkline | `searchaero query ORIG DEST --sparkline` |
 | Show graph | `searchaero query ORIG DEST --graph` |
 | Show summary | `searchaero query ORIG DEST --summary` |
+| Programs view | `searchaero query ORIG DEST --table-view programs` |
 | Find deals | `searchaero deals --json` |
 | DB status | `searchaero status --json` |
 | Scrape fresh | `searchaero search ORIG DEST --mfa-file --mfa-method email` |

@@ -95,6 +95,16 @@ searchaero query YYZ LAX --from 2026-06-01 --to 2026-08-31
 # Specific date detail
 searchaero query YYZ LAX --date 2026-07-15
 
+# Price trend (compact sparkline — great for chat/email)
+searchaero query YYZ LAX --sparkline
+searchaero query YYZ LAX --cabin business --sparkline
+
+# Price trend (full ASCII chart — wide, best in expanded view)
+searchaero query YYZ LAX --graph
+
+# Multi-program table (shows per-program availability)
+searchaero query YYZ LAX --table-view programs
+
 # Price history
 searchaero query YYZ LAX --history
 searchaero query YYZ LAX --date 2026-07-15 --history
@@ -115,12 +125,18 @@ searchaero query YYZ LAX --csv
 | `--to` | — | End of date range (inclusive) |
 | `--cabin, -c` | all | `economy`, `business`, or `first` |
 | `--sort, -s` | date | Sort by `date`, `miles`, or `cabin` |
+| `--sparkline` | off | Compact sparkline trend with low/high/avg stats |
+| `--graph` | off | Full ASCII price chart (wide) |
+| `--summary` | off | Deal summary card |
+| `--table-view` | — | Alternative table layout: `programs` (multi-program flat table) |
 | `--history` | off | Show price history instead of current snapshot |
 | `--refresh` | off | Auto-scrape if data is stale/missing |
 | `--ttl` | 12.0 | Hours before data is considered stale |
 | `--fields` | all | Comma-separated fields for JSON output |
-| `--csv` | off | CSV output (mutually exclusive with `--json`) |
+| `--csv` | off | CSV output (mutually exclusive with other format flags) |
 | `--json` | off | JSON output |
+
+> **Note:** `--sparkline`, `--graph`, `--summary`, `--table-view`, `--csv`, and `--json` are mutually exclusive.
 
 ---
 

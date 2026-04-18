@@ -4,9 +4,11 @@ No MCP imports, no DB imports. All functions accept plain data
 (dicts, lists) and return formatted strings.
 """
 
+import os
 from datetime import datetime, timezone
 from tabulate import tabulate
 import asciichartpy
+
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +113,115 @@ def _format_date_short(date_str: str) -> str:
         return f"{month} {day}"
     except ValueError:
         return date_str
+
+
+# ---------------------------------------------------------------------------
+# Sparkline summary
+# ---------------------------------------------------------------------------
+
+def _format_age_natural(scraped_at_str: str) -> str:
+    """Return a natural-language age string like '2 hours ago', '6 days ago'.
+
+    Uses _parse_scraped_at() to parse the timestamp.
+    """
+    dt = _parse_scraped_at(scraped_at_str)
+    now = datetime.now(timezone.utc)
+    delta = now - dt
+    total_hours = delta.total_seconds() / 3600
+
+    if total_hours < 1:
+        return "<1 hour ago"
+    elif total_hours < 24:
+        hours = int(total_hours)
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    else:
+        days = int(total_hours / 24)
+        return f"{days} day{'s' if days != 1 else ''} ago"
+
+
+
+
+def format_programs_table(
+    rows: list[dict],
+    origin: str,
+    dest: str,
+) -> str:
+    """Format availability rows as a multi-program flat table.
+
+    Args:
+        rows: List of dicts with keys: date, cabin, award_type, miles,
+              taxes_cents, scraped_at.
+        origin: Origin airport code.
+        dest: Destination airport code.
+
+    Returns:
+        Formatted multi-program table string.
+    """
+    if not rows:
+        return f"{origin} -> {dest}  |  Programs\n\nNo availability data found."
+
+    # Extended cabin mapping that includes Premium
+    program_cabin_map = {
+        "economy": "Economy",
+        "premium_economy": "Premium",
+        "business": "Business",
+        "business_pure": "Business",
+        "first": "First",
+        "first_pure": "First",
+    }
+    cabin_columns = ["Economy", "Premium", "Business", "First"]
+
+    # Group by (date, program)
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for row in rows:
+        d = row.get("date", "")
+        program = "United"  # Default since United is the only scraper
+        key = (d, program)
+        groups.setdefault(key, []).append(row)
+
+    # Build table rows
+    table_rows = []
+    for (date, program), group_rows in sorted(groups.items()):
+        # Find cheapest miles per cabin column
+        cabin_best: dict[str, int] = {}
+        for r in group_rows:
+            cabin_raw = r.get("cabin", "")
+            col = program_cabin_map.get(cabin_raw, cabin_raw.title())
+            miles = r.get("miles", 0) or 0
+            if col in cabin_columns:
+                if col not in cabin_best or miles < cabin_best[col]:
+                    cabin_best[col] = miles
+
+        # Find most recent scraped_at
+        latest_scraped = max(
+            (r.get("scraped_at", "") for r in group_rows),
+            default="",
+        )
+        last_seen = _format_age_natural(latest_scraped) if latest_scraped else "?"
+
+        # Build cabin cells
+        cells = []
+        for col in cabin_columns:
+            if col in cabin_best:
+                cells.append(f"{cabin_best[col]:,} pts")
+            else:
+                cells.append("Not Available")
+
+        table_rows.append([date, last_seen, program, origin, dest] + cells)
+
+    headers = ["Date", "Last Seen", "Program", "Departs", "Arrives",
+               "Economy", "Premium", "Business", "First"]
+    table_str = tabulate(
+        table_rows,
+        headers=headers,
+        tablefmt="simple",
+        disable_numparse=True,
+    )
+
+    header = f"{origin} -> {dest}  |  Programs"
+    footer = f"{len(table_rows)} date{'s' if len(table_rows) != 1 else ''}"
+
+    return f"{header}\n\n{table_str}\n\n{footer}"
 
 
 # ---------------------------------------------------------------------------
@@ -373,16 +484,37 @@ def format_price_chart(
             f"  (Only 1 data point -- chart requires 2+)"
         )
 
+    # Determine available width for data columns
+    y_axis_width = 11  # '{:8,.0f}' (8) + ' ┤' (2) + 1 margin
+    try:
+        term_width = os.get_terminal_size().columns
+    except (ValueError, OSError):
+        term_width = 120
+    max_data_cols = max(20, term_width - y_axis_width)
+
+    # Downsample if more data points than available columns
+    plot_miles = miles_series
+    plot_dates = dates
+    if len(miles_series) > max_data_cols:
+        n_buckets = max_data_cols
+        bucket_size = len(miles_series) / n_buckets
+        plot_miles = []
+        plot_dates = []
+        for i in range(n_buckets):
+            start = int(i * bucket_size)
+            end = int((i + 1) * bucket_size)
+            bucket = miles_series[start:end]
+            plot_miles.append(min(bucket))
+            # Use the date of the cheapest value in this bucket for the label
+            min_idx = start + bucket.index(min(bucket))
+            plot_dates.append(dates[min_idx])
+
     # Generate chart
-    chart = asciichartpy.plot(miles_series, {"height": 10, "format": "{:8,.0f}"})
+    chart = asciichartpy.plot(plot_miles, {"height": 10, "format": "{:8,.0f}"})
 
     # Add X-axis date labels
-    # The chart's first data column starts after the Y-axis label width.
-    # asciichartpy format string is '{:8,.0f}' (8 chars) + ' ┤' or ' ┼' (2 chars) = ~10 chars offset
     chart_lines = chart.split("\n")
     if chart_lines:
-        # Estimate the offset: find the position of the first graph character
-        # by looking for ┤ or ┼ in the last line
         last_line = chart_lines[-1]
         offset = 0
         for ch in ("\u2524", "\u253c", "\u2502"):  # ┤, ┼, │
@@ -391,25 +523,20 @@ def format_price_chart(
                 offset = pos + 1
                 break
 
-        data_width = len(dates)
-        # Place date labels at evenly-spaced intervals, avoiding overlap.
-        # Each label is ~6 chars (e.g., "May 22") so we need at least 7
-        # chars between label start positions.
+        data_width = len(plot_dates)
         min_label_gap = 8
         label_indices = [0]
-        for i in range(1, len(dates)):
+        for i in range(1, len(plot_dates)):
             if i - label_indices[-1] >= min_label_gap:
                 label_indices.append(i)
-        # Always include the last date if it doesn't overlap
-        if label_indices[-1] != len(dates) - 1:
-            if len(dates) - 1 - label_indices[-1] >= min_label_gap:
-                label_indices.append(len(dates) - 1)
+        if label_indices[-1] != len(plot_dates) - 1:
+            if len(plot_dates) - 1 - label_indices[-1] >= min_label_gap:
+                label_indices.append(len(plot_dates) - 1)
 
-        # Build the label line
         total_len = offset + data_width + 12
         label_line = [" "] * total_len
         for idx in label_indices:
-            short = _format_date_short(dates[idx])
+            short = _format_date_short(plot_dates[idx])
             pos = offset + idx
             if pos + len(short) <= total_len:
                 for ci, c in enumerate(short):

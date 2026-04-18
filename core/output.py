@@ -13,42 +13,9 @@ from rich.table import Table
 
 _console = Console()
 
-# Unicode block characters for sparkline rendering (8 levels)
-_SPARK_CHARS = "▁▂▃▄▅▆▇█"
-
-
 def get_console() -> Console:
     """Return the module-level Console instance."""
     return _console
-
-
-def sparkline(values: list[int | float]) -> str:
-    """Render a list of numeric values as a Unicode sparkline string.
-
-    Maps each value to one of 8 block-character levels (▁ through █).
-    Returns empty string for an empty list. If all values are identical,
-    returns a row of middle-height bars.
-    """
-    if not values:
-        return ""
-
-    lo = min(values)
-    hi = max(values)
-
-    if lo == hi:
-        # All values identical -- use the middle bar
-        mid = len(_SPARK_CHARS) // 2
-        return _SPARK_CHARS[mid] * len(values)
-
-    span = hi - lo
-    last_idx = len(_SPARK_CHARS) - 1
-    chars = []
-    for v in values:
-        idx = int((v - lo) / span * last_idx)
-        # Clamp just in case of floating-point edge cases
-        idx = max(0, min(idx, last_idx))
-        chars.append(_SPARK_CHARS[idx])
-    return "".join(chars)
 
 
 def should_use_json(explicit_flag: bool) -> bool:

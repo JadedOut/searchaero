@@ -11,7 +11,7 @@ from datetime import datetime
 
 from core import db, presentation
 from core.matching import CABIN_FILTER_MAP as _CABIN_FILTER_MAP, compute_match_hash as _compute_match_hash
-from core.output import get_console, sparkline, print_error
+from core.output import get_console, print_error
 from core.routes import load_routes as _load_routes
 
 _CLI_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -105,6 +105,23 @@ def _get_mfa_prompt(args) -> callable:
         mfa_method = getattr(args, "mfa_method", "email")
         return lambda: _prompt_sms_file(mfa_method=mfa_method)
     return _prompt_sms_code
+
+
+def _cleanup_mfa_files():
+    """Remove stale MFA files from a previous run."""
+    for path in (_MFA_REQUEST, _MFA_RESPONSE):
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+
+def _signal_login_complete():
+    """Write a 'logged_in' signal to mfa_request so external pollers stop waiting."""
+    os.makedirs(_MFA_DIR, exist_ok=True)
+    with open(_MFA_REQUEST, "w") as f:
+        json.dump({"status": "logged_in"}, f)
 
 
 _CABIN_GROUPS = {
@@ -451,6 +468,7 @@ def _scrape_route_live(origin, dest, conn, delay=3.0, json_mode=False, headless=
     """
     farm = None
     scraper = None
+    _cleanup_mfa_files()
     try:
         _log("Starting cookie farm...")
         farm = CookieFarm(headless=headless, ephemeral=ephemeral, proxy=proxy)
@@ -458,6 +476,7 @@ def _scrape_route_live(origin, dest, conn, delay=3.0, json_mode=False, headless=
         _log("Logging in to United...")
         farm.ensure_logged_in(mfa_prompt=mfa_prompt or _prompt_sms_code, mfa_method=mfa_method)
         _log("Login confirmed")
+        _signal_login_complete()
 
         _log("Starting hybrid scraper...")
         scraper = HybridScraper(farm, refresh_interval=2)
@@ -802,10 +821,14 @@ def cmd_query(args):
         print("Error: --summary cannot be combined with --history")
         return 1
 
+    if args.table_view and args.history:
+        print("Error: --table-view cannot be combined with --history")
+        return 1
+
     # Validate format flags are mutually exclusive
-    format_flags = sum([args.graph, args.summary, args.csv, args.json])
+    format_flags = sum([args.graph, args.summary, args.csv, args.json, bool(args.table_view)])
     if format_flags > 1:
-        print("Error: --graph, --summary, --csv, and --json are mutually exclusive")
+        print("Error: --graph, --summary, --csv, --json, and --table-view are mutually exclusive")
         return 1
 
     # Validate date format if provided
@@ -899,6 +922,10 @@ def cmd_query(args):
                               "cabin": r["cabin"], "award_type": r["award_type"]}
         trend = sorted(by_date.values(), key=lambda x: x["date"])
         print(presentation.format_price_chart(trend, origin, dest, cabin_filter=args.cabin))
+        return 0
+
+    if args.table_view == "programs":
+        print(presentation.format_programs_table(rows, origin, dest))
         return 0
 
     if args.summary:
@@ -1090,7 +1117,7 @@ def _print_query_history_detail(rows, origin, dest, date):
 
 
 def _print_query_history_summary(stats, current_rows, origin, dest, conn=None):
-    """Print route-level price history summary using Rich with sparklines."""
+    """Print route-level price history summary using Rich."""
     from collections import defaultdict
     from rich.table import Table
 
@@ -1116,18 +1143,6 @@ def _print_query_history_summary(stats, current_rows, origin, dest, conn=None):
         if cur is None or row["miles"] < cur:
             current[key] = row["miles"]
 
-    # Get trend data if connection available
-    trends = {}
-    if conn is not None:
-        raw_trends = db.get_price_trend(conn, origin, dest)
-        # Aggregate trends by cabin group + award_type
-        group_trends = defaultdict(list)
-        for (cabin, award_type), values in raw_trends.items():
-            group = _CABIN_GROUPS.get(cabin)
-            if group:
-                group_trends[(group, award_type)].extend(values)
-        trends = dict(group_trends)
-
     table = Table(title=f"{origin} \u2192 {dest}  Price History")
     table.add_column("Cabin", style="bold")
     table.add_column("Type")
@@ -1135,7 +1150,6 @@ def _print_query_history_summary(stats, current_rows, origin, dest, conn=None):
     table.add_column("Highest", justify="right")
     table.add_column("Current", justify="right")
     table.add_column("Obs", justify="right")
-    table.add_column("Trend")
 
     for cabin_group in ["Economy", "Business", "First"]:
         for award_type in ["Saver", "Standard"]:
@@ -1147,8 +1161,7 @@ def _print_query_history_summary(stats, current_rows, origin, dest, conn=None):
             high = f"[red]{g['highest']:,}[/red]"
             cur_val = current.get(key)
             cur = f"{cur_val:,}" if cur_val else "[dim]\u2014[/dim]"
-            trend_str = sparkline(trends.get(key, []))
-            table.add_row(cabin_group, award_type, low, high, cur, str(g["observations"]), trend_str)
+            table.add_row(cabin_group, award_type, low, high, cur, str(g["observations"]))
 
     get_console().print(table)
 
@@ -2130,6 +2143,8 @@ def main(argv=None):
                               help="Show price trend as ASCII chart")
     query_parser.add_argument("--summary", action="store_true", default=False,
                               help="Show deal summary card")
+    query_parser.add_argument("--table-view", default=None, choices=["programs"],
+                              help="Alternative table layout (programs: multi-program flat table)")
 
     subparsers.add_parser("status", help="Show database statistics and coverage",
                           parents=[shared_parser])
