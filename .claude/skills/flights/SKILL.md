@@ -81,12 +81,7 @@ Poll for MFA request every 10 seconds, up to 6 times (60 seconds):
 cat ~/.searchaero/mfa_request 2>/dev/null || echo "NO_MFA"
 ```
 - If output is `NO_MFA`: wait 10 seconds and poll again.
-- If output is JSON: MFA is required. Use `AskUserQuestion` to prompt for the code:
-  - header: "MFA Code"
-  - question: "United sent a verification code. Enter the 6-digit code:"
-  - options: [{"label": "Enter code", "description": "Type the 6-digit code in the text field below"}]
-  - multiSelect: false
-  - The user will type their code in the free-text input. Extract exactly 6 digits.
+- If output is JSON: MFA is required. Ask the user directly in chat: "United sent a verification code via SMS. Please type the 6-digit code:" — do NOT use `AskUserQuestion` for this, since MFA codes require free-text input. The user will reply with their code in the next message. Extract exactly 6 digits from their reply.
 - Write the code:
   ```bash
   echo -n "DIGITS_HERE" > ~/.searchaero/mfa_response
