@@ -13,7 +13,7 @@ Claude Code skill that tracks United MileagePlus award pricing for free. Tell yo
 
 Open Claude Code and paste this. Claude does the rest.
 
-> Install searchaero: run `git clone https://github.com/JadedOut/searchaero.git ~/.claude/skills/searchaero && cd ~/.claude/skills/searchaero && uv tool install . && searchaero setup && test -f .claude/skills/flights/SKILL.md && echo '/flights skill: ready'` to install the CLI and configure credentials. After setup, try: find the cheapest business class from YYZ to LAX next month.
+> Install searchaero: run `git clone https://github.com/JadedOut/searchaero.git ~/.claude/skills/searchaero && cd ~/.claude/skills/searchaero && uv tool install . && searchaero setup && test -f .claude/skills/flights/SKILL.md && echo '/flights skill: ready'` to install the CLI and set up the environment. Credentials are configured on first use. After setup, try: find the cheapest business class from YYZ to LAX next month.
 
 Requirements: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Python 3.13+, [uv](https://docs.astral.sh/uv/)
 
@@ -81,12 +81,21 @@ Claude: Checking cached data... no results for YYZ-LHR.
         │ Jul 19   │ Business │ 60,000  │ Nonstop  │
         └──────────┴──────────┴─────────┴──────────┘
 
-You:    Show me the price trend.
+You:    Show me the price trend as a graph.
 
-Claude: YYZ -> LHR  |  Sparkline
+Claude: YYZ -> LHR  |  Business  |  Price Trend
 
-        Business: ▅▃▂▁▁▂▃▅▆▇█▇▅▃▂▁▁▂▃▅▆█▇▅▃▂▁
-        Low: 45,000 (Jul 15) → High: 80,000 (Jul 22) | Avg: 59,167
+         80,000 ┤
+         75,000 ┤          ╭╮
+         70,000 ┤       ╭──╯│
+         65,000 ┤      ╭╯   ╰╮
+         60,000 ┼──╮  ╭╯     ╰╮
+         55,000 ┤  ╰╮╭╯       │
+         50,000 ┤   ╰╯        ╰╮
+         45,000 ┤              ╰──
+                Jul 01    Jul 15    Jul 29
+
+        Min: 45,000 mi  Avg: 59,167 mi  8 dates
 
 You:    Set up a watch — notify me if business drops under 50K.
 Claude: [runs searchaero watch add YYZ LHR --max-miles 50000 --cabin business]

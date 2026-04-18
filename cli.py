@@ -314,7 +314,8 @@ def cmd_setup(args):
     checks_passed = 0
 
     # Database passes if status is "ok"
-    if results["database"]["status"] == "ok":
+    db_ok = results["database"]["status"] == "ok"
+    if db_ok:
         checks_passed += 1
 
     # Playwright passes if package installed AND browsers installed
@@ -341,7 +342,9 @@ def cmd_setup(args):
     else:
         _print_setup_report(results)
 
-    return 0 if checks_passed == checks_total else 1
+    # Exit 0 if the database is ready. Browsers and credentials are
+    # checked at point of use (first scrape and /flights skill respectively).
+    return 0 if db_ok else 1
 
 
 def _print_setup_report(results):
