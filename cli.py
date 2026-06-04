@@ -13,6 +13,16 @@ from core import db, presentation
 from core.matching import CABIN_FILTER_MAP as _CABIN_FILTER_MAP, compute_match_hash as _compute_match_hash
 from core.output import get_console, print_error
 from core.routes import load_routes as _load_routes
+from core.scheduler import (
+    load_schedules, save_schedule, remove_schedule,
+    generate_bat, register_task, delete_task, query_task,
+    check_wake_timers, enable_wake_timers, require_windows,
+    SCHEDULES_DIR,
+    MAX_ROUTES, count_routes_in_file, count_routes_in_files,
+    estimate_scrape_minutes, compute_min_interval,
+    add_route_group, remove_route_group, get_all_routes_files,
+    get_total_route_count, is_old_format,
+)
 
 _CLI_DIR = os.path.dirname(os.path.abspath(__file__))
 ORCHESTRATE_PY = os.path.join(_CLI_DIR, "scripts", "orchestrate.py")
@@ -309,7 +319,27 @@ def cmd_setup(args):
     results["credentials"] = creds
 
     # ------------------------------------------------------------------
-    # Check 4: Summary
+    # Check 4: Schedules & Power (Windows only, non-blocking)
+    # ------------------------------------------------------------------
+    if sys.platform == "win32":
+        sched_info = {"schedules": [], "wake_timers": None}
+        try:
+            scheds = load_schedules()
+            sched_info["schedules"] = [
+                {"name": s.get("name"), "interval": s.get("interval_minutes")}
+                for s in scheds
+            ]
+            if scheds:
+                wake = check_wake_timers()
+                sched_info["wake_timers"] = {
+                    "ac": wake["ac"], "dc": wake["dc"]
+                }
+        except Exception:
+            pass
+        results["schedules"] = sched_info
+
+    # ------------------------------------------------------------------
+    # Check 5: Summary
     # ------------------------------------------------------------------
     checks_passed = 0
 
@@ -394,6 +424,23 @@ def _print_setup_report(results):
             console.print(f"  {key + ':':20s} [red]\u2717 not set[/red]")
     console.print()
 
+    # Schedules & Power (if present)
+    sched = results.get("schedules")
+    if sched:
+        scheds = sched.get("schedules", [])
+        wake = sched.get("wake_timers")
+        if scheds:
+            console.print("[bold]Schedules & Power[/bold]")
+            console.print(f"  Active schedules: {len(scheds)}")
+            for s in scheds:
+                console.print(f"    - {s['name']} (every {s['interval']} min)")
+            if wake:
+                ac_icon = "\u2713" if wake["ac"] == "enabled" else "\u2717"
+                ac_color = "green" if wake["ac"] == "enabled" else "red"
+                console.print(f"  Wake timers (AC): [{ac_color}]{ac_icon} {wake['ac']}[/{ac_color}]")
+            console.print("  [dim]Reminder: PC must sleep, not shut down, for wake-to-scrape.[/dim]")
+            console.print()
+
     # Summary
     passed = results["checks_passed"]
     total = results["checks_total"]
@@ -405,6 +452,19 @@ def _print_setup_report(results):
 
 def cmd_search(args):
     """Run award availability scraping — single route, batch, or parallel."""
+    # Parse --months into list of ints
+    if args.months:
+        try:
+            args._months_list = [int(m.strip()) for m in args.months.split(",")]
+            if not all(1 <= m <= 12 for m in args._months_list):
+                print("Error: --months values must be between 1 and 12")
+                return 1
+        except ValueError:
+            print("Error: --months must be comma-separated numbers (e.g., 6,7,12)")
+            return 1
+    else:
+        args._months_list = None
+
     has_route = bool(args.route)
     has_file = bool(args.file)
 
@@ -420,6 +480,15 @@ def cmd_search(args):
     if args.workers > 1 and not has_file:
         print("Error: --workers requires --file")
         return 1
+
+    # Aeroplan is single-route only in this MVP — batch/parallel not supported
+    if getattr(args, "program", "united") == "aeroplan":
+        if has_file:
+            print("Error: --file is not supported for --program aeroplan (single-route only)")
+            return 1
+        if args.workers > 1:
+            print("Error: --workers is not supported for --program aeroplan (single-route only)")
+            return 1
 
     if has_file:
         # Validate file exists
@@ -449,10 +518,10 @@ def cmd_search(args):
         return _search_single_inproc(args)
 
 
-def _scrape_route_live(origin, dest, conn, delay=3.0, json_mode=False, headless=True, mfa_prompt=None, proxy=None, ephemeral=False, mfa_method="sms"):
+def _scrape_route_live(origin, dest, conn, delay=3.0, json_mode=False, headless=True, mfa_prompt=None, proxy=None, ephemeral=False, mfa_method="sms", months=None, from_date=None, to_date=None):
     """Scrape a single route in-process. Reusable by both search and query --refresh.
 
-    Starts CookieFarm, logs in, scrapes all 12 windows,
+    Starts CookieFarm, logs in, scrapes matching windows,
     handles browser crash with one retry, cleans up.
 
     Args:
@@ -484,11 +553,13 @@ def _scrape_route_live(origin, dest, conn, delay=3.0, json_mode=False, headless=
         _log("Starting hybrid scraper...")
         scraper = HybridScraper(farm, refresh_interval=2)
         scraper.start()
-        _log(f"Scraper ready — scraping {origin}-{dest} (12 windows)")
+        window_desc = f"months {months}" if months else "12 windows"
+        _log(f"Scraper ready — scraping {origin}-{dest} ({window_desc})")
 
         totals, browser_crashed = _scrape_with_crash_detection(
             origin, dest, conn, scraper, delay=delay,
             verbose=not json_mode,
+            months=months, from_date=from_date, to_date=to_date,
         )
 
         if browser_crashed:
@@ -500,6 +571,7 @@ def _scrape_route_live(origin, dest, conn, delay=3.0, json_mode=False, headless=
             totals, _ = _scrape_with_crash_detection(
                 origin, dest, conn, scraper, delay=delay,
                 verbose=not json_mode,
+                months=months, from_date=from_date, to_date=to_date,
             )
 
         return totals
@@ -521,36 +593,163 @@ def _scrape_route_live(origin, dest, conn, delay=3.0, json_mode=False, headless=
                 _log(f"WARNING: farm.stop() failed: {e}")
 
 
+def _aeroplan_warmup(session):
+    """Absorb Air Canada's post-login OIDC consent redirect after a FRESH login.
+
+    After `ensure_logged_in` confirms login, Air Canada finishes an OIDC consent
+    hop (…/clogin/pages/proxy?mode=afterConsent…) that fires asynchronously —
+    often DURING the first scrape window's page.goto, interrupting it so window 1
+    captures nothing (observed live 2026-06-03: earliest ~3 days lost). The
+    scraper's pre-window URL poll doesn't help because the redirect hasn't
+    started yet when it checks. The fix is a throwaway NAVIGATE to the home page
+    so the consent hop completes here, before window 1. Best-effort; never raises.
+    """
+    page = getattr(session, "page", None)
+    if page is None:
+        return
+    try:
+        from core.aeroplan_session import AIRCANADA_HOME
+        page.goto(AIRCANADA_HOME, wait_until="domcontentloaded", timeout=60000)
+    except Exception as exc:
+        _log(f"  warm-up navigate interrupted (expected on fresh login): {exc}")
+    # Poll up to ~20s for the redirect chain to quiesce off login/consent URLs.
+    # Bail immediately if page.url is not a real string (mock/test) — keeps the
+    # offline CLI tests instant.
+    markers = ("clogin", "afterlogin", "afterconsent", "login.aircanada",
+               "socialize", "idpresponse")
+    deadline = time.time() + 20.0
+    stable_since = None
+    last = None
+    while time.time() < deadline:
+        try:
+            url = page.url
+        except Exception:
+            url = None
+        if not isinstance(url, str):
+            return  # not a real browser page (e.g. under test) — nothing to do
+        on_redirect = any(m in url.lower() for m in markers)
+        if not on_redirect:
+            if url == last and stable_since is not None:
+                if time.time() - stable_since >= 2.0:
+                    break
+            else:
+                stable_since = time.time()
+        else:
+            stable_since = None
+        last = url
+        time.sleep(0.5)
+    time.sleep(2)  # extra fixed settle once the chain has quiesced
+
+
+def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_method, months, from_date, to_date):
+    """Scrape a single route from Aeroplan in-process (HEADED browser only).
+
+    Constructs an AeroplanSession (headed — never headless), ensures login,
+    then delegates to scrape_route_aeroplan. Aeroplan uses 5-day windows.
+
+    Args:
+        origin: IATA origin code (uppercase).
+        dest: IATA destination code (uppercase).
+        conn: SQLite connection (schema must already exist).
+        delay: Seconds between API calls.
+        json_mode: If True, suppress verbose stdout output.
+        mfa_method: MFA delivery channel (Aeroplan defaults to "email").
+        months: Optional list of month ints to restrict scraping.
+        from_date / to_date: Optional date-window filters (YYYY-MM-DD).
+
+    Returns:
+        dict with keys: found, stored, rejected, errors, total_windows,
+        expired, error_messages.
+    """
+    from core.aeroplan_session import AeroplanSession
+    from core.aeroplan_scraper import scrape_route_aeroplan
+
+    session = None
+    try:
+        _log("Starting Aeroplan session (headed browser)...")
+        session = AeroplanSession()  # headed only — do NOT pass headless=True
+        session.start()
+
+        _log("Logging in to Aeroplan...")
+        result = session.ensure_logged_in(mfa_method=mfa_method)
+        if not result.ok:
+            detail = getattr(result, "detail", None)
+            msg = f"Aeroplan login failed (status: {result.status})"
+            if detail:
+                msg += f": {detail}"
+            if not json_mode:
+                print(f"Error: {msg}")
+            raise RuntimeError(msg)
+        _log("Aeroplan login confirmed")
+
+        # Warm-up navigate to absorb the post-login OIDC consent redirect before
+        # window 1 (otherwise the first window's goto gets interrupted and that
+        # window captures nothing — observed live 2026-06-03).
+        _log("Warm-up navigate (settling post-login redirect chain)...")
+        _aeroplan_warmup(session)
+
+        _log(f"Scraping {origin}-{dest} via Aeroplan (5-day windows)...")
+        totals = scrape_route_aeroplan(
+            origin, dest, session, conn,
+            delay=delay, from_date=from_date, to_date=to_date,
+            months=months, verbose=not json_mode,
+        )
+        return totals
+
+    finally:
+        if session:
+            try:
+                _log("Stopping Aeroplan session (killing browser)...")
+                session.stop()
+                _log("Aeroplan session stopped")
+            except Exception as e:
+                _log(f"WARNING: session.stop() failed: {e}")
+
+
 def _search_single_inproc(args):
     """Scrape a single route in-process using the hybrid scraper pipeline."""
     orig, dest = args.route
     conn = None
+    program = getattr(args, "program", "united")
 
     try:
         _log("Connecting to database...")
         conn = db.get_connection(args.db_path)
         db.ensure_schema(conn)
 
-        mfa_prompt = _get_mfa_prompt(args)
-        totals = _scrape_route_live(orig, dest, conn, delay=args.delay, json_mode=args.json, headless=args.headless, mfa_prompt=mfa_prompt, proxy=getattr(args, 'proxy', None), ephemeral=args.ephemeral, mfa_method=args.mfa_method)
+        if program == "aeroplan":
+            totals = _scrape_route_aeroplan_live(
+                orig, dest, conn,
+                delay=args.delay, json_mode=args.json, mfa_method=args.mfa_method,
+                months=args._months_list, from_date=args.search_from, to_date=args.search_to,
+            )
+        else:
+            mfa_prompt = _get_mfa_prompt(args)
+            totals = _scrape_route_live(orig, dest, conn, delay=args.delay, json_mode=args.json, headless=args.headless, mfa_prompt=mfa_prompt, proxy=getattr(args, 'proxy', None), ephemeral=args.ephemeral, mfa_method=args.mfa_method, months=args._months_list, from_date=args.search_from, to_date=args.search_to)
 
         # Output results
         if args.json:
-            print(json.dumps({
+            payload = {
                 "route": f"{orig}-{dest}",
                 "found": totals["found"],
                 "stored": totals["stored"],
                 "rejected": totals["rejected"],
                 "errors": totals["errors"],
-            }, indent=2))
+            }
+            if "expired" in totals:
+                payload["expired"] = totals["expired"]
+            print(json.dumps(payload, indent=2))
         else:
             console = get_console()
             console.print()
-            console.print(f"[bold]{orig}-{dest}[/bold]: "
-                          f"[green]{totals['found']}[/green] found, "
-                          f"[green]{totals['stored']}[/green] stored, "
-                          f"{totals['rejected']} rejected, "
-                          f"{totals['errors']} errors")
+            summary = (f"[bold]{orig}-{dest}[/bold]: "
+                       f"[green]{totals['found']}[/green] found, "
+                       f"[green]{totals['stored']}[/green] stored, "
+                       f"{totals['rejected']} rejected, "
+                       f"{totals['errors']} errors")
+            if "expired" in totals:
+                summary += f", {totals['expired']} expired"
+            console.print(summary)
             console.print()
             console.print(f"  [dim]→ Query results:[/dim] searchaero query {orig} {dest}")
             console.print(f"  [dim]→ Business class:[/dim] searchaero query {orig} {dest} --cabin business --sort miles")
@@ -632,6 +831,7 @@ def _search_batch(args):
             totals = scrape_route(
                 orig, dest, conn, scraper,
                 delay=args.delay, verbose=not args.json,
+                months=args._months_list, from_date=args.search_from, to_date=args.search_to,
             )
             per_route.append({"route": f"{orig}-{dest}", **totals})
             for key in agg:
@@ -654,6 +854,7 @@ def _search_batch(args):
                 totals = scrape_route(
                     orig, dest, conn, scraper,
                     delay=args.delay, verbose=not args.json,
+                    months=args._months_list, from_date=args.search_from, to_date=args.search_to,
                 )
                 per_route[-1] = {"route": f"{orig}-{dest}", **totals}
                 for key in agg:
@@ -896,7 +1097,7 @@ def cmd_query(args):
 
         rows = db.query_availability(conn, origin, dest, date=args.date,
                                      date_from=args.date_from, date_to=args.date_to,
-                                     cabin=cabin_filter)
+                                     cabin=cabin_filter, program=args.program)
     finally:
         conn.close()
 
@@ -975,7 +1176,7 @@ def _cmd_query_history(args, origin, dest, cabin_filter):
     conn = db.get_connection(args.db_path)
     try:
         if args.date:
-            rows = db.query_history(conn, origin, dest, date=args.date, cabin=cabin_filter)
+            rows = db.query_history(conn, origin, dest, date=args.date, cabin=cabin_filter, program=args.program)
             if not rows:
                 if args.json:
                     print(json.dumps({"error": "no_results", "message": f"No price history for {origin}-{dest} on {args.date}", "suggestion": "Run 'searchaero search' to scrape data first"}))
@@ -998,7 +1199,7 @@ def _cmd_query_history(args, origin, dest, cabin_filter):
             else:
                 _print_query_history_detail(rows, origin, dest, args.date)
         else:
-            stats = db.get_history_stats(conn, origin, dest, cabin=cabin_filter)
+            stats = db.get_history_stats(conn, origin, dest, cabin=cabin_filter, program=args.program)
             if not stats:
                 if args.json:
                     print(json.dumps({"error": "no_results", "message": f"No price history for {origin}-{dest}", "suggestion": "Run 'searchaero search' to scrape data first"}))
@@ -1017,7 +1218,7 @@ def _cmd_query_history(args, origin, dest, cabin_filter):
             elif args.csv:
                 _print_query_csv(stats)
             else:
-                current_rows = db.query_availability(conn, origin, dest, cabin=cabin_filter)
+                current_rows = db.query_availability(conn, origin, dest, cabin=cabin_filter, program=args.program)
                 _print_query_history_summary(stats, current_rows, origin, dest, conn=conn)
     finally:
         conn.close()
@@ -1484,7 +1685,8 @@ def _alert_check(args):
                 print(f"  {len(r['matches'])} matching fare(s):")
                 for m in r["matches"][:10]:
                     taxes = f"${m['taxes_cents'] / 100:.2f}" if m.get("taxes_cents") is not None else "\u2014"
-                    print(f"    {m['date']}  {m['cabin']:<18}{m['award_type']:<10}{m['miles']:>8,} miles  {taxes}")
+                    program = (m.get("program") or "").title()
+                    print(f"    {m['date']}  {program:<10}{m['cabin']:<18}{m['award_type']:<10}{m['miles']:>8,} miles  {taxes}")
                 if len(r["matches"]) > 10:
                     print(f"    ... and {len(r['matches']) - 10} more")
                 print()
@@ -1492,7 +1694,7 @@ def _alert_check(args):
 
 
 def cmd_watch(args):
-    """Manage watched routes with ntfy notifications."""
+    """Manage watched routes with notifications."""
     if not args.watch_command:
         print("Usage: searchaero watch {add,list,remove,check,run,setup}")
         print("Run 'searchaero watch <command> --help' for details.")
@@ -1706,52 +1908,35 @@ def _watch_run(args):
 
 
 def _watch_setup(args):
-    """Configure notification settings (ntfy and/or Gmail)."""
+    """Configure notification settings (Discord webhook)."""
     from core.notify import save_notify_config
 
     save_notify_config(
-        topic=args.ntfy_topic,
-        server=args.ntfy_server,
-        gmail_sender=args.gmail_sender,
-        gmail_recipient=args.gmail_recipient,
+        discord_webhook_url=args.discord_webhook_url,
     )
 
     # Warning if no channels configured
-    has_ntfy = bool(args.ntfy_topic)
-    has_gmail = bool(args.gmail_sender)
-    if not has_ntfy and not has_gmail:
+    has_discord = bool(args.discord_webhook_url)
+    if not has_discord:
         print("Warning: no notification channels configured. "
-              "Set --ntfy-topic and/or --gmail-sender + SEARCHAERO_GMAIL_APP_PASSWORD env var.",
+              "Set --discord-webhook-url.",
               file=sys.stderr)
 
     if args.json:
         result = {"status": "configured"}
-        if args.ntfy_topic:
-            result["ntfy_topic"] = args.ntfy_topic
-        if args.ntfy_server != "https://ntfy.sh":
-            result["ntfy_server"] = args.ntfy_server
-        if args.gmail_sender:
-            result["gmail_sender"] = args.gmail_sender
-        if args.gmail_recipient:
-            result["gmail_recipient"] = args.gmail_recipient
+        if args.discord_webhook_url:
+            result["discord_webhook_url"] = args.discord_webhook_url
         print(json.dumps(result))
     else:
-        parts = []
-        if args.ntfy_topic:
-            parts.append(f"ntfy: topic={args.ntfy_topic}, server={args.ntfy_server}")
-        if args.gmail_sender:
-            parts.append(f"gmail: sender={args.gmail_sender}")
-        if args.gmail_recipient:
-            parts.append(f"gmail: recipient={args.gmail_recipient}")
-        if parts:
-            print("Configured: " + "; ".join(parts))
+        if args.discord_webhook_url:
+            print(f"Configured: discord_webhook_url={args.discord_webhook_url}")
         else:
             print("No notification settings changed.")
     return 0
 
 
 def cmd_doctor(args):
-    """Run comprehensive diagnostics — database, credentials, Playwright, ntfy, data freshness."""
+    """Run comprehensive diagnostics — database, credentials, Playwright, Discord, data freshness."""
     console = get_console()
     console.print("[bold]searchaero doctor[/bold]")
     console.print()
@@ -1849,23 +2034,17 @@ def cmd_doctor(args):
         issues.append("Credentials file missing — run 'searchaero setup'")
     console.print()
 
-    # 4. ntfy notifications
-    console.print("[bold]Notifications (ntfy)[/bold]")
+    # 4. Discord notifications
+    console.print("[bold]Notifications (Discord)[/bold]")
     try:
         from core.notify import load_notify_config
         cfg = load_notify_config()
-        topic = cfg.get("ntfy_topic")
-        if topic:
-            console.print(f"  Topic:  [green]✓ {topic}[/green]")
-            server = cfg.get("ntfy_server", "https://ntfy.sh")
-            console.print(f"  Server: [dim]{server}[/dim]")
+        webhook_url = cfg.get("discord_webhook_url")
+        if webhook_url:
+            console.print(f"  Webhook: [green]✓ configured[/green]")
         else:
-            env_topic = os.getenv("SEARCHAERO_NTFY_TOPIC")
-            if env_topic:
-                console.print(f"  Topic:  [green]✓ {env_topic} (from env)[/green]")
-            else:
-                console.print("  Topic:  [dim]not configured (optional)[/dim]")
-                console.print("  [dim]Set up with: searchaero watch setup --ntfy-topic YOUR_TOPIC[/dim]")
+            console.print("  Webhook: [dim]not configured (optional)[/dim]")
+            console.print("  [dim]Set up with: searchaero watch setup --discord-webhook-url URL[/dim]")
     except Exception:
         console.print("  [dim]not configured (optional)[/dim]")
     console.print()
@@ -1928,9 +2107,8 @@ United's Akamai bot detection can block your IP after repeated scraping.
 Watches automatically monitor routes and notify you when prices drop.
 
 [bold]Setup:[/bold]
-  1. Configure ntfy (optional, for push notifications):
-     searchaero watch setup --ntfy-topic your-random-topic-name
-     Then subscribe in the ntfy app on your phone.
+  1. Configure Discord webhook for notifications:
+     searchaero watch setup --discord-webhook-url https://discord.com/api/webhooks/...
 
   2. Add a watch:
      searchaero watch add YYZ LAX --max-miles 20000 --cabin economy --every 12h
@@ -1945,7 +2123,7 @@ Watches automatically monitor routes and notify you when prices drop.
   • The daemon checks your watches on their schedule (e.g., every 12h)
   • If cached data is stale, it scrapes fresh data first
   • When a match is found (price ≤ threshold), it sends a notification
-  • ntfy push + agent email delivery are both supported
+  • Discord webhook notifications
 
 [bold]Manage watches:[/bold]
   searchaero watch list          — see all active watches
@@ -2005,6 +2183,51 @@ Searchaero scrapes United's award calendar API via a headless browser.
   • Use --refresh on queries: searchaero query YYZ LAX --refresh
   • Or set up watches for automatic re-scraping
 """,
+    "schedule": """
+[bold]Scheduled Scraping (Windows Task Scheduler)[/bold]
+
+Automate recurring scrapes using Windows Task Scheduler.
+
+[bold]Quick start:[/bold]
+  searchaero schedule add --routes routes/yyz_wuh.txt --interval 60 --months 6,7,12
+
+This creates a Task Scheduler task that runs every 60 minutes, scraping
+only months 6 (June), 7 (July), and 12 (December).
+
+[bold]Commands:[/bold]
+  schedule add       Register a new scheduled scrape
+  schedule list      List all scheduled scrapes with live status
+  schedule remove    Remove a scheduled scrape
+  schedule enable    Re-enable a paused schedule
+  schedule disable   Manually pause a schedule
+  schedule status    Show wake timers, task health, and recent logs
+
+[bold]Options for 'schedule add':[/bold]
+  --routes, -r       Path to routes file (required)
+  --interval, -i     Minutes between runs (minimum 60, default: 60)
+  --months           Month filter (e.g., 6,7,12)
+  --name             Task name (default: auto from filename)
+  --no-eval          Disable Claude watch evaluation (default: eval ON)
+  --env-file         Path to .env for mfa_responder
+  --from / --to      Date range filter (YYYY-MM-DD)
+  --no-wake          Skip wake timer configuration
+
+[bold]Sleep vs Shutdown:[/bold]
+  Your PC must sleep (close the lid), not shut down. Task Scheduler can
+  wake a sleeping PC to run tasks, but it cannot start a powered-off PC.
+  If the PC was off during a scheduled run, StartWhenAvailable catches up
+  once — but only the next time the PC wakes.
+
+[bold]Wake Timers:[/bold]
+  'schedule add' automatically enables AC wake timers via powercfg.
+  If it fails (requires admin), run manually:
+    powercfg /setacvalueindex SCHEME_CURRENT SUB_SLEEP RTCWAKE 1
+    powercfg /setactive SCHEME_CURRENT
+
+[bold]Logs:[/bold]
+  searchaero schedule status
+  Or view directly: type %USERPROFILE%\\.searchaero\\logs\\task_scheduler.log
+""",
 }
 
 
@@ -2021,6 +2244,7 @@ def cmd_help_topic(args):
         console.print("  [bold]watches[/bold]    Watchlist and push notifications")
         console.print("  [bold]alerts[/bold]     Price alert setup and usage")
         console.print("  [bold]scraping[/bold]   How scraping works, options, timing")
+        console.print("  [bold]schedule[/bold]   Scheduled scraping via Task Scheduler")
         console.print()
         console.print("[dim]Usage: searchaero help <topic>[/dim]")
         return 0
@@ -2055,6 +2279,576 @@ def cmd_schema(args):
     return 0
 
 
+# ---------------------------------------------------------------------------
+# schedule command
+# ---------------------------------------------------------------------------
+
+def cmd_schedule(args):
+    """Manage scheduled scraping tasks."""
+    console = get_console()
+
+    try:
+        require_windows()
+    except RuntimeError as e:
+        print_error(str(e))
+        return 1
+
+    sub = getattr(args, "schedule_command", None)
+    if not sub:
+        console.print("[bold]searchaero schedule[/bold] -- manage scheduled scraping tasks")
+        console.print()
+        console.print("  schedule add      Register a new scheduled scrape")
+        console.print("  schedule list     List all scheduled scrapes")
+        console.print("  schedule remove   Remove a scheduled scrape")
+        console.print("  schedule enable   Re-enable a paused schedule")
+        console.print("  schedule disable  Manually pause a schedule")
+        console.print("  schedule status   Show schedule health and power config")
+        console.print()
+        console.print("[dim]Use 'searchaero schedule <command> --help' for details.[/dim]")
+        return 0
+
+    if sub == "add":
+        return _schedule_add(args)
+    elif sub == "list":
+        return _schedule_list(args)
+    elif sub == "remove":
+        return _schedule_remove(args)
+    elif sub == "enable":
+        return _schedule_enable(args)
+    elif sub == "disable":
+        return _schedule_disable(args)
+    elif sub == "status":
+        return _schedule_status(args)
+    return 0
+
+
+def _schedule_add(args):
+    """Add a route group to the consolidated schedule.
+
+    Creates a new master schedule if none exists, or appends a route group
+    to the existing one.  Validates route counts, interval, and uniqueness.
+    """
+    console = get_console()
+
+    # --- 1. Load existing schedules and find master ---
+    schedules = load_schedules()
+
+    # Check for old-format entries
+    for s in schedules:
+        if is_old_format(s):
+            print_error(
+                f"Old-format schedule '{s.get('name', '?')}' detected. "
+                "Run `searchaero schedule migrate` to convert to the new "
+                "consolidated format before adding routes."
+            )
+            return 1
+
+    # Find existing master schedule (first entry, if any)
+    master = schedules[0] if schedules else None
+
+    # --- 2. Resolve routes path and validate ---
+    routes_path = os.path.abspath(args.routes)
+    if not os.path.isfile(routes_path):
+        print_error(f"Routes file not found: {routes_path}")
+        return 1
+
+    new_route_count = count_routes_in_file(routes_path)
+    if new_route_count == 0:
+        print_error(f"Routes file is empty: {routes_path}")
+        return 1
+
+    # --- 3. Derive names ---
+    # Group name always comes from routes filename
+    group_basename = os.path.splitext(os.path.basename(routes_path))[0]
+    group_name = group_basename.replace("_", "-")
+
+    # Master schedule name: --name overrides, else inherit, else "master"
+    if args.name:
+        master_name = args.name
+    elif master:
+        master_name = master["name"]
+    else:
+        master_name = "master"
+
+    # --- 4. Validate route count ---
+    current_total = get_total_route_count(master) if master else 0
+    new_total = current_total + new_route_count
+    if new_total > MAX_ROUTES:
+        print_error(
+            f"Route limit exceeded: {current_total} existing + "
+            f"{new_route_count} new = {new_total} (max {MAX_ROUTES}).\n"
+            f"Remove a route group first with `searchaero schedule remove <group>`."
+        )
+        return 1
+
+    # --- 5. Validate group name uniqueness ---
+    if master:
+        existing_group_names = [
+            g.get("name") for g in master.get("route_groups", [])
+        ]
+        if group_name in existing_group_names:
+            print_error(
+                f"Route group '{group_name}' already exists. "
+                "Use a different routes filename or remove the existing group first."
+            )
+            return 1
+
+    # --- 6. Determine interval ---
+    if args.interval is not None:
+        interval = args.interval
+    elif master:
+        interval = master.get("interval_minutes", 60)
+    else:
+        interval = 60
+
+    min_interval = compute_min_interval(new_total)
+    if interval < min_interval:
+        est = estimate_scrape_minutes(new_total)
+        print_error(
+            f"Interval {interval} min is too short for {new_total} routes "
+            f"(est. scrape ~{est} min + 45 min buffer).\n"
+            f"Minimum interval: {min_interval} min. "
+            f"Use --interval {min_interval} or higher."
+        )
+        return 1
+
+    project_dir = _CLI_DIR
+    python_exe = sys.executable
+    use_eval = not args.no_eval
+    env_file = args.env_file
+
+    # Build the new group dict
+    new_group = {
+        "name": group_name,
+        "routes_file": routes_path,
+        "months": args.months,
+        "date_from": args.date_from,
+        "date_to": args.date_to,
+        "added_at": datetime.now().isoformat(),
+    }
+
+    if master is None:
+        # --- CREATE new master schedule ---
+        entry = {
+            "name": master_name,
+            "task_name": f"searchaero-{master_name}",
+            "route_groups": [new_group],
+            "interval_minutes": interval,
+            "eval": use_eval,
+            "env_file": env_file,
+            "bat_path": "",
+            "created_at": datetime.now().isoformat(),
+        }
+
+        # Generate .bat
+        _log(f"Generating launcher: {master_name}.bat")
+        bat_path = generate_bat(
+            schedule_name=master_name,
+            project_dir=project_dir,
+            python_exe=python_exe,
+            eval=use_eval,
+            env_file=env_file,
+        )
+        entry["bat_path"] = bat_path
+
+        # Register schtasks
+        _log(f"Registering task: searchaero-{master_name}")
+        success, message = register_task(master_name, bat_path, interval)
+        if not success:
+            print_error(f"Task registration failed: {message}")
+            return 1
+
+        # Wake timer handling
+        if not args.no_wake:
+            wake_info = check_wake_timers()
+            if wake_info["ac"] != "enabled":
+                _log("Enabling wake timers (AC)...")
+                wake_ok, wake_msg = enable_wake_timers(ac=True)
+                if not wake_ok:
+                    console.print(f"[yellow]Warning:[/yellow] {wake_msg}")
+
+        save_schedule(entry)
+    else:
+        # --- APPEND to existing master schedule ---
+        add_route_group(master, new_group)
+
+        old_interval = master.get("interval_minutes", 60)
+        interval_changed = args.interval is not None and interval != old_interval
+
+        # Update interval if user explicitly provided --interval
+        if args.interval is not None:
+            master["interval_minutes"] = interval
+
+        # Update eval/env if provided
+        if use_eval != master.get("eval", True):
+            master["eval"] = use_eval
+        if env_file and env_file != master.get("env_file"):
+            master["env_file"] = env_file
+
+        # Regenerate .bat
+        _log(f"Regenerating launcher: {master_name}.bat")
+        bat_path = generate_bat(
+            schedule_name=master_name,
+            project_dir=project_dir,
+            python_exe=python_exe,
+            eval=master.get("eval", True),
+            env_file=master.get("env_file"),
+        )
+        master["bat_path"] = bat_path
+
+        # Re-register schtasks if interval changed
+        if interval_changed:
+            _log(f"Updating task interval: searchaero-{master_name}")
+            success, message = register_task(master_name, bat_path, interval)
+            if not success:
+                print_error(f"Task re-registration failed: {message}")
+                return 1
+
+        save_schedule(master)
+
+    # --- Print success summary ---
+    total_routes = new_total
+    num_groups = len(master["route_groups"]) if master else 1
+    est_minutes = estimate_scrape_minutes(total_routes)
+    buffer = interval - est_minutes
+
+    console.print()
+    console.print("[bold green]Schedule updated successfully[/bold green]")
+    console.print(f"  [bold]Routes:[/bold]       {total_routes} across {num_groups} group{'s' if num_groups != 1 else ''} (max {MAX_ROUTES})")
+    console.print(f"  [bold]Est. scrape:[/bold]  ~{est_minutes} min")
+    console.print(f"  [bold]Interval:[/bold]     {interval} min")
+    console.print(f"  [bold]Buffer:[/bold]       ~{buffer} min")
+    console.print()
+    console.print("[dim]Note: Your PC must sleep (close lid), not shut down. "
+                  "Full power-off prevents wake-to-scrape.[/dim]")
+    return 0
+
+
+def _schedule_list(args):
+    """Show consolidated schedule with route groups."""
+    console = get_console()
+    schedules = load_schedules()
+
+    if not schedules:
+        console.print("No schedules registered.")
+        console.print("[dim]Use 'searchaero schedule add --routes <file>' to create one.[/dim]")
+        return 0
+
+    from rich.table import Table
+
+    for s in schedules:
+        name = s.get("name", "?")
+        interval = s.get("interval_minutes", "?")
+        groups = s.get("route_groups", [])
+
+        # Query live status from Task Scheduler
+        info = query_task(name)
+        if info:
+            status = info.get("status", "Unknown")
+            next_run = info.get("next_run", "N/A")
+        else:
+            status = "Not found"
+            next_run = "N/A"
+
+        console.print(f"[bold]Schedule:[/bold] {name}  |  [bold]Interval:[/bold] {interval} min  |  [bold]Next run:[/bold] {next_run}  |  [bold]Status:[/bold] {status}")
+        console.print()
+
+        if groups:
+            table = Table(title="Route Groups")
+            table.add_column("Group Name", style="bold")
+            table.add_column("Routes File")
+            table.add_column("Routes")
+            table.add_column("Months")
+            table.add_column("Date Range")
+
+            total_routes = 0
+            for g in groups:
+                g_name = g.get("name", "?")
+                routes_file = g.get("routes_file", "?")
+                routes_basename = os.path.basename(routes_file)
+                try:
+                    route_count = count_routes_in_file(routes_file)
+                except (OSError, FileNotFoundError):
+                    route_count = "?"
+                if isinstance(route_count, int):
+                    total_routes += route_count
+
+                months = g.get("months") or "-"
+                date_from = g.get("date_from")
+                date_to = g.get("date_to")
+                if date_from and date_to:
+                    date_range = f"{date_from} to {date_to}"
+                elif date_from:
+                    date_range = f"from {date_from}"
+                elif date_to:
+                    date_range = f"to {date_to}"
+                else:
+                    date_range = "-"
+
+                table.add_row(g_name, routes_basename, str(route_count), months, date_range)
+
+            console.print(table)
+            est = estimate_scrape_minutes(total_routes) if isinstance(total_routes, int) else "?"
+            console.print()
+            console.print(f"  [bold]Total:[/bold] {total_routes} routes  |  [bold]Est. scrape:[/bold] ~{est} min")
+        else:
+            console.print("  [dim]No route groups.[/dim]")
+
+    return 0
+
+
+def _schedule_remove(args):
+    """Remove a route group or the entire master schedule.
+
+    If *name* matches a route group within the master schedule, that group is
+    removed.  If no groups remain (or *name* matches the master schedule name),
+    the entire schedule is torn down (task + .bat + registry entry).
+    """
+    console = get_console()
+    name = args.name
+
+    schedules = load_schedules()
+    if not schedules:
+        console.print(f"[yellow]No schedules registered -- nothing to remove.[/yellow]")
+        return 0
+
+    master = schedules[0]
+    master_name = master.get("name", "master")
+    groups = master.get("route_groups", [])
+    group_names = [g.get("name") for g in groups]
+
+    # Check if name matches a route group within the master
+    if name in group_names and name != master_name:
+        # Remove the group
+        remove_route_group(master, name)
+        remaining_groups = master.get("route_groups", [])
+
+        if remaining_groups:
+            # Regenerate .bat and save
+            project_dir = _CLI_DIR
+            python_exe = sys.executable
+            bat_path = generate_bat(
+                schedule_name=master_name,
+                project_dir=project_dir,
+                python_exe=python_exe,
+                eval=master.get("eval", True),
+                env_file=master.get("env_file"),
+            )
+            master["bat_path"] = bat_path
+            save_schedule(master)
+
+            total_routes = get_total_route_count(master)
+            num_groups = len(remaining_groups)
+            console.print(f"[green]Route group '{name}' removed.[/green]")
+            console.print(f"  Remaining: {total_routes} routes across {num_groups} group{'s' if num_groups != 1 else ''}")
+            return 0
+        else:
+            # No groups remain -- full teardown
+            console.print(f"[dim]Last route group removed -- tearing down schedule '{master_name}'.[/dim]")
+            # Fall through to full teardown below
+
+    elif name == master_name:
+        # Full teardown requested by master name
+        pass
+    else:
+        # Name doesn't match any group or the master
+        console.print(f"[yellow]'{name}' not found. Available groups: {', '.join(group_names)}. Master schedule: {master_name}[/yellow]")
+        return 1
+
+    # --- Full teardown ---
+    success, message = delete_task(master_name)
+    if not success:
+        console.print(f"[yellow]Warning:[/yellow] {message}")
+
+    bat_path = master.get("bat_path") or os.path.join(SCHEDULES_DIR, f"{master_name}.bat")
+    if os.path.isfile(bat_path):
+        os.remove(bat_path)
+
+    removed = remove_schedule(master_name)
+    if removed:
+        console.print(f"[green]Schedule '{master_name}' removed (task + .bat + registry).[/green]")
+    else:
+        console.print(f"[yellow]Schedule '{master_name}' not found in registry.[/yellow]")
+
+    return 0
+
+
+def _schedule_enable(args):
+    """Re-enable a paused schedule."""
+    import json as _json
+    console = get_console()
+    name = args.name
+
+    state_file = os.path.join(os.path.expanduser("~"), ".searchaero", "scrape_state.json")
+    all_states = {}
+    if os.path.isfile(state_file):
+        try:
+            with open(state_file, "r", encoding="utf-8") as f:
+                all_states = _json.load(f)
+        except (_json.JSONDecodeError, OSError):
+            all_states = {}
+
+    state = all_states.get(name, {})
+    state["disabled"] = False
+    state["consecutive_failures"] = 0
+    state["disabled_at"] = None
+    state["disabled_reason"] = None
+    all_states[name] = state
+
+    os.makedirs(os.path.dirname(state_file), exist_ok=True)
+    with open(state_file, "w", encoding="utf-8") as f:
+        _json.dump(all_states, f, indent=2)
+
+    console.print(f"[green]Schedule '{name}' re-enabled.[/green]")
+    return 0
+
+
+def _schedule_disable(args):
+    """Manually pause a schedule."""
+    import json as _json
+    console = get_console()
+    name = args.name
+
+    state_file = os.path.join(os.path.expanduser("~"), ".searchaero", "scrape_state.json")
+    all_states = {}
+    if os.path.isfile(state_file):
+        try:
+            with open(state_file, "r", encoding="utf-8") as f:
+                all_states = _json.load(f)
+        except (_json.JSONDecodeError, OSError):
+            all_states = {}
+
+    state = all_states.get(name, {})
+    state["disabled"] = True
+    state["disabled_at"] = datetime.now().isoformat()
+    state["disabled_reason"] = "manually disabled"
+    all_states[name] = state
+
+    os.makedirs(os.path.dirname(state_file), exist_ok=True)
+    with open(state_file, "w", encoding="utf-8") as f:
+        _json.dump(all_states, f, indent=2)
+
+    console.print(f"[yellow]Schedule '{name}' paused.[/yellow] Run `searchaero schedule enable {name}` to resume.")
+    return 0
+
+
+def _schedule_status(args):
+    """Show schedule health, timing, and power config."""
+    console = get_console()
+
+    # Wake timers
+    console.print("[bold]Wake Timers[/bold]")
+    wake = check_wake_timers()
+    ac_color = "green" if wake["ac"] == "enabled" else "red"
+    dc_color = "green" if wake["dc"] == "enabled" else "dim"
+    console.print(f"  AC (plugged in): [{ac_color}]{wake['ac']}[/{ac_color}]")
+    console.print(f"  DC (battery):    [{dc_color}]{wake['dc']}[/{dc_color}]")
+    console.print()
+
+    # Load backoff state for all schedules
+    import json as _json
+    state_file = os.path.join(os.path.expanduser("~"), ".searchaero", "scrape_state.json")
+    all_states = {}
+    if os.path.isfile(state_file):
+        try:
+            with open(state_file, "r", encoding="utf-8") as f:
+                all_states = _json.load(f)
+        except (_json.JSONDecodeError, OSError):
+            all_states = {}
+
+    # Schedules
+    schedules = load_schedules()
+    if schedules:
+        from rich.table import Table
+
+        table = Table(title="Scheduled Scrapes")
+        table.add_column("Name", style="bold")
+        table.add_column("Interval")
+        table.add_column("Status")
+        table.add_column("Failures")
+        table.add_column("Next Run")
+        table.add_column("Last Result")
+
+        for s in schedules:
+            name = s.get("name", "?")
+            interval_val = s.get("interval_minutes", 60)
+            interval = f"{interval_val} min"
+
+            # Backoff state
+            sched_state = all_states.get(name, {})
+            is_disabled = sched_state.get("disabled", False)
+            failures = sched_state.get("consecutive_failures", 0)
+
+            if is_disabled:
+                reason = sched_state.get("disabled_reason", "paused")
+                failures_str = f"[red]{failures} (PAUSED: {reason})[/red]"
+            elif failures > 0:
+                failures_str = f"[yellow]{failures}[/yellow]"
+            else:
+                failures_str = "[green]0[/green]"
+
+            info = query_task(name)
+            if info:
+                status = info.get("status", "Unknown")
+                if is_disabled:
+                    status = "[red]PAUSED[/red]"
+                next_run = info.get("next_run", "N/A")
+                last_result = info.get("last_result", "N/A")
+            else:
+                status = "[red]Not found[/red]"
+                next_run = "N/A"
+                last_result = "N/A"
+
+            table.add_row(name, interval, status, failures_str, next_run, last_result)
+
+        console.print(table)
+        console.print()
+
+        # Timing section for consolidated schedules
+        for s in schedules:
+            groups = s.get("route_groups", [])
+            if groups:
+                name = s.get("name", "?")
+                interval_val = s.get("interval_minutes", 60)
+                try:
+                    total_routes = get_total_route_count(s)
+                except (OSError, FileNotFoundError):
+                    total_routes = 0
+                num_groups = len(groups)
+                est = estimate_scrape_minutes(total_routes)
+                buffer = interval_val - est
+                min_buffer = 45
+                buffer_color = "green" if buffer >= min_buffer else "red"
+
+                console.print("[bold]Timing[/bold]")
+                console.print(f"  Estimated scrape:  ~{est} min ({total_routes} routes across {num_groups} group{'s' if num_groups != 1 else ''})")
+                console.print(f"  Interval:          {interval_val} min")
+                console.print(f"  Buffer margin:     [{buffer_color}]~{buffer} min (minimum {min_buffer} min)[/{buffer_color}]")
+                console.print()
+    else:
+        console.print("[bold]Schedules:[/bold] None registered")
+    console.print()
+
+    # Tail log
+    log_path = os.path.join(os.path.expanduser("~"), ".searchaero", "logs", "task_scheduler.log")
+    if os.path.isfile(log_path):
+        console.print("[bold]Recent Log (last 10 lines):[/bold]")
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+            for line in lines[-10:]:
+                console.print(f"  [dim]{line.rstrip()}[/dim]")
+        except OSError:
+            console.print("  [dim](could not read log)[/dim]")
+    else:
+        console.print("[dim]No log file yet (~/.searchaero/logs/task_scheduler.log)[/dim]")
+
+    console.print()
+    console.print("[dim]Note: Your PC must sleep (close lid), not shut down. "
+                  "Full power-off prevents wake-to-scrape.[/dim]")
+    return 0
+
+
 def main(argv=None):
     """CLI entry point.
 
@@ -2064,6 +2858,16 @@ def main(argv=None):
     Returns:
         int: Exit code (0 = success).
     """
+    # Force UTF-8 stdout/stderr so non-ASCII output (Rich box-drawing tables,
+    # the "→" tip glyphs, etc.) never raises UnicodeEncodeError when stdout is
+    # redirected to a file on Windows (the console defaults to cp1252). Best-
+    # effort: harmless if stdout was replaced (e.g. pytest capture).
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
     # Shared parent parser for flags common to all subcommands.
     # Using parents=[] on each subparser lets --json/--meta/--db-path appear
     # after the subcommand name (e.g., "searchaero query YYZ LAX --json").
@@ -2107,12 +2911,20 @@ def main(argv=None):
         help="Proxy URL (e.g., socks5://user:pass@host:port). Also reads PROXY_URL env var.")
     search_parser.add_argument("--delay", type=float, default=3.0, help="Seconds between API calls (default: 3.0)")
     search_parser.add_argument("--skip-scanned", "--no-skip-scanned", action=argparse.BooleanOptionalAction, default=True, help="Skip already-scanned routes (parallel mode)")
+    search_parser.add_argument("--program", choices=["united", "aeroplan"], default="united",
+                               help="Award program to scrape (default: united). 'aeroplan' is single-route only.")
     search_parser.add_argument("--mfa-file", action="store_true", default=False,
                                help="Use file-based MFA handoff (~/.searchaero/mfa_response) instead of stdin prompt")
     search_parser.add_argument("--mfa-method", choices=["sms", "email"], default="email",
                                help="MFA delivery channel (default: sms). Use 'email' for automated workflows.")
     search_parser.add_argument("--ephemeral", action="store_true", default=False,
                                help="Use ephemeral browser profile (default: persistent)")
+    search_parser.add_argument("--months", type=str, default=None,
+                               help="Comma-separated month numbers to scrape (e.g., 6,7,12)")
+    search_parser.add_argument("--from", dest="search_from", default=None,
+                               help="Only scrape windows overlapping this date or later (YYYY-MM-DD)")
+    search_parser.add_argument("--to", dest="search_to", default=None,
+                               help="Only scrape windows overlapping this date or earlier (YYYY-MM-DD)")
 
     query_parser = subparsers.add_parser("query", help="Query stored availability data",
                                           parents=[shared_parser])
@@ -2125,6 +2937,8 @@ def main(argv=None):
     query_parser.add_argument("--cabin", "-c", default=None,
                               choices=["economy", "business", "first"],
                               help="Filter by cabin class")
+    query_parser.add_argument("--program", choices=["united", "aeroplan"], default=None,
+                              help="Filter by award program (default: all programs)")
     query_parser.add_argument("--csv", action="store_true", default=False,
                               help="Output results as CSV")
     query_parser.add_argument("--sort", "-s", default="date",
@@ -2189,7 +3003,7 @@ def main(argv=None):
     alert_sub.add_parser("check", help="Check alerts against current data",
                          parents=[shared_parser])
 
-    watch_parser = subparsers.add_parser("watch", help="Manage watched routes with ntfy notifications")
+    watch_parser = subparsers.add_parser("watch", help="Manage watched routes with notifications")
     watch_sub = watch_parser.add_subparsers(dest="watch_command")
 
     watch_add = watch_sub.add_parser("add", help="Add a route to your watchlist",
@@ -2222,21 +3036,57 @@ def main(argv=None):
     watch_check.add_argument("--no-scrape", action="store_true", default=False,
                              help="Skip scraping stale routes")
     watch_check.add_argument("--no-notify", action="store_true", default=False,
-                             help="Skip sending ntfy notifications")
+                             help="Skip sending notifications")
 
     watch_sub.add_parser("run", help="Start watch daemon (foreground, Ctrl+C to stop)",
                          parents=[shared_parser])
 
-    watch_setup = watch_sub.add_parser("setup", help="Configure ntfy notification settings",
+    watch_setup = watch_sub.add_parser("setup", help="Configure notification settings",
                                        parents=[shared_parser])
-    watch_setup.add_argument("--ntfy-topic", required=False,
-                             help="ntfy.sh topic name for notifications")
-    watch_setup.add_argument("--ntfy-server", default="https://ntfy.sh",
-                             help="ntfy server URL (default: https://ntfy.sh)")
-    watch_setup.add_argument("--gmail-sender",
-                             help="Gmail address to send notifications from")
-    watch_setup.add_argument("--gmail-recipient",
-                             help="Email address to receive notifications")
+    watch_setup.add_argument("--discord-webhook-url", required=False,
+                             help="Discord webhook URL for notifications")
+
+    schedule_parser = subparsers.add_parser("schedule", help="Manage scheduled scraping tasks (Windows Task Scheduler)")
+    schedule_sub = schedule_parser.add_subparsers(dest="schedule_command")
+
+    schedule_add = schedule_sub.add_parser("add", help="Add a route group to the schedule",
+                                           parents=[shared_parser])
+    schedule_add.add_argument("--routes", "-r", required=True,
+                              help="Path to routes file")
+    schedule_add.add_argument("--interval", "-i", type=int, default=None,
+                              help="Minutes between scrape runs (minimum computed from route count)")
+    schedule_add.add_argument("--months", default=None,
+                              help="Comma-separated month numbers (e.g., 6,7,12)")
+    schedule_add.add_argument("--name", default=None,
+                              help="Master schedule name (default: master)")
+    schedule_add.add_argument("--no-eval", action="store_true", default=False,
+                              help="Disable Claude watch evaluation after scrape")
+    schedule_add.add_argument("--env-file", default=None,
+                              help="Path to .env file for mfa_responder")
+    schedule_add.add_argument("--from", dest="date_from", default=None,
+                              help="Only scrape from this date (YYYY-MM-DD)")
+    schedule_add.add_argument("--to", dest="date_to", default=None,
+                              help="Only scrape up to this date (YYYY-MM-DD)")
+    schedule_add.add_argument("--no-wake", action="store_true", default=False,
+                              help="Skip wake timer configuration")
+
+    schedule_sub.add_parser("list", help="List all scheduled scrapes",
+                            parents=[shared_parser])
+
+    schedule_remove = schedule_sub.add_parser("remove", help="Remove a scheduled scrape",
+                                              parents=[shared_parser])
+    schedule_remove.add_argument("name", help="Schedule name to remove")
+
+    schedule_enable = schedule_sub.add_parser("enable", help="Re-enable a paused schedule",
+                                              parents=[shared_parser])
+    schedule_enable.add_argument("name", help="Schedule name to enable")
+
+    schedule_disable = schedule_sub.add_parser("disable", help="Manually pause a schedule",
+                                               parents=[shared_parser])
+    schedule_disable.add_argument("name", help="Schedule name to disable")
+
+    schedule_sub.add_parser("status", help="Show schedule health and power config",
+                            parents=[shared_parser])
 
     schema_parser = subparsers.add_parser("schema", help="Show command schemas for agent introspection",
                                           parents=[shared_parser])
@@ -2263,6 +3113,9 @@ def main(argv=None):
         console.print("[bold]Monitor prices:[/bold]")
         console.print("  searchaero watch add YYZ LAX --max-miles 20000")
         console.print("  searchaero alert add YYZ LAX --max-miles 70000 --cabin business")
+        console.print()
+        console.print("[bold]Automate:[/bold]")
+        console.print("  searchaero schedule add --routes routes/yyz_wuh.txt --interval 60")
         console.print()
         console.print("[bold]Diagnostics:[/bold]")
         console.print("  searchaero doctor                 Run comprehensive health checks")
@@ -2292,6 +3145,9 @@ def main(argv=None):
 
     if args.command == "watch":
         return cmd_watch(args)
+
+    if args.command == "schedule":
+        return cmd_schedule(args)
 
     if args.command == "schema":
         return cmd_schema(args)

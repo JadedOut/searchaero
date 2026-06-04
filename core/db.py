@@ -52,9 +52,139 @@ def _schema_exists(conn):
 
 
 def ensure_schema(conn):
-    """Create schema only if tables don't exist yet."""
+    """Create schema only if tables don't exist yet.
+
+    For brand-new DBs, create_schema already includes the program column.
+    For existing pre-column DBs, ensure_program_column migrates them in place.
+    """
     if not _schema_exists(conn):
         create_schema(conn)
+    ensure_program_column(conn)
+
+
+def _has_column(conn, table, column):
+    """Return True if `table` has a column named `column`."""
+    cur = conn.execute(f"PRAGMA table_info({table})")
+    return any(row[1] == column for row in cur.fetchall())
+
+
+def ensure_program_column(conn):
+    """Idempotent migration: add `program` discriminator to existing pre-column DBs.
+
+    For brand-new DBs (created via create_schema) the column already exists and
+    this is a no-op. For legacy DBs it rebuilds `availability` with the new
+    unique key, adds `program` to `availability_history`, recreates indexes and
+    triggers, and backfills existing rows to 'united'.
+
+    Safe to call repeatedly.
+    """
+    # Idempotent: if availability already has program, nothing to do.
+    if _has_column(conn, "availability", "program"):
+        return
+
+    try:
+        conn.execute("BEGIN")
+
+        # 1. New availability table with program column + new unique key.
+        conn.execute("""
+            CREATE TABLE availability_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                origin TEXT NOT NULL,
+                destination TEXT NOT NULL,
+                date TEXT NOT NULL,
+                cabin TEXT NOT NULL,
+                award_type TEXT NOT NULL,
+                miles INTEGER NOT NULL,
+                taxes_cents INTEGER,
+                scraped_at TEXT NOT NULL DEFAULT (datetime('now')),
+                seats INTEGER,
+                direct INTEGER,
+                flights TEXT,
+                program TEXT NOT NULL DEFAULT 'united',
+                UNIQUE(program, origin, destination, date, cabin, award_type)
+            )
+        """)
+
+        # 2. Copy existing rows, defaulting program to 'united'.
+        conn.execute("""
+            INSERT INTO availability_new
+                (id, origin, destination, date, cabin, award_type, miles,
+                 taxes_cents, scraped_at, seats, direct, flights, program)
+            SELECT
+                id, origin, destination, date, cabin, award_type, miles,
+                taxes_cents, scraped_at, seats, direct, flights, 'united' AS program
+            FROM availability
+        """)
+
+        # 3. Swap tables.
+        conn.execute("DROP TABLE availability")
+        conn.execute("ALTER TABLE availability_new RENAME TO availability")
+
+        # 4. Add program to history table if missing.
+        if not _has_column(conn, "availability_history", "program"):
+            conn.execute(
+                "ALTER TABLE availability_history "
+                "ADD COLUMN program TEXT NOT NULL DEFAULT 'united'"
+            )
+
+        # 5. Backfill any NULL history program rows (defensive).
+        conn.execute(
+            "UPDATE availability_history SET program = 'united' WHERE program IS NULL"
+        )
+
+        # 6. Recreate indexes dropped along with the old availability table,
+        #    plus history indexes for completeness (idempotent IF NOT EXISTS).
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_route_date_cabin "
+            "ON availability(origin, destination, date, cabin)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_scraped ON availability(scraped_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_alert_match "
+            "ON availability(program, origin, destination, cabin, miles)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_history_route_date "
+            "ON availability_history(origin, destination, date, cabin, scraped_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_history_route_scraped "
+            "ON availability_history(origin, destination, cabin, scraped_at)"
+        )
+
+        # 7. Drop and recreate triggers with program-carrying bodies.
+        conn.execute("DROP TRIGGER IF EXISTS trg_history_insert")
+        conn.execute("DROP TRIGGER IF EXISTS trg_history_update")
+        conn.execute("""
+            CREATE TRIGGER trg_history_insert
+            AFTER INSERT ON availability
+            BEGIN
+                INSERT INTO availability_history
+                    (origin, destination, date, cabin, award_type, miles, taxes_cents, scraped_at, program)
+                VALUES
+                    (NEW.origin, NEW.destination, NEW.date, NEW.cabin, NEW.award_type,
+                     NEW.miles, NEW.taxes_cents, NEW.scraped_at, NEW.program);
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER trg_history_update
+            AFTER UPDATE ON availability
+            WHEN OLD.miles != NEW.miles OR OLD.taxes_cents IS NOT NEW.taxes_cents
+            BEGIN
+                INSERT INTO availability_history
+                    (origin, destination, date, cabin, award_type, miles, taxes_cents, scraped_at, program)
+                VALUES
+                    (NEW.origin, NEW.destination, NEW.date, NEW.cabin, NEW.award_type,
+                     NEW.miles, NEW.taxes_cents, NEW.scraped_at, NEW.program);
+            END
+        """)
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +211,8 @@ def create_schema(conn: sqlite3.Connection):
             seats INTEGER,
             direct INTEGER,
             flights TEXT,
-            UNIQUE(origin, destination, date, cabin, award_type)
+            program TEXT NOT NULL DEFAULT 'united',
+            UNIQUE(program, origin, destination, date, cabin, award_type)
         )
     """)
 
@@ -97,7 +228,7 @@ def create_schema(conn: sqlite3.Connection):
 
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_alert_match
-        ON availability(origin, destination, cabin, miles)
+        ON availability(program, origin, destination, cabin, miles)
     """)
 
     conn.execute("""
@@ -127,7 +258,8 @@ def create_schema(conn: sqlite3.Connection):
             award_type TEXT NOT NULL,
             miles INTEGER NOT NULL,
             taxes_cents INTEGER,
-            scraped_at TEXT NOT NULL
+            scraped_at TEXT NOT NULL,
+            program TEXT NOT NULL DEFAULT 'united'
         )
     """)
 
@@ -146,10 +278,10 @@ def create_schema(conn: sqlite3.Connection):
         AFTER INSERT ON availability
         BEGIN
             INSERT INTO availability_history
-                (origin, destination, date, cabin, award_type, miles, taxes_cents, scraped_at)
+                (origin, destination, date, cabin, award_type, miles, taxes_cents, scraped_at, program)
             VALUES
                 (NEW.origin, NEW.destination, NEW.date, NEW.cabin, NEW.award_type,
-                 NEW.miles, NEW.taxes_cents, NEW.scraped_at);
+                 NEW.miles, NEW.taxes_cents, NEW.scraped_at, NEW.program);
         END
     """)
 
@@ -159,10 +291,10 @@ def create_schema(conn: sqlite3.Connection):
         WHEN OLD.miles != NEW.miles OR OLD.taxes_cents IS NOT NEW.taxes_cents
         BEGIN
             INSERT INTO availability_history
-                (origin, destination, date, cabin, award_type, miles, taxes_cents, scraped_at)
+                (origin, destination, date, cabin, award_type, miles, taxes_cents, scraped_at, program)
             VALUES
                 (NEW.origin, NEW.destination, NEW.date, NEW.cabin, NEW.award_type,
-                 NEW.miles, NEW.taxes_cents, NEW.scraped_at);
+                 NEW.miles, NEW.taxes_cents, NEW.scraped_at, NEW.program);
         END
     """)
 
@@ -237,9 +369,9 @@ def upsert_availability(conn: sqlite3.Connection, results: list) -> int:
         return 0
 
     sql = """
-        INSERT INTO availability (origin, destination, date, cabin, award_type, miles, taxes_cents, scraped_at)
-        VALUES (:origin, :destination, :date, :cabin, :award_type, :miles, :taxes_cents, :scraped_at)
-        ON CONFLICT (origin, destination, date, cabin, award_type)
+        INSERT INTO availability (origin, destination, date, cabin, award_type, miles, taxes_cents, scraped_at, program)
+        VALUES (:origin, :destination, :date, :cabin, :award_type, :miles, :taxes_cents, :scraped_at, :program)
+        ON CONFLICT (program, origin, destination, date, cabin, award_type)
         DO UPDATE SET
             miles = EXCLUDED.miles,
             taxes_cents = EXCLUDED.taxes_cents,
@@ -256,6 +388,7 @@ def upsert_availability(conn: sqlite3.Connection, results: list) -> int:
             "miles": r.miles,
             "taxes_cents": r.taxes_cents,
             "scraped_at": r.scraped_at.isoformat(),
+            "program": r.program,
         }
         for r in results
     ]
@@ -318,23 +451,33 @@ def record_scrape_job(conn: sqlite3.Connection, origin: str, destination: str,
 # ---------------------------------------------------------------------------
 
 
-def get_route_summary(conn: sqlite3.Connection, origin: str, destination: str) -> list:
+def get_route_summary(conn: sqlite3.Connection, origin: str, destination: str, program=None) -> list:
     """Get all availability records for a route.
 
+    Args:
+        conn: Database connection.
+        origin: 3-letter IATA origin code.
+        destination: 3-letter IATA destination code.
+        program: Optional program filter (e.g. "united", "aeroplan"). None = all programs.
+
     Returns:
-        List of dicts with keys: date, cabin, award_type, miles, taxes_cents, scraped_at.
+        List of dicts with keys: program, date, cabin, award_type, miles, taxes_cents, scraped_at.
     """
+    params = {"origin": origin, "destination": destination}
     sql = """
-        SELECT date, cabin, award_type, miles, taxes_cents, scraped_at
+        SELECT program, date, cabin, award_type, miles, taxes_cents, scraped_at
         FROM availability
         WHERE origin = :origin AND destination = :destination
-        ORDER BY date, cabin, award_type
     """
-    cur = conn.execute(sql, {"origin": origin, "destination": destination})
+    if program is not None:
+        sql += " AND program = :program"
+        params["program"] = program
+    sql += " ORDER BY date, cabin, award_type"
+    cur = conn.execute(sql, params)
     return [dict(row) for row in cur.fetchall()]
 
 
-def query_availability(conn, origin, dest, date=None, date_from=None, date_to=None, cabin=None):
+def query_availability(conn, origin, dest, date=None, date_from=None, date_to=None, cabin=None, program=None):
     """Query availability records for a route with optional filters.
 
     Args:
@@ -351,7 +494,7 @@ def query_availability(conn, origin, dest, date=None, date_from=None, date_to=No
     """
     params = {"origin": origin, "destination": dest}
     sql = """
-        SELECT date, cabin, award_type, miles, taxes_cents, scraped_at
+        SELECT program, date, cabin, award_type, miles, taxes_cents, scraped_at
         FROM availability
         WHERE origin = :origin AND destination = :destination
     """
@@ -369,12 +512,15 @@ def query_availability(conn, origin, dest, date=None, date_from=None, date_to=No
         sql += f" AND cabin IN ({placeholders})"
         for i, c in enumerate(cabin):
             params[f"cabin_{i}"] = c
+    if program is not None:
+        sql += " AND program = :program"
+        params["program"] = program
     sql += " ORDER BY date, cabin, award_type"
     cur = conn.execute(sql, params)
     return [dict(row) for row in cur.fetchall()]
 
 
-def query_history(conn, origin, dest, date=None, cabin=None):
+def query_history(conn, origin, dest, date=None, cabin=None, program=None):
     """Query price history for a route with optional filters.
 
     Args:
@@ -389,7 +535,7 @@ def query_history(conn, origin, dest, date=None, cabin=None):
     """
     params = {"origin": origin, "destination": dest}
     sql = """
-        SELECT date, cabin, award_type, miles, taxes_cents, scraped_at
+        SELECT program, date, cabin, award_type, miles, taxes_cents, scraped_at
         FROM availability_history
         WHERE origin = :origin AND destination = :destination
     """
@@ -401,12 +547,15 @@ def query_history(conn, origin, dest, date=None, cabin=None):
         sql += f" AND cabin IN ({placeholders})"
         for i, c in enumerate(cabin):
             params[f"cabin_{i}"] = c
+    if program is not None:
+        sql += " AND program = :program"
+        params["program"] = program
     sql += " ORDER BY cabin, award_type, scraped_at"
     cur = conn.execute(sql, params)
     return [dict(row) for row in cur.fetchall()]
 
 
-def get_history_stats(conn, origin, dest, cabin=None):
+def get_history_stats(conn, origin, dest, cabin=None, program=None):
     """Get aggregate price history statistics per cabin and award type.
 
     Args:
@@ -432,6 +581,9 @@ def get_history_stats(conn, origin, dest, cabin=None):
         sql += f" AND cabin IN ({placeholders})"
         for i, c in enumerate(cabin):
             params[f"cabin_{i}"] = c
+    if program is not None:
+        sql += " AND program = :program"
+        params["program"] = program
     sql += " GROUP BY cabin, award_type ORDER BY cabin, award_type"
     cur = conn.execute(sql, params)
     return [dict(row) for row in cur.fetchall()]
@@ -482,7 +634,7 @@ def get_job_stats(conn: sqlite3.Connection) -> dict:
     return stats
 
 
-def get_price_trend(conn, origin, dest, cabin=None):
+def get_price_trend(conn, origin, dest, cabin=None, program=None):
     """Get price trend data for sparklines.
 
     Returns:
@@ -499,6 +651,9 @@ def get_price_trend(conn, origin, dest, cabin=None):
         sql += f" AND cabin IN ({placeholders})"
         for i, c in enumerate(cabin):
             params[f"cabin_{i}"] = c
+    if program is not None:
+        sql += " AND program = :program"
+        params["program"] = program
     sql += " ORDER BY scraped_at"
     cur = conn.execute(sql, params)
 
@@ -617,11 +772,11 @@ def remove_alert(conn, alert_id):
     return cur.rowcount > 0
 
 
-def check_alert_matches(conn, origin, dest, max_miles, cabin=None, date_from=None, date_to=None):
+def check_alert_matches(conn, origin, dest, max_miles, cabin=None, date_from=None, date_to=None, program=None):
     """Find availability rows matching alert criteria."""
     params = {"origin": origin, "destination": dest, "max_miles": max_miles}
     sql = """
-        SELECT date, cabin, award_type, miles, taxes_cents, scraped_at
+        SELECT program, date, cabin, award_type, miles, taxes_cents, scraped_at
         FROM availability
         WHERE origin = :origin AND destination = :destination
           AND miles <= :max_miles
@@ -637,6 +792,9 @@ def check_alert_matches(conn, origin, dest, max_miles, cabin=None, date_from=Non
     if date_to:
         sql += " AND date <= :date_to"
         params["date_to"] = date_to
+    if program is not None:
+        sql += " AND program = :program"
+        params["program"] = program
     sql += " ORDER BY date, cabin, award_type"
     cur = conn.execute(sql, params)
     return [dict(row) for row in cur.fetchall()]
@@ -761,7 +919,7 @@ def get_watched_routes(conn):
     return [(row[0], row[1]) for row in cur.fetchall()]
 
 
-def find_deals_query(conn, cabin=None, max_results=10):
+def find_deals_query(conn, cabin=None, max_results=10, program=None):
     """Find unusually cheap availability across all cached routes.
 
     Compares each route's cheapest current price against its historical average.
@@ -784,17 +942,27 @@ def find_deals_query(conn, cabin=None, max_results=10):
         for i, c in enumerate(cabin):
             params[f"cabin_{i}"] = c
 
+    # Optional program filter. When None, behavior is identical to before
+    # (no WHERE clause added in either CTE).
+    program_clause_ra = ""
+    program_clause_a = ""
+    if program is not None:
+        program_clause_ra = "AND program = :program"
+        program_clause_a = "AND a.program = :program"
+        params["program"] = program
+
     sql = f"""
         WITH route_avg AS (
             SELECT origin, destination, cabin, award_type,
                    AVG(miles) as avg_miles
             FROM availability
             WHERE date >= date('now')
+                  {program_clause_ra}
             GROUP BY origin, destination, cabin, award_type
         ),
         cheapest AS (
             SELECT a.origin, a.destination, a.date, a.cabin, a.award_type,
-                   a.miles, a.taxes_cents, a.scraped_at,
+                   a.miles, a.taxes_cents, a.scraped_at, a.program,
                    ra.avg_miles,
                    ROUND(100.0 * (ra.avg_miles - a.miles) / ra.avg_miles, 1) as savings_pct,
                    ROW_NUMBER() OVER (
@@ -809,8 +977,9 @@ def find_deals_query(conn, cabin=None, max_results=10):
             WHERE a.date >= date('now')
                   AND a.miles < ra.avg_miles
                   {cabin_clause}
+                  {program_clause_a}
         )
-        SELECT origin, destination, date, cabin, award_type, miles,
+        SELECT program, origin, destination, date, cabin, award_type, miles,
                taxes_cents, CAST(avg_miles AS INTEGER) as avg_miles, savings_pct
         FROM cheapest
         WHERE rn = 1 AND savings_pct > 5

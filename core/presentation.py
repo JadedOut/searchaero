@@ -175,7 +175,7 @@ def format_programs_table(
     groups: dict[tuple[str, str], list[dict]] = {}
     for row in rows:
         d = row.get("date", "")
-        program = "United"  # Default since United is the only scraper
+        program = row.get("program", "united").title()
         key = (d, program)
         groups.setdefault(key, []).append(row)
 

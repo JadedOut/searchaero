@@ -33,6 +33,7 @@ class AwardResult:
     award_type: str
     miles: int
     taxes_cents: int
+    program: str = "united"
     scraped_at: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(timezone.utc))
 
 
@@ -118,6 +119,92 @@ def validate_solution(raw: dict, origin: str, destination: str) -> tuple:
             award_type=award_type,
             miles=miles,
             taxes_cents=taxes_cents,
+            program="united",
+        ),
+        None,
+    )
+
+
+def validate_aeroplan_fare(
+    date_iso: str,
+    miles,
+    taxes_cents,
+    origin: str,
+    destination: str,
+    cabin: str = "economy",
+    award_type: str = "Standard",
+) -> tuple:
+    """Validate a parsed Aeroplan calendar fare and convert to AwardResult.
+
+    Args:
+        date_iso: ISO date string (YYYY-MM-DD), already normalized by the parser.
+        miles: Award miles (coerced to int).
+        taxes_cents: Taxes in cents (already in cents; not multiplied by 100).
+        origin: 3-letter IATA origin code
+        destination: 3-letter IATA destination code
+        cabin: Cabin type (default "economy")
+        award_type: Award type (default "Standard")
+
+    Returns:
+        (AwardResult, None) on success, (None, "reason string") on rejection.
+    """
+    # Validate IATA codes
+    if not validate_iata_code(origin):
+        return (None, f"Invalid origin IATA code: {origin}")
+    if not validate_iata_code(destination):
+        return (None, f"Invalid destination IATA code: {destination}")
+
+    # Parse date from ISO (YYYY-MM-DD)
+    try:
+        date = datetime.datetime.strptime(date_iso, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return (None, f"Invalid date format: {date_iso}")
+
+    # Validate date range
+    today = datetime.date.today()
+    if date < today:
+        return (None, f"Date in the past: {date}")
+    if (date - today).days > 337:
+        return (None, f"Date beyond booking window (>337 days): {date}")
+
+    # Validate cabin
+    if cabin not in VALID_CABINS:
+        return (None, f"Unknown cabin type: {cabin}")
+
+    # Validate award type
+    if award_type not in VALID_AWARD_TYPES:
+        return (None, f"Unknown award type: {award_type}")
+
+    # Convert and validate miles
+    try:
+        miles = int(float(miles))
+    except (ValueError, TypeError):
+        return (None, f"Invalid miles value: {miles}")
+
+    if miles <= 0:
+        return (None, f"Miles must be positive, got: {miles}")
+    if miles > 500_000:
+        return (None, f"Miles exceeds maximum (500,000): {miles}")
+
+    # Convert and validate taxes (already in cents)
+    try:
+        taxes_cents = int(taxes_cents)
+    except (ValueError, TypeError):
+        return (None, f"Invalid taxes value: {taxes_cents}")
+
+    if taxes_cents < 0:
+        return (None, f"Negative taxes: {taxes_cents}")
+
+    return (
+        AwardResult(
+            origin=origin,
+            destination=destination,
+            date=date,
+            cabin=cabin,
+            award_type=award_type,
+            miles=miles,
+            taxes_cents=taxes_cents,
+            program="aeroplan",
         ),
         None,
     )

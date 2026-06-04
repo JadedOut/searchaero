@@ -88,6 +88,13 @@ COMMAND_SCHEMAS = {
                 "default": True,
                 "description": "Skip already-scanned routes (parallel mode)",
             },
+            "program": {
+                "type": "string",
+                "required": False,
+                "choices": ["united", "aeroplan"],
+                "default": "united",
+                "description": "Award program to scrape. 'aeroplan' is single-route only (no --file/--workers).",
+            },
             "json": {
                 "type": "boolean",
                 "required": False,
@@ -134,6 +141,13 @@ COMMAND_SCHEMAS = {
                 "required": False,
                 "choices": ["economy", "business", "first"],
                 "description": "Filter by cabin class",
+            },
+            "program": {
+                "type": "string",
+                "required": False,
+                "choices": ["united", "aeroplan"],
+                "default": None,
+                "description": "Filter by award program. Omit to include all programs.",
             },
             "sort": {
                 "type": "string",
