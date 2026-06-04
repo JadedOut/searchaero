@@ -1,6 +1,6 @@
 # Searchaero
 
-Claude Code skill that tracks United MileagePlus award pricing for free. Tell your agent where you want to go, and it handles the entire workflow: it scrapes United Airlines' MileagePlus, interprets results, graphs trends, watches for price drops, and notifies you via email or ntfy. Totally local, no API keys, and no subscriptions.
+Claude Code skill that tracks United MileagePlus award pricing for free. Tell your agent where you want to go, and it handles the entire workflow: it scrapes United Airlines' MileagePlus, interprets results, graphs trends, watches for price drops, and notifies you via Discord webhook. Totally local, no API keys, and no subscriptions.
 
 ## Scope
 
@@ -99,7 +99,7 @@ Claude: YYZ -> LHR  |  Business  |  Price Trend
 
 You:    Set up a watch — notify me if business drops under 50K.
 Claude: [runs searchaero watch add YYZ LHR --max-miles 50000 --cabin business]
-        Done. I'll check every 12 hours and notify you via ntfy.
+        Done. I'll check every 12 hours and notify you via Discord.
 ```
 
 **Example prompts:**
@@ -156,4 +156,4 @@ Run `searchaero doctor` for a comprehensive diagnostic check.
 - [Getting Started](docs/getting-started.md) — full walkthrough from install to first query
 - [CLI Reference](docs/commands.md) — every command and flag
 - [FAQ](docs/faq.md) — common questions and troubleshooting
-- [Push Notifications](docs/getting-started.md#step-6-set-up-price-alerts-optional) — set up ntfy for phone alerts
+- [Push Notifications](docs/getting-started.md#step-6-set-up-price-alerts-optional) — set up Discord webhook for notifications

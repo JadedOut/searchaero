@@ -100,22 +100,18 @@ You'll lose cached data but can re-scrape it.
 
 ### How do push notifications work?
 
-Searchaero uses [ntfy.sh](https://ntfy.sh) — a free, open-source push notification service. No account required:
+Searchaero sends notifications via Discord webhook. Set up a webhook in any Discord channel and configure it:
 
-1. Pick a random topic name (e.g., `searchaero-a7f3b9c2e1d4f856`)
-2. Configure: `searchaero watch setup --ntfy-topic your-topic-name`
-3. Subscribe on your phone (ntfy app → + → enter topic name)
+1. In Discord: Server Settings → Integrations → Webhooks → New Webhook
+2. Copy the webhook URL
+3. Configure: `searchaero watch setup --discord-webhook-url https://discord.com/api/webhooks/...`
 4. Add watches and run the daemon: `searchaero watch run`
 
-### Are ntfy topics private?
+You can also set the webhook URL via the `SEARCHAERO_DISCORD_WEBHOOK_URL` environment variable.
 
-**No.** Topics on ntfy.sh are public by default — anyone who knows your topic name can read notifications. Use a long, random string (not `searchaero-john`). For private topics, self-host ntfy or use access controls.
+### Are Discord webhook notifications private?
 
-### Can I get email notifications instead of ntfy?
-
-Yes — and this is the recommended approach if Claude Code has access to Gmail tools. The `searchaero watch check` command returns pre-formatted notification messages with ready-to-use `title` and `body` strings. The agent can pass these directly to Gmail tools (`gmail_create_draft` or `send_email`) to deliver deal alerts to your inbox.
-
-In practice this means you don't need ntfy at all — the agent handles the full loop: check watches → find matches → compose email → send via Gmail. ntfy is still available as a fallback for agents without email access.
+Yes -- notifications go only to the channel where the webhook is configured. Use a private channel or DM channel for sensitive alerts.
 
 ## Agent Integration
 

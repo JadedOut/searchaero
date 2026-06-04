@@ -17,7 +17,7 @@ from core import united_api
 # ---------------------------------------------------------------------------
 
 
-def scrape_route(origin: str, destination: str, conn, scraper, delay: float = 7.0, verbose: bool = True, start_window: int = 1, max_windows: int = 12, progress_cb=None) -> dict:
+def scrape_route(origin: str, destination: str, conn, scraper, delay: float = 7.0, verbose: bool = True, start_window: int = 1, max_windows: int = 12, progress_cb=None, months=None, from_date=None, to_date=None) -> dict:
     """Scrape calendar windows for a single route and store results.
 
     Generates departure dates spaced 30 days apart (today, today+30, ...,
@@ -33,6 +33,11 @@ def scrape_route(origin: str, destination: str, conn, scraper, delay: float = 7.
             backwards compatibility.
         start_window: 1-indexed window to start from (default: 1).
         max_windows: Maximum number of windows to scrape (default: 12).
+        months: Optional list of month numbers (1-12) to scrape.
+        from_date: Optional start date string (YYYY-MM-DD) — only scrape windows
+            that overlap with this date or later.
+        to_date: Optional end date string (YYYY-MM-DD) — only scrape windows
+            that overlap with this date or earlier.
 
     Returns:
         Dict with totals: found, stored, rejected, errors, total_windows.
@@ -40,6 +45,21 @@ def scrape_route(origin: str, destination: str, conn, scraper, delay: float = 7.
     today = date.today()
     depart_dates = [(today + timedelta(days=30 * i)).strftime("%Y-%m-%d") for i in range(12)]
     depart_dates = depart_dates[start_window - 1 : start_window - 1 + max_windows]
+
+    # Filter by month numbers (e.g., [6, 7, 12] for June, July, December)
+    if months:
+        depart_dates = [d for d in depart_dates if date.fromisoformat(d).month in months]
+
+    # Filter by date range — keep windows that overlap with [from_date, to_date].
+    # Each window covers ~30 days starting from the depart_date.
+    if from_date:
+        to_cutoff = date.fromisoformat(from_date)
+        depart_dates = [d for d in depart_dates
+                        if date.fromisoformat(d) + timedelta(days=30) >= to_cutoff]
+    if to_date:
+        from_cutoff = date.fromisoformat(to_date)
+        depart_dates = [d for d in depart_dates
+                        if date.fromisoformat(d) <= from_cutoff]
 
     total_found = 0
     total_stored = 0
@@ -167,11 +187,11 @@ def detect_browser_crash(totals: dict) -> bool:
     return any(kw in all_text for kw in _BROWSER_CRASH_KEYWORDS)
 
 
-def _scrape_with_crash_detection(origin, destination, conn, scraper, delay=7.0, verbose=True, start_window=1, max_windows=12):
+def _scrape_with_crash_detection(origin, destination, conn, scraper, delay=7.0, verbose=True, start_window=1, max_windows=12, months=None, from_date=None, to_date=None):
     """Run scrape_route() and detect browser crashes from structured error data.
 
     Returns:
         (totals_dict, browser_crashed_bool)
     """
-    totals = scrape_route(origin, destination, conn, scraper, delay=delay, verbose=verbose, start_window=start_window, max_windows=max_windows)
+    totals = scrape_route(origin, destination, conn, scraper, delay=delay, verbose=verbose, start_window=start_window, max_windows=max_windows, months=months, from_date=from_date, to_date=to_date)
     return totals, detect_browser_crash(totals)

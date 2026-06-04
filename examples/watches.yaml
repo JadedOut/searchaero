@@ -1,0 +1,17 @@
+# ~/.searchaero/watches.yaml
+# Define watch conditions for automated email alerts.
+# Each watch has a name, optional route filter, and a natural-language condition.
+# The condition is evaluated by Claude API against fresh scrape results.
+
+watches:
+  - name: "YYZ-NRT Business Saver"
+    routes: ["YYZ NRT"]
+    condition: "Business class under 80,000 miles"
+
+  - name: "Canada to Asia cheap J"
+    routes: ["YYZ NRT", "YVR HND", "YYZ ICN"]
+    condition: "Any business or first class fare under 90,000 miles"
+
+  - name: "Any deal under 50K"
+    routes: []  # empty = check all scraped routes
+    condition: "Any cabin under 50,000 miles"

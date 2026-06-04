@@ -29,6 +29,10 @@ scripts/experiments/.browser-profile/
 scripts/experiments/.mfa_request
 scripts/experiments/.mfa_code
 
+# Aeroplan Phase 0 transport spike
+scripts/experiments/.aeroplan-profile/
+logs/aeroplan_spike_*
+
 # Specs (Claude-only planning docs)
 specs/
 
@@ -47,3 +51,10 @@ tests/
 
 # Database
 pgdata/
+
+# Build artifacts
+dist/
+
+# Vendored/standalone tools (not part of seataero)
+codegraph/
+tools/

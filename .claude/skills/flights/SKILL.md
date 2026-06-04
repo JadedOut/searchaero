@@ -71,7 +71,9 @@ Do not proceed with any scrape commands until credentials are confirmed written.
 ## Workflow
 
 ### Step 1: Check cache
-Run:
+If the user explicitly asks for a fresh scrape ("scrape", "fresh", "new search", "update", "re-check"), skip this step entirely and go straight to Step 2.
+
+Otherwise, run:
 ```bash
 $SEARCHAERO query ORIG DEST --json 2>&1
 ```
@@ -151,7 +153,7 @@ Choose the output format based on what the user is asking for:
 
 After displaying results, the user may ask for follow-up actions:
 
-- **"email me the results" / "send to my email"**: Look for an available MCP tool that can **send** an email (not just draft). Check all email-related MCP servers for a tool whose description mentions sending via SMTP — this is typically a tool named something like `send_email` or `send_mail`. Prefer any local SMTP-capable email MCP over the Anthropic-hosted `claude.ai Gmail` integration, which can only create drafts. Format a clean HTML email with a summary table of cheapest options (route, date, miles, taxes). For price trend charts in email, capture to a temp file first (`$SEARCHAERO query ORIG DEST --graph > /tmp/graph_ORIG_DEST.txt 2>&1`), then read the file content and paste into a `<pre style="font-family: 'Courier New', monospace; font-size: 11px;">` block. Never copy graph output directly from collapsed tool call results — always use the temp file approach. If no send-capable tool is available, fall back to the `claude.ai Gmail` MCP to create a draft, and tell the user: "No email MCP with send capability is connected — I've created a draft in Gmail instead. You can review and send it from there."
+- **"email me the results" / "send to my email"**: Watch alerts are delivered via Discord automatically. For ad-hoc email delivery when the user explicitly requests it, use `mcp__email__send_email` if available; otherwise fall back to `mcp__claude_ai_Gmail__create_draft`. Format a clean HTML email with a summary table of cheapest options (route, date, miles, taxes). For price trend charts in email, capture to a temp file first (`$SEARCHAERO query ORIG DEST --graph > /tmp/graph_ORIG_DEST.txt 2>&1`), then read the file content and paste into a `<pre style="font-family: 'Courier New', monospace; font-size: 11px;">` block. Never copy graph output directly from collapsed tool call results — always use the temp file approach.
 - **"save to file" / "export"**: Run `$SEARCHAERO query ORIG DEST --csv > filename.csv` or `$SEARCHAERO query ORIG DEST --json > filename.json`.
 - **"set an alert"**: Use the alert commands in the Alerts section below.
 - **"watch this route"**: Use the watch commands in the Watches section below.
@@ -168,13 +170,13 @@ $SEARCHAERO alert list
 $SEARCHAERO alert remove ID
 ```
 
-### Watches (push notifications via ntfy)
+### Watches (push notifications via Discord)
 ```
 $SEARCHAERO watch add YYZ LAX --max-miles 50000 --every 12h
 $SEARCHAERO watch check
 $SEARCHAERO watch list
 $SEARCHAERO watch remove ID
-$SEARCHAERO watch setup --ntfy-topic MY_TOPIC
+$SEARCHAERO watch setup --discord-webhook-url URL
 $SEARCHAERO watch run  # foreground daemon
 ```
 
@@ -185,7 +187,6 @@ $SEARCHAERO watch run  # foreground daemon
 - Default to `--mfa-method sms` for interactive sessions. Only use `--mfa-method email` for unattended/cron workflows (see Unattended Mode section).
 - Display CLI output verbatim — do not reformat Rich tables or ASCII charts
 - After any scrape completes, you MUST run `$SEARCHAERO query ORIG DEST` and display results to the user BEFORE taking any post-scrape action (email, alert, watch, export)
-- For email delivery, ALWAYS prefer `mcp__email__send_email` (SMTP send) over `mcp__claude_ai_Gmail__create_draft` (draft only). Only use the Gmail draft MCP if `mcp__email__send_email` is not available.
 
 ## Unattended / Cron Mode
 
@@ -199,6 +200,187 @@ When `--mfa-method email` is used:
 - Extract the 6-digit code and write to `~/.searchaero/mfa_response`
 
 This mode requires Gmail MCP to be connected. Only use it when explicitly setting up automation — never as the default for interactive sessions.
+
+## Autonomous Mode
+
+The scheduled scrape pipeline runs unattended twice daily via Windows Task Scheduler. This section covers managing that pipeline through natural language.
+
+### Watch Rules (watches.yaml)
+
+Watch rules live at `~/.searchaero/watches.yaml`. This is the file Claude reads during the eval step to decide whether to send alert emails.
+
+**User says "watch X for Y"** — edit or create the watches file:
+```bash
+# Check if file exists
+cat ~/.searchaero/watches.yaml 2>/dev/null || echo "NO_FILE"
+```
+
+If missing, copy the template first:
+```bash
+cp examples/watches.yaml ~/.searchaero/watches.yaml
+```
+
+Then read the file, add/edit/remove the watch entry, and write it back. Format:
+```yaml
+watches:
+  - name: "Human-readable name"
+    routes: ["ORIG DEST"]       # or [] for all routes
+    condition: "Natural language condition"
+```
+
+Examples of user intent -> watch rule:
+| User says | name | routes | condition |
+|---|---|---|---|
+| "watch YYZ-NRT for J under 80K" | "YYZ-NRT Business Saver" | ["YYZ NRT"] | "Business class under 80,000 miles" |
+| "alert me if anything drops below 50K" | "Any deal under 50K" | [] | "Any cabin under 50,000 miles" |
+| "track cheap business to Asia" | "Canada to Asia cheap J" | ["YYZ NRT", "YVR HND", "YYZ ICN"] | "Business or first class under 90,000 miles" |
+
+**User says "show my watches" / "what am I watching?"**:
+```bash
+cat ~/.searchaero/watches.yaml
+```
+Display the watches in a readable format.
+
+**User says "stop watching X" / "remove the YYZ-NRT watch"**:
+Read the file, remove the matching entry, write it back.
+
+### Scheduling Scrapes (Agentic)
+
+When the user asks to schedule scrapes on any cadence ("every hour", "twice daily", "every 19 minutes", "weekdays 9am-5pm every 30m"), YOU generate the `schtasks /create` command and PowerShell settings directly. There is no intermediate parser — you are the parser.
+
+**Step 1: Generate the schtasks command** from the user's intent. Examples:
+
+| User says | schtasks flags |
+|---|---|
+| "every hour" | `/sc HOURLY /st 00:00` |
+| "every 30 minutes" | `/sc MINUTE /mo 30` |
+| "every 19 minutes" | `/sc MINUTE /mo 19` |
+| "twice daily at 9am and 5pm" | Create TWO tasks: `-1` at `/sc DAILY /st 09:00` and `-2` at `/sc DAILY /st 17:00` |
+| "every 30m during business hours on weekdays" | `/sc MINUTE /mo 30 /st 08:00 /et 18:00 /d MON,TUE,WED,THU,FRI` |
+| "daily at 7am" | `/sc DAILY /st 07:00` |
+
+The full command pattern:
+```
+schtasks /create /tn "searchaero-scrape" /tr "C:\Users\jiami\local_workspace\seataero-src\scripts\scheduled_scrape.bat" /sc <TYPE> [flags] /f
+```
+
+For multi-trigger schedules (e.g. "9am and 5pm"), use separate task names: `searchaero-scrape-1`, `searchaero-scrape-2`.
+
+**Step 2: Apply concurrency + wake settings** via PowerShell:
+```powershell
+$taskNames = @("searchaero-scrape")  # or searchaero-scrape-1, -2 for multi
+foreach ($name in $taskNames) {
+    $t = Get-ScheduledTask $name
+    $t.Settings.MultipleInstances = "IgnoreNew"       # skip if already running
+    $t.Settings.StartWhenAvailable = $true             # catch up after PC-off
+    $t.Settings.WakeToRun = $true                      # wake from sleep (AC only)
+    $t.Settings.StopIfGoingOnBatteries = $false         # don't kill mid-scrape
+    Set-ScheduledTask $t
+}
+```
+
+**Step 3: Confirm with user** before running. Show the commands and explain what they do in plain English. Only execute after confirmation.
+
+**To unregister**: `schtasks /delete /tn "searchaero-scrape" /f` (and `-1`, `-2` variants if they exist).
+
+**To check status**: `schtasks /query /tn "searchaero-scrape" /v /fo LIST`
+
+**Concurrency safety**: `scheduled_scrape.py` uses a lockfile at `~/.searchaero/scrape.lock`. If a scrape is already running when Task Scheduler fires again, the new instance exits silently. Combined with `MultipleInstances = "IgnoreNew"`, overlapping runs are impossible.
+
+**PC-off catch-up**: `StartWhenAvailable = $true` means if the PC was off and misses 6 hourly triggers, it runs the scrape ONCE when the PC wakes — not 6 queued runs.
+
+### Scheduled Pipeline Management (Legacy)
+
+**User says "set up the automated scraper" / "register the scheduler"**:
+```bash
+$PYTHON scripts/scheduled_scrape.py --register-scheduler
+```
+Display the output verbatim — it includes the schtasks command and the AC power / wake-from-sleep instructions. Note: this prints a hardcoded daily schedule. For flexible scheduling, use the agentic approach above.
+
+**User says "run the full scrape now" / "test the pipeline"**:
+```bash
+# Dry run first to verify setup
+$PYTHON scripts/scheduled_scrape.py --dry-run
+```
+If dry run looks good, ask the user if they want to run for real:
+```bash
+# Full pipeline: scrape + claude eval (~18 min)
+scripts/scheduled_scrape.bat >> /dev/null 2>&1 &
+echo "Pipeline started in background. Check logs with: cat ~/.searchaero/logs/task_scheduler.log"
+```
+Or for just the scrape step without eval:
+```bash
+$PYTHON scripts/scheduled_scrape.py --no-eval
+```
+
+**User says "test just the eval step"**:
+```bash
+# Run claude eval against whatever's already in the DB
+claude -p --verbose 0 < scripts/eval_prompt.txt
+```
+
+### Log Inspection
+
+**User says "did the scrape work?" / "check the logs" / "last run status"**:
+
+Read the latest JSONL entry:
+```bash
+tail -1 ~/.searchaero/logs/scheduled_scrape.jsonl 2>/dev/null || echo "NO_LOGS"
+```
+
+Parse and report:
+- **status**: success or error
+- **eval_method**: `claude_cli` (v2 worked), `eval_watches` (fell back to v1), `skipped` (no eval ran), `failed` (eval crashed, fallback email sent)
+- **duration_seconds**: how long the scrape took
+- **notification_sent**: whether an alert went out
+- **timestamp**: when it last ran
+
+For the Task Scheduler wrapper log (more verbose):
+```bash
+tail -20 ~/.searchaero/logs/task_scheduler.log 2>/dev/null || echo "NO_LOG"
+```
+
+**User says "show scrape history" / "how have the runs been?"**:
+```bash
+# Show last 5 runs
+tail -5 ~/.searchaero/logs/scheduled_scrape.jsonl
+```
+Parse each line and display as a summary table: timestamp, status, eval_method, duration.
+
+### Config Check
+
+**User says "is the automation set up?" / "check my setup"**:
+
+Run these checks and report status:
+```bash
+# 1. Database exists?
+[ -f ~/.searchaero/data.db ] && echo "DB: ok" || echo "DB: missing"
+
+# 2. Discord webhook configured?
+[ -f ~/.searchaero/config.json ] && cat ~/.searchaero/config.json | python -c "import sys,json; c=json.load(sys.stdin); print('DISCORD: ok' if c.get('discord_webhook_url') else 'DISCORD: not configured')" || echo "DISCORD: missing"
+
+# 3. Watches configured?
+[ -f ~/.searchaero/watches.yaml ] && echo "WATCHES: ok" || echo "WATCHES: missing"
+
+# 4. Claude CLI available?
+[ -f "C:/Users/jiami/AppData/Roaming/npm/claude.cmd" ] && echo "CLAUDE: ok" || echo "CLAUDE: missing"
+
+# 5. Task Scheduler registered?
+schtasks /query /tn "searchaero-scheduled-scrape" 2>/dev/null && echo "SCHEDULER: ok" || echo "SCHEDULER: not registered"
+
+# 6. MFA responder env vars?
+[ -n "$SEARCHAERO_GMAIL_SENDER" ] && echo "MFA_ENV: ok" || echo "MFA_ENV: not set (needed for unattended MFA)"
+```
+
+Report a checklist to the user. If anything is missing, offer to fix it.
+
+### Variable Reference
+
+Throughout this section, use:
+```
+PYTHON = C:/Users/jiami/local_workspace/searchaero/scripts/experiments/.venv/Scripts/python.exe
+```
+This is the same venv used by the .bat wrapper and all other scripts.
 
 ## After Completion
 

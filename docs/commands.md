@@ -15,7 +15,7 @@ searchaero setup --json
 
 ### `searchaero doctor`
 
-Run comprehensive diagnostics: database integrity, Playwright, credentials, ntfy, data freshness.
+Run comprehensive diagnostics: database integrity, Playwright, credentials, Discord, data freshness.
 
 ```bash
 searchaero doctor
@@ -183,14 +183,12 @@ searchaero alert remove 1
 
 ## Watchlist & Notifications
 
-Automated monitoring with push notifications via [ntfy.sh](https://ntfy.sh).
+Automated monitoring with push notifications via Discord webhook.
 
 ### `searchaero watch setup`
 
 ```bash
-searchaero watch setup --ntfy-topic searchaero-a7f3b9c2e1d4f856
-searchaero watch setup --ntfy-topic my-topic --ntfy-server https://my-ntfy.example.com
-searchaero watch setup --gmail-sender me@gmail.com --gmail-recipient you@example.com
+searchaero watch setup --discord-webhook-url https://discord.com/api/webhooks/1234567890/abcdefg
 ```
 
 ### `searchaero watch add`

@@ -130,57 +130,25 @@ searchaero watch add YYZ LAX --max-miles 20000 --cabin economy --every 12h
 searchaero watch run
 ```
 
-For push notifications to your phone, set up ntfy (see the README's "Push notifications" section).
+For push notifications via Discord:
 
-## Step 7: Set up email delivery (optional)
+1. In Discord, right-click a channel → **Edit Channel** → **Integrations** → **Webhooks** → **New Webhook**
+2. Copy the webhook URL
+3. Register it with searchaero:
+   ```bash
+   searchaero watch setup --discord-webhook-url <URL>
+   ```
 
-Have Claude email you flight summaries directly. This uses a local SMTP/IMAP MCP server.
+## Step 7: Notification delivery
 
-**1. Create a Gmail App Password:**
-- Go to [Google App Passwords](https://myaccount.google.com/apppasswords)
-- Generate a new app password for "Mail"
-- Copy the 16-character password (looks like `xxxx xxxx xxxx xxxx`)
-
-**2. Add the email MCP server:**
-
-```bash
-claude mcp add email \
-  -s user \
-  -e SMTP_HOST=smtp.gmail.com \
-  -e SMTP_PORT=465 \
-  -e SMTP_SECURE=true \
-  -e IMAP_HOST=imap.gmail.com \
-  -e IMAP_PORT=993 \
-  -e IMAP_SECURE=true \
-  -e EMAIL_USER=you@gmail.com \
-  -e "EMAIL_PASS=your app password here" \
-  -- npx mcp-mail-server
-```
-
-Replace `you@gmail.com` and the app password with your own.
-
-**3. Verify it connects:**
-
-```bash
-claude mcp list
-```
-
-You should see `email: ... ✓ Connected`. If it shows `✗ Failed`, check that:
-- Your app password is correct (not your regular Gmail password)
-- IMAP is enabled in Gmail settings (Settings → See all settings → Forwarding and POP/IMAP → Enable IMAP)
-
-**4. Try it:**
-
-Ask Claude: *"Scrape YYZ to LAX and email me the cheapest options"*
-
-The email will be sent directly from your Gmail account.
+Notification delivery uses Discord webhooks (configured in Step 6). No additional MCP server setup is needed for alerts.
 
 ## What to do next
 
 - **Scrape more routes:** `searchaero search --file routes/canada_test.txt` (15 test routes)
 - **Check data coverage:** `searchaero status`
 - **Find deals across all routes:** Use your agent: *"Find the cheapest deals across all scraped routes"*
-- **Run diagnostics:** `searchaero doctor` (checks database, credentials, Playwright, ntfy)
+- **Run diagnostics:** `searchaero doctor` (checks database, credentials, Playwright, Discord)
 - **Browse help topics:** `searchaero help mfa`, `searchaero help proxy`, `searchaero help watches`
 
 ## Common gotchas

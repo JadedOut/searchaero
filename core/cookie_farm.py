@@ -569,64 +569,118 @@ class CookieFarm:
     def _select_mfa_method(self, page, mfa_method, _step):
         """Select SMS or email delivery on United's MFA method screen.
 
-        Called after _auto_login detects MFA. If United shows a method selection
-        (e.g., radio buttons or links for SMS/email), clicks the appropriate one.
-        If no selection is shown (code input already visible), does nothing.
+        United's MFA flow defaults to SMS. The page shows:
+        1. SMS code input + "Resend code" + "try a different way" link
+        2. Clicking "try a different way" shows method selection (Text/Email/Voice/App)
+        3. Select email + click Continue → United sends email code
+
+        For SMS: code input already visible, nothing to do.
+        For email: must navigate through "try a different way" first.
 
         Args:
             page: Playwright page on MFA screen.
             mfa_method: "sms" or "email".
             _step: Logging callback.
         """
-        # If code input is already visible, United auto-sent — no selection needed
-        try:
-            code_input = page.locator(
-                'input[type="tel"], input[autocomplete="one-time-code"], input[inputmode="numeric"]'
-            ).first
-            if code_input.is_visible():
-                _step(f"Code input already visible — United auto-sent ({mfa_method})")
-                return
-        except Exception:
-            log.warning("code input visibility check failed", exc_info=True)
+        _CODE_INPUTS = 'input[type="tel"], input[autocomplete="one-time-code"], input[inputmode="numeric"]'
 
-        # Look for method selection options
+        # If SMS requested and code input already visible, United auto-sent — done
+        if mfa_method == "sms":
+            try:
+                code_input = page.locator(_CODE_INPUTS).first
+                if code_input.is_visible():
+                    _step("Code input already visible — United auto-sent (sms)")
+                    return
+            except Exception:
+                log.warning("code input visibility check failed", exc_info=True)
+
+        # For email: need to click "try a different way" to reach method selection
+        if mfa_method == "email":
+            _step("Switching to email MFA — looking for 'try a different way'...")
+            try_different_selectors = [
+                'a:has-text("try a different way")',
+                'button:has-text("try a different way")',
+                'a:has-text("different way")',
+                'button:has-text("different way")',
+                ':text("try a different way")',
+            ]
+            clicked_different = False
+            for selector in try_different_selectors:
+                try:
+                    el = page.locator(selector).first
+                    if el.is_visible(timeout=3000):
+                        _step(f"Found: {selector}")
+                        el.click()
+                        page.wait_for_timeout(2000)
+                        clicked_different = True
+                        break
+                except Exception:
+                    continue
+
+            if not clicked_different:
+                _step("Could not find 'try a different way' link — may already be on selection screen")
+
+        # Now on method selection screen — look for the desired method
         _step(f"Looking for MFA method selection (want: {mfa_method})...")
 
         if mfa_method == "email":
             selectors = [
-                'button:has-text("email")',
-                'a:has-text("email")',
-                'label:has-text("email")',
+                'label:has-text("Email")',
+                'input[value*="email" i]',
                 '[data-testid*="email"]',
+                'button:has-text("Email")',
+                'a:has-text("Email")',
+                ':text("Email"):not(:has-text("Need help"))',
             ]
         else:
             selectors = [
-                'button:has-text("text")',
-                'a:has-text("text")',
-                'button:has-text("phone")',
-                'a:has-text("phone")',
-                'label:has-text("text")',
-                'label:has-text("phone")',
+                'label:has-text("Text")',
+                'input[value*="text" i]',
+                'input[value*="sms" i]',
+                'button:has-text("Text")',
+                'a:has-text("Text")',
                 '[data-testid*="sms"]',
                 '[data-testid*="phone"]',
             ]
 
+        method_selected = False
         for selector in selectors:
             try:
                 el = page.locator(selector).first
                 if el.is_visible(timeout=2000):
                     _step(f"Found method option: {selector}")
                     el.click()
-                    # Wait for code input to appear after selection
-                    page.locator(
-                        'input[type="tel"], input[autocomplete="one-time-code"], input[inputmode="numeric"]'
-                    ).first.wait_for(state="visible", timeout=10000)
-                    _step(f"Code input appeared after selecting {mfa_method}")
-                    return
+                    method_selected = True
+                    break
             except Exception:
                 continue
 
-        _step(f"No method selection found — proceeding with default ({mfa_method})")
+        if not method_selected:
+            _step(f"No method option found — proceeding with default")
+            return
+
+        # Click Continue to confirm selection and trigger email/SMS send
+        _step("Clicking Continue to confirm method selection...")
+        continue_selectors = [
+            'button:has-text("Continue")',
+            'input[type="submit"][value*="Continue" i]',
+            'button[type="submit"]',
+        ]
+        for selector in continue_selectors:
+            try:
+                el = page.locator(selector).first
+                if el.is_visible(timeout=2000):
+                    el.click()
+                    break
+            except Exception:
+                continue
+
+        # Wait for code input to appear after method selection
+        try:
+            page.locator(_CODE_INPUTS).first.wait_for(state="visible", timeout=15000)
+            _step(f"Code input appeared after selecting {mfa_method}")
+        except Exception:
+            _step(f"Code input not found after selecting {mfa_method} — continuing anyway")
 
     def _enter_mfa_code(self, code: str) -> bool:
         """Fill the MFA verification code and submit.
