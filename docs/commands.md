@@ -254,4 +254,6 @@ searchaero schema query        # single command
 
 The `/flights` agent skill teaches Claude Code how to use these CLI commands automatically. You don't need to memorize flags — just ask about flights in natural language.
 
+The skill is **program-aware**: name "Aeroplan" / "Air Canada" / "AC" and it routes to a HEADED, single-route `search --program aeroplan … --mfa-method email` (with `query … --program aeroplan` display); name no program and it produces the default United command. Programs run one at a time, sequentially. See `docs/findings/aeroplan/phase-4-flights-skill.md`.
+
 The skill file lives at `.claude/skills/flights/SKILL.md`.

@@ -2,9 +2,11 @@
 
 ### How does searchaero integrate with Claude Code?
 
-Searchaero uses a `/flights` agent skill — a prompt file that teaches Claude the CLI workflow. When you ask about flights, Claude automatically runs the right `searchaero` commands, handles MFA verification (automatically via Gmail, or by asking for an SMS code), and presents results.
+Searchaero uses a `/flights` agent skill — a prompt file that teaches Claude the CLI workflow. When you ask about flights, Claude automatically runs the right `searchaero` commands, handles MFA verification, and presents results.
 
-For automatic MFA code retrieval, make sure Claude Code has access to Gmail tools (for reading verification emails from `united@united.com`). Without Gmail access, the agent will ask you to type the SMS code manually.
+The skill is **program-aware**: it detects the award program from your words. Say "Aeroplan", "Air Canada", or "AC" and it scrapes Air Canada Aeroplan (HEADED, single-route, email-2FA); say nothing about a program and it defaults to United MileagePlus (SMS MFA). See `docs/findings/aeroplan/phase-4-flights-skill.md`.
+
+For automatic MFA code retrieval, make sure Claude Code has access to Gmail tools. United verification emails come from `united@united.com` (or you type the SMS code manually); Aeroplan codes come from Air Canada / Aeroplan email and are resolved the same way (with an ask-you fallback). Aeroplan has no SMS path.
 
 ## Why Playwright?
 

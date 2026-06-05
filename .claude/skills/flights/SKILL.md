@@ -1,6 +1,6 @@
 ---
 name: flights
-description: Search, scrape, and monitor United MileagePlus award flights via the searchaero CLI
+description: Search, scrape, and monitor United MileagePlus and Air Canada Aeroplan award flights via the searchaero CLI
 ---
 
 # Flight Search Skill
@@ -54,14 +54,16 @@ Do not proceed with any scrape commands until credentials are confirmed written.
 
 | Action | Command |
 |--------|---------|
-| Check cache | `$SEARCHAERO query ORIG DEST --json` |
-| Show table | `$SEARCHAERO query ORIG DEST` |
+| Check cache | `$SEARCHAERO query ORIG DEST --program PROGRAM --json` |
+| Check cache (program-scoped) | `$SEARCHAERO query ORIG DEST --program aeroplan --json` |
+| Show table | `$SEARCHAERO query ORIG DEST --program PROGRAM` |
 | Show graph | `$SEARCHAERO query ORIG DEST --graph` |
 | Show summary | `$SEARCHAERO query ORIG DEST --summary` |
 | Find deals | `$SEARCHAERO deals --json` |
 | DB status | `$SEARCHAERO status --json` |
-| Scrape fresh | `$SEARCHAERO search ORIG DEST --mfa-file --mfa-method sms` |
-| Fresh browser | `$SEARCHAERO search ORIG DEST --ephemeral --mfa-file --mfa-method sms` |
+| Scrape fresh (United) | `$SEARCHAERO search ORIG DEST --mfa-file --mfa-method sms` |
+| Scrape fresh (Aeroplan) | `$SEARCHAERO search --program aeroplan ORIG DEST --mfa-file --mfa-method email` |
+| Fresh browser (United only) | `$SEARCHAERO search ORIG DEST --ephemeral --mfa-file --mfa-method sms` |
 | Add alert | `$SEARCHAERO alert add ORIG DEST --max-miles N` |
 | Check alerts | `$SEARCHAERO alert check --json` |
 | Add watch | `$SEARCHAERO watch add ORIG DEST --max-miles N` |
@@ -70,22 +72,46 @@ Do not proceed with any scrape commands until credentials are confirmed written.
 
 ## Workflow
 
+### Step 0: Detect the award program
+Before anything else, detect which award program the user is asking about from their words, and set a `PROGRAM` placeholder. Every subsequent step branches on this value.
+
+- If the request mentions `aeroplan`, `air canada`, or `AC` (case-insensitive, as a whole word) → set `PROGRAM = aeroplan`.
+- Otherwise → set `PROGRAM = united` (United is the **default** whenever no program is named).
+
+`PROGRAM` resolves to a literal CLI value: `aeroplan` or `united`. Substitute it wherever `--program PROGRAM` appears below — e.g. for a United request the cache check becomes `$SEARCHAERO query ORIG DEST --program united --json`; for an Aeroplan request it becomes `$SEARCHAERO query ORIG DEST --program aeroplan --json`.
+
+Programs run **one (program, route) pair at a time, sequentially**. There is no cross-program orchestrator and no parallel fan-out — resolve the program first, then run that program's single branch end-to-end before moving on.
+
 ### Step 1: Check cache
 If the user explicitly asks for a fresh scrape ("scrape", "fresh", "new search", "update", "re-check"), skip this step entirely and go straight to Step 2.
 
-Otherwise, run:
+Otherwise, run (with `PROGRAM` resolved in Step 0):
 ```bash
-$SEARCHAERO query ORIG DEST --json 2>&1
+$SEARCHAERO query ORIG DEST --program PROGRAM --json 2>&1
 ```
 - If output contains flight data (JSON array): display results to the user. Done.
 - If output contains `"error": "no_results"`: proceed to Step 2.
 
 ### Step 2: Scrape fresh data
+Branch on `PROGRAM` (resolved in Step 0).
+
+**United (`PROGRAM = united`, the default):**
 Tell the user: "Starting a fresh scrape — this takes about 2 minutes."
 Run in background:
 ```bash
 $SEARCHAERO search ORIG DEST --mfa-file --mfa-method sms 2>&1
 ```
+For "fresh browser" requests, you may add `--ephemeral` (United only). Then proceed to Step 3.
+
+**Aeroplan (`PROGRAM = aeroplan`):**
+Use the single positional route invocation (NEVER `--file`, `--workers`, or `--ephemeral`):
+```bash
+$SEARCHAERO search --program aeroplan ORIG DEST --mfa-file --mfa-method email 2>&1
+```
+- **Aeroplan is single-route only.** Pass exactly one origin/destination positional pair. The CLI hard-rejects `--file` and `--workers`, and `--ephemeral` must NOT be used — the persistent browser profile is required to hold the warm headed session.
+- **This is headed and takes tens of minutes**, not the United "~60s / 2 min" budget. The scraper navigates per 5-day window and may re-authenticate mid-run across the ~30–40 min session TTL. Tell the user: "Starting an Aeroplan scrape — this runs headed and can take tens of minutes (it logs in, navigates window-by-window, and may re-authenticate partway through)."
+- Run it in background and do NOT declare failure just because it has not finished in ~2 minutes. Only treat it as failed on an actual error/traceback or the escalation rule in Error Handling.
+
 Then proceed to Step 3.
 
 ### Step 2b: Verify process started
@@ -95,26 +121,36 @@ Wait 5 seconds, then read the first 10 lines of the background command's output:
 - If there is no output yet: wait 5 more seconds and check again. If still no output after 15 seconds total, check if the process exited (failed silently).
 
 ### Step 3: Handle MFA
-Poll for login/MFA status every 10 seconds, up to 6 times (60 seconds):
+Poll for login/MFA status. For United, poll every 10 seconds up to 6 times (60 seconds). For Aeroplan, keep polling on the same 10-second cadence for as long as the background scrape is still running (it is headed and may not request MFA until minutes in, and may request again on a mid-run re-auth):
 ```bash
 cat ~/.searchaero/mfa_request 2>/dev/null || echo "NO_MFA"
 ```
 - If output is `NO_MFA`: wait 10 seconds and poll again.
 - If output is JSON with `"status": "logged_in"`: login succeeded without MFA (persistent browser profile was already authenticated). Skip MFA handling and proceed to Step 4 — wait for the background search command to complete.
-- If output is JSON with `"message"` key: MFA is required. Ask the user directly in chat: "United sent a verification code via SMS. Please type the 6-digit code:" — do NOT use `AskUserQuestion` for this, since MFA codes require free-text input. The user will reply with their code in the next message. Extract exactly 6 digits from their reply.
-- Write the code:
+- If output is JSON with a `"message"` key: MFA is required. Branch on `PROGRAM`:
+
+  **United (`PROGRAM = united`, default) — SMS, in-chat paste:**
+  Ask the user directly in chat: "United sent a verification code via SMS. Please type the 6-digit code:" — do NOT use `AskUserQuestion` for this, since MFA codes require free-text input. The user will reply with their code in the next message. Extract exactly 6 digits from their reply.
+
+  **Aeroplan (`PROGRAM = aeroplan`) — email, no SMS path:**
+  There is **no SMS path** for Aeroplan. Resolve the code yourself from email:
+  - Search the Gmail MCP for the most recent **Air Canada / Aeroplan** verification email (these come from Air Canada / Aeroplan, NOT `united@united.com`).
+  - Extract the 6-digit code using the same heuristic as the responder: first a 6-digit match in the **subject**, else a 6-digit run next to a **contextual anchor** ("code", "verification", "one-time"), else a non-trivial 6-digit fallback from the body.
+  - Fallback if the Gmail MCP is unavailable: ask the user to paste the code from their Air Canada / Aeroplan email as free text (NOT `AskUserQuestion`).
+
+- Write the code (both programs):
   ```bash
   echo -n "DIGITS_HERE" > ~/.searchaero/mfa_response
   ```
 - Then wait for the background search command to complete.
-- If 6 polls pass with no MFA request: the scrape may have completed without MFA, or failed. Check if the background command finished.
+- If polling ends with no MFA request: the scrape may have completed without MFA, or failed. Check if the background command finished.
 
 ### Step 4: Display results
-After the scrape completes, run:
+After the scrape completes, run (with `PROGRAM` resolved in Step 0 — `united` or `aeroplan`):
 ```bash
-$SEARCHAERO query ORIG DEST
+$SEARCHAERO query ORIG DEST --program PROGRAM
 ```
-Display the output verbatim.
+For example, an Aeroplan run displays via `$SEARCHAERO query ORIG DEST --program aeroplan`. Display the output verbatim.
 
 ## Error Handling
 
@@ -182,11 +218,14 @@ $SEARCHAERO watch run  # foreground daemon
 
 ## Rules
 
+- Detect the award program first (Step 0) and pass `--program PROGRAM` on every `query`/`search`. United is the default when no program is named; `aeroplan` / `air canada` / `AC` selects Aeroplan.
+- **One (program, route) pair at a time, sequentially.** Resolve a single program and a single route, run that branch end-to-end, then move on. There is no cross-program orchestrator and no parallel fan-out from this skill.
+- **Aeroplan is single-route and headed only**: one positional `ORIG DEST`, `--mfa-method email`, NEVER `--file` / `--workers` / `--ephemeral`. Expect tens of minutes (per-window navigation + possible mid-run re-auth). United stays fast (~2 min) with `--mfa-method sms` and may use `--ephemeral` for a fresh browser.
 - Do NOT query the database directly via SQL or import core modules
 - When query returns no results, AUTOMATICALLY start a scrape without asking for confirmation
-- Default to `--mfa-method sms` for interactive sessions. Only use `--mfa-method email` for unattended/cron workflows (see Unattended Mode section).
+- Default to `--mfa-method sms` for interactive **United** sessions. Aeroplan always uses `--mfa-method email` (no SMS path). Use `--mfa-method email` for United only in unattended/cron workflows (see Unattended Mode section).
 - Display CLI output verbatim — do not reformat Rich tables or ASCII charts
-- After any scrape completes, you MUST run `$SEARCHAERO query ORIG DEST` and display results to the user BEFORE taking any post-scrape action (email, alert, watch, export)
+- After any scrape completes, you MUST run `$SEARCHAERO query ORIG DEST --program PROGRAM` and display results to the user BEFORE taking any post-scrape action (email, alert, watch, export)
 
 ## Unattended / Cron Mode
 

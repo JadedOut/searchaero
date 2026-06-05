@@ -90,6 +90,10 @@ searchaero query YYZ LAX
   and the account-safe live runbook (HEADED, single account/route, capped windows).
 - See `docs/findings/aeroplan/phase-3-unattended.md` for the unattended/scheduled path
   (re-auth loop, program-aware scheduling, email 2FA) and the three user-run live GO/NO-GO gates.
+- See `docs/findings/aeroplan/phase-4-flights-skill.md` for the program-aware `/flights`
+  skill (natural-language front door): detects program from words → forks MFA channel,
+  route cardinality, profile, and display. United is the default; Aeroplan is HEADED,
+  single-route, email-2FA. Sequential, one `(program, route)` at a time.
 
 ## Database
 - SQLite at `~/.searchaero/data.db` (default)

@@ -114,7 +114,7 @@ In Claude Code, just ask about flights:
 - *"Set up a watch for YYZ-LHR business under 70K miles"*
 - *"Scrape fresh data for Vancouver to Tokyo"*
 
-The `/flights` skill teaches Claude the full workflow: check cache, scrape if needed, handle MFA, present results.
+The `/flights` skill teaches Claude the full workflow: check cache, scrape if needed, handle MFA, present results. It is **program-aware** — say "Aeroplan" / "Air Canada" / "AC" to scrape Air Canada Aeroplan (HEADED, single-route, email-2FA); otherwise it defaults to United.
 
 You can also invoke the skill directly with `/flights`.
 
