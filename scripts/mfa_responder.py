@@ -216,6 +216,61 @@ def get_email_code(
     return code
 
 
+def _process_pending_request(gmail_account, gmail_password):
+    """Process a single pending mfa_request file, if present, exactly once.
+
+    Reads + PARSES the request, then CONSUMES (deletes) the request file BEFORE
+    acting on it, so each request is answered exactly once. Without this the
+    watch loop re-detects an already-answered request on its next tick and polls
+    Gmail for a code that was already consumed/deleted (the "double-request"
+    wart). On a partial/garbled read the file is left in place to retry next tick.
+
+    Returns one of: "none" (no request), "retry" (unparseable — left in place),
+    "signal" (login-complete signal), "skipped" (non-email method),
+    "answered" (code fetched + written), "no_code" (email request, no code found).
+    """
+    if not os.path.isfile(_MFA_REQUEST):
+        return "none"
+    try:
+        with open(_MFA_REQUEST, "r") as f:
+            request = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        # Likely a partial write in progress — retry next tick, do NOT consume.
+        return "retry"
+
+    # Consume the request now: it will be answered exactly once. (Guarded — a
+    # racing deleter on the login side is harmless.)
+    try:
+        os.remove(_MFA_REQUEST)
+    except OSError:
+        pass
+
+    # Skip if this is a login-complete signal (cli.py:120-124).
+    if request.get("status") == "logged_in":
+        log.info("Login complete signal received, resuming watch")
+        return "signal"
+
+    # Only respond to email MFA requests.
+    if request.get("mfa_method") != "email":
+        log.info("MFA method is '%s', not 'email' — skipping", request.get("mfa_method"))
+        return "skipped"
+
+    sender_filter = request.get("sender_filter", "@united.com")
+    log.info("MFA request detected (sender filter '%s'), fetching code from Gmail...", sender_filter)
+    code = get_email_code(gmail_account, gmail_password, sender_filter)
+
+    if code:
+        response_path = request.get("response_file", _MFA_RESPONSE)
+        os.makedirs(os.path.dirname(response_path), exist_ok=True)
+        with open(response_path, "w") as f:
+            f.write(code)
+        log.info("Wrote MFA code to %s", response_path)
+        return "answered"
+
+    log.error("Failed to retrieve MFA code from email")
+    return "no_code"
+
+
 def main():
     # Load .env from project root or ~/.searchaero/.env
     for env_path in [
@@ -236,39 +291,7 @@ def main():
     log.info("Watching %s for MFA requests...", _MFA_REQUEST)
 
     while True:
-        if os.path.isfile(_MFA_REQUEST):
-            with open(_MFA_REQUEST, "r") as f:
-                try:
-                    request = json.load(f)
-                except json.JSONDecodeError:
-                    time.sleep(WATCH_POLL_SECS)
-                    continue
-
-            # Skip if this is a login-complete signal (cli.py:120-124)
-            if request.get("status") == "logged_in":
-                log.info("Login complete signal received, resuming watch")
-                time.sleep(WATCH_POLL_SECS)
-                continue
-
-            # Only respond to email MFA requests
-            if request.get("mfa_method") != "email":
-                log.info("MFA method is '%s', not 'email' — skipping", request.get("mfa_method"))
-                time.sleep(WATCH_POLL_SECS)
-                continue
-
-            sender_filter = request.get("sender_filter", "@united.com")
-            log.info("MFA request detected (sender filter '%s'), fetching code from Gmail...", sender_filter)
-            code = get_email_code(gmail_account, gmail_password, sender_filter)
-
-            if code:
-                response_path = request.get("response_file", _MFA_RESPONSE)
-                os.makedirs(os.path.dirname(response_path), exist_ok=True)
-                with open(response_path, "w") as f:
-                    f.write(code)
-                log.info("Wrote MFA code to %s", response_path)
-            else:
-                log.error("Failed to retrieve MFA code from email")
-
+        _process_pending_request(gmail_account, gmail_password)
         time.sleep(WATCH_POLL_SECS)
 
 

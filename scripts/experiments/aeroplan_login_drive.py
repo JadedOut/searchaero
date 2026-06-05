@@ -149,7 +149,9 @@ SUBMIT_SELECTORS = (
 # ladder below covers that plus generic fallbacks (phoneCode*, *code*).
 TFA_CODE_SELECTORS = (
     'input[autocomplete="one-time-code"]',
+    'input[name*="emailCode" i]',   # Gigya email-2FA code field (live DOM 2026-06-04)
     'input[name*="phoneCode" i]',
+    'input.gigya-code-input',
     'input[name*="code" i]',
     'input[type="tel"]',
 )
@@ -164,6 +166,7 @@ TFA_RESEND_SELECTORS = (
     'button:has-text("Resend")',
 )
 TFA_VERIFY_SELECTORS = (
+    'input.gigya-input-submit',   # Gigya code-submit button (live DOM 2026-06-04)
     'button:has-text("Verify")',
     'button:has-text("Submit")',
     'button:has-text("Continue")',
@@ -183,9 +186,11 @@ TFA_SUCCESS_WAIT_SECONDS = 30
 # response file using the SAME cadence/timeout constants as the SMS poller. ----
 MFA_REQUEST_FILE = Path.home() / ".searchaero" / "mfa_request"
 MFA_RESPONSE_FILE = Path.home() / ".searchaero" / "mfa_response"
-# Aeroplan verification emails come from an aircanada.com sender; the responder
-# matches this case-insensitively against the From header (mfa_responder.py).
-AEROPLAN_MFA_SENDER = "aircanada.com"
+# Aeroplan verification emails come from "Aeroplan <info@communications.aeroplan.com>"
+# (confirmed against a real code email, 2026-06-04). The responder matches this
+# substring case-insensitively against the From header (mfa_responder.py); note the
+# domain is aeroplan.com (NOT aircanada.com — that earlier guess never matched).
+AEROPLAN_MFA_SENDER = "aeroplan.com"
 
 # Step D (email 2FA only) — the "switch delivery method" ladder on the Gigya 2FA
 # screen, tried IN ORDER before requesting a code when --mfa-method email. The
@@ -228,6 +233,26 @@ TFA_EMAIL_CONTINUE_SELECTORS = (
     'button:has-text("Send Code")',
     'button:has-text("Submit")',
     'input[type="submit"]:visible',
+)
+
+# Step D (email 2FA) — VERIFIED against the live Gigya TFA DOM (2026-06-04).
+# The "Select authentication method" screen shows Phone AND Email together (NO
+# "try a different way" link). The email method is wrapped in
+# div.gigya-tfa-verification-method.tfa-email-method; its request button is a
+# button.gigya-tfa-verification-action-btn ("Send Code"). Clicking it reveals the
+# email one-time-code field input[name^="emailCode"] (class gigya-code-input).
+# The phone method auto-sends and shows input[name^="phoneCode"] — which we must
+# NOT click or fill, hence the .tfa-email-method scoping below. There are hidden
+# duplicate screen instances in the DOM, so first_visible_locator picks the
+# rendered one.
+TFA_EMAIL_SENDCODE_SELECTORS = (
+    '.tfa-email-method button.gigya-tfa-verification-action-btn',
+    '.gigya-tfa-verification-method.tfa-email-method button:has-text("Send Code")',
+)
+TFA_EMAIL_CODE_SELECTORS = (
+    '.tfa-email-method input.gigya-code-input',
+    'input[name^="emailCode"]',
+    '.tfa-email-method input[autocomplete="one-time-code"]',
 )
 
 # Arkose / interactive FunCaptcha markers. We NEVER auto-solve these; we only
@@ -1073,66 +1098,45 @@ def _write_mfa_request(runlog, sender_filter: str = AEROPLAN_MFA_SENDER,
 
 
 def select_email_2fa(page, runlog) -> bool:
-    """Drive the Gigya 2FA "switch delivery method" UI to EMAIL, best-effort.
+    """Request an EMAIL 2FA code on the Gigya "Select authentication method" screen.
 
-    Ladder: (1) click a "try a different way" / "use a different method" link;
-    (2) pick the Email option (radio/button/label); (3) click Continue/Next/
-    Send. Returns True if it reached an email-code state (an Email option was
-    selected and a code field is present afterward), False otherwise.
+    VERIFIED against the live DOM (2026-06-04): the screen shows Phone AND Email
+    together — the phone method auto-sends an SMS and shows its own code field,
+    and there is NO "try a different way" link to click. To use email we click
+    the Email method's "Send Code" button, scoped to .tfa-email-method so we can
+    never click the phone button, then confirm the email one-time-code field
+    (input[name^="emailCode"]) appeared.
 
-    On failure the caller LOGS clearly and does NOT silently fall back to
-    sending SMS unattended (mirrors the detect-and-report discipline). The Gigya
-    DOM differs from United's OKTA flow (cookie_farm._select_mfa_method is
-    reference only); this is a recon-informed ladder validated live, not offline.
+    Returns True once the email-code state is reached, False otherwise. On
+    failure the caller LOGS clearly and does NOT silently fall back to sending an
+    SMS unattended (mirrors the detect-and-report discipline).
     """
-    # (1) "try a different way" / "use a different method".
-    diff, diff_sel = first_visible_locator(page, TFA_DIFFERENT_WAY_SELECTORS)
-    if diff is not None:
-        try:
-            diff.click(timeout=5000)
-            runlog(f"    clicked 'try a different way' via {diff_sel!r}")
-            time.sleep(SETTLE_SECONDS)
-        except Exception as exc:
-            runlog(f"    'try a different way' click raised ({exc}); "
-                   "may already be on the method-selection screen.")
-    else:
-        runlog("    no 'try a different way' link visible — may already be on "
-               "the method-selection screen; continuing to the Email option.")
-
-    # (2) the Email delivery option.
-    email_opt, email_sel = first_visible_locator(page, TFA_EMAIL_OPTION_SELECTORS)
-    if email_opt is None:
-        runlog("    EMAIL OPTION NOT FOUND on the Gigya 2FA screen — cannot "
-               "select email delivery. NOT falling back to SMS unattended.")
+    # (1) Click the Email method's "Send Code" button (scoped to the email-method
+    # wrapper; first_visible_locator skips the hidden duplicate screen instances).
+    send, send_sel = first_visible_locator(page, TFA_EMAIL_SENDCODE_SELECTORS)
+    if send is None:
+        runlog("    EMAIL 'Send Code' button NOT found in .tfa-email-method on the "
+               "Gigya 2FA screen — cannot request an email code. NOT falling back "
+               "to SMS unattended.")
         return False
     try:
-        email_opt.click(timeout=5000)
-        runlog(f"    selected Email delivery option via {email_sel!r}")
+        send.click(timeout=5000)
+        runlog(f"    clicked Email 'Send Code' via {send_sel!r}")
     except Exception as exc:
-        runlog(f"    Email-option click raised ({exc}); cannot confirm email "
-               "selection. NOT falling back to SMS unattended.")
+        runlog(f"    Email 'Send Code' click raised ({exc}); cannot confirm the "
+               "email request. NOT falling back to SMS unattended.")
         return False
-
-    # (3) Continue / Next / Send to confirm the email selection.
-    cont, cont_sel = first_visible_locator(page, TFA_EMAIL_CONTINUE_SELECTORS)
-    if cont is not None:
-        try:
-            cont.click(timeout=5000)
-            runlog(f"    confirmed email selection via {cont_sel!r}")
-        except Exception as exc:
-            runlog(f"    email Continue click raised ({exc}); continuing.")
-    else:
-        runlog("    no Continue/Next/Send button after Email selection "
-               "(selection may auto-advance); continuing.")
     time.sleep(SETTLE_SECONDS)
 
-    # Confirm we reached an email-code state (a one-time-code field is present).
-    code_loc, _ = first_visible_locator(page, TFA_CODE_SELECTORS)
+    # (2) Confirm the EMAIL one-time-code field appeared (scoped to
+    # .tfa-email-method so the auto-sent phone code field is never mistaken for it).
+    code_loc, code_sel = first_visible_locator(page, TFA_EMAIL_CODE_SELECTORS)
     if code_loc is None:
-        runlog("    after selecting Email, NO one-time-code field is visible — "
-               "email-code state not reached. NOT sending SMS unattended.")
+        runlog("    after requesting the Email code, NO email one-time-code field "
+               "is visible — email-code state not reached. NOT sending SMS "
+               "unattended.")
         return False
-    runlog("    email delivery selected; one-time-code field present.")
+    runlog(f"    email code requested; email one-time-code field present via {code_sel!r}.")
     return True
 
 
@@ -1235,8 +1239,10 @@ def complete_email_2fa(page, runlog, tfa_locator, tfa_sel, out_dir):
         return result
 
     # Re-resolve the code field after selection (the DOM may have changed) and
-    # refresh the method label.
-    new_loc, new_sel = first_visible_locator(page, TFA_CODE_SELECTORS)
+    # refresh the method label. Prefer the email-scoped field so the auto-sent
+    # phone code field is never picked for the email code.
+    new_loc, new_sel = first_visible_locator(
+        page, TFA_EMAIL_CODE_SELECTORS + TFA_CODE_SELECTORS)
     if new_loc is not None:
         tfa_locator, tfa_sel = new_loc, new_sel
     result["tfa_method"] = scrape_tfa_delivery_method(page, tfa_locator)

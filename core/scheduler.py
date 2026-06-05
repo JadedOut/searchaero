@@ -28,6 +28,15 @@ BUFFER_MINUTES = 45
 LOGIN_OVERHEAD_MINUTES = 3
 PER_ROUTE_MINUTES = 2
 
+# Aeroplan timing is much heavier than United: it runs HEADED, single-route,
+# with a scripted Gigya login + 2FA up front (~5-8 min) and navigate-per-5-day
+# windows that are far slower than United's API calls. The session TTL is only
+# ~30-40 min, so a longer span can force a mid-run re-auth. These estimates are
+# deliberately conservative so the computed minimum interval leaves room for
+# headed login overhead, slow per-window navigation, and a possible re-auth.
+AEROPLAN_LOGIN_OVERHEAD_MINUTES = 7
+AEROPLAN_PER_ROUTE_MINUTES = 18
+
 # ---------------------------------------------------------------------------
 # XML namespace for schtasks export
 # ---------------------------------------------------------------------------
@@ -85,37 +94,51 @@ def count_routes_in_files(routes_files: list[str]) -> int:
     return sum(count_routes_in_file(rf) for rf in routes_files)
 
 
-def estimate_scrape_minutes(route_count: int, delay: float = 3.0) -> int:
+def estimate_scrape_minutes(route_count: int, delay: float = 3.0,
+                            program: str = "united") -> int:
     """Estimate how many minutes a scrape run will take.
 
-    Formula: LOGIN_OVERHEAD_MINUTES + ceil(route_count * PER_ROUTE_MINUTES).
+    Formula: LOGIN_OVERHEAD + ceil(route_count * PER_ROUTE), using
+    program-specific constants. United uses the original (lighter) constants;
+    Aeroplan uses heavier headed/TTL-aware constants.
 
     Args:
         route_count: Number of routes to scrape.
         delay: Per-route delay in seconds (reserved for future use).
+        program: Award program ("united" or "aeroplan"). Determines which
+            timing constants are used. Defaults to "united" (unchanged math).
 
     Returns:
         int: Estimated minutes.
     """
-    return LOGIN_OVERHEAD_MINUTES + math.ceil(route_count * PER_ROUTE_MINUTES)
+    if program == "aeroplan":
+        login_overhead = AEROPLAN_LOGIN_OVERHEAD_MINUTES
+        per_route = AEROPLAN_PER_ROUTE_MINUTES
+    else:
+        login_overhead = LOGIN_OVERHEAD_MINUTES
+        per_route = PER_ROUTE_MINUTES
+    return login_overhead + math.ceil(route_count * per_route)
 
 
 def compute_min_interval(route_count: int, delay: float = 3.0,
-                         buffer: int = BUFFER_MINUTES) -> int:
+                         buffer: int = BUFFER_MINUTES,
+                         program: str = "united") -> int:
     """Compute the minimum schedule interval for a given route count.
 
     Returns estimate_scrape_minutes + buffer, rounded UP to the nearest
-    15-minute increment. For example: 68 -> 75, 60 -> 60, 61 -> 75.
+    15-minute increment. For example (United): 68 -> 75, 60 -> 60, 61 -> 75.
 
     Args:
         route_count: Number of routes to scrape.
         delay: Per-route delay in seconds (reserved for future use).
         buffer: Buffer minutes to add after estimated scrape time.
+        program: Award program ("united" or "aeroplan"). Passed through to
+            estimate_scrape_minutes. Defaults to "united" (unchanged math).
 
     Returns:
         int: Minimum interval in minutes (multiple of 15).
     """
-    raw = estimate_scrape_minutes(route_count, delay) + buffer
+    raw = estimate_scrape_minutes(route_count, delay, program=program) + buffer
     return math.ceil(raw / 15) * 15
 
 
@@ -404,8 +427,15 @@ def register_task(name, bat_path, interval_minutes):
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".xml", prefix="searchaero_task_")
     try:
         os.close(tmp_fd)
-        tree = ElementTree.ElementTree(root)
-        tree.write(tmp_path, xml_declaration=True, encoding="unicode")
+        # schtasks /create /xml requires the file's BYTE encoding to match the
+        # XML declaration. Writing with encoding="unicode" emits a declaration
+        # that doesn't match the file bytes, which MSXML rejects with
+        # "(1,40)::ERROR: unable to switch the encoding". Emit UTF-16 (BOM + an
+        # encoding="utf-16" declaration) — the same encoding schtasks /query
+        # produces — and write the bytes directly.
+        xml_bytes = ElementTree.tostring(root, encoding="utf-16", xml_declaration=True)
+        with open(tmp_path, "wb") as f:
+            f.write(xml_bytes)
 
         # Step 5: Delete and re-create from XML
         subprocess.run(

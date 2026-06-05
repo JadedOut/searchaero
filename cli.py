@@ -641,11 +641,16 @@ def _aeroplan_warmup(session):
     time.sleep(2)  # extra fixed settle once the chain has quiesced
 
 
-def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_method, months, from_date, to_date):
+def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_method, months, from_date, to_date, max_reauths=4, deadline_seconds=None):
     """Scrape a single route from Aeroplan in-process (HEADED browser only).
 
     Constructs an AeroplanSession (headed — never headless), ensures login,
-    then delegates to scrape_route_aeroplan. Aeroplan uses 5-day windows.
+    then drives the route through a BOUNDED re-auth-and-resume loop
+    (`core.aeroplan_runner`). A single Aeroplan session lasts only ~30-40 min,
+    so a wide date span may outlive one session: when the scraper surfaces
+    `expired=True` with windows remaining, the loop re-authenticates
+    (`ensure_logged_in` + warm-up) and resumes from the next unscraped window,
+    accumulating totals across batches. Aeroplan uses 5-day windows.
 
     Args:
         origin: IATA origin code (uppercase).
@@ -656,13 +661,17 @@ def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_met
         mfa_method: MFA delivery channel (Aeroplan defaults to "email").
         months: Optional list of month ints to restrict scraping.
         from_date / to_date: Optional date-window filters (YYYY-MM-DD).
+        max_reauths: Max re-authentications before stopping (default 4).
+        deadline_seconds: Overall wall-clock budget for the span (None = none).
 
     Returns:
-        dict with keys: found, stored, rejected, errors, total_windows,
-        expired, error_messages.
+        Aggregated dict with keys: found, stored, rejected, errors,
+        total_windows, expired, error_messages, plus reauths, batches and
+        span_complete (False iff a cap stopped the span before full coverage).
     """
     from core.aeroplan_session import AeroplanSession
     from core.aeroplan_scraper import scrape_route_aeroplan
+    from core.aeroplan_runner import run_aeroplan_route_with_reauth
 
     session = None
     try:
@@ -688,12 +697,23 @@ def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_met
         _log("Warm-up navigate (settling post-login redirect chain)...")
         _aeroplan_warmup(session)
 
-        _log(f"Scraping {origin}-{dest} via Aeroplan (5-day windows)...")
-        totals = scrape_route_aeroplan(
+        _log(f"Scraping {origin}-{dest} via Aeroplan (5-day windows, bounded re-auth loop)...")
+        totals = run_aeroplan_route_with_reauth(
             origin, dest, session, conn,
-            delay=delay, from_date=from_date, to_date=to_date,
-            months=months, verbose=not json_mode,
+            scrape_fn=scrape_route_aeroplan,
+            warmup=_aeroplan_warmup,
+            mfa_method=mfa_method,
+            from_date=from_date, to_date=to_date, months=months,
+            max_reauths=max_reauths, deadline_seconds=deadline_seconds,
+            verbose=not json_mode,
+            delay=delay,
         )
+        if not totals.get("span_complete", True):
+            _log(
+                f"WARNING: Aeroplan span for {origin}-{dest} NOT fully covered "
+                f"(reauths={totals.get('reauths')}, batches={totals.get('batches')}) "
+                f"— a re-auth/deadline cap was hit."
+            )
         return totals
 
     finally:
@@ -738,6 +758,11 @@ def _search_single_inproc(args):
             }
             if "expired" in totals:
                 payload["expired"] = totals["expired"]
+            # Surface re-auth/cap signals so unattended JSON consumers can detect
+            # a partially-covered span (the non-JSON path warns; JSON must too).
+            for k in ("span_complete", "reauths", "batches"):
+                if k in totals:
+                    payload[k] = totals[k]
             print(json.dumps(payload, indent=2))
         else:
             console = get_console()
@@ -2401,9 +2426,9 @@ def _schedule_add(args):
     else:
         interval = 60
 
-    min_interval = compute_min_interval(new_total)
+    min_interval = compute_min_interval(new_total, program=args.program)
     if interval < min_interval:
-        est = estimate_scrape_minutes(new_total)
+        est = estimate_scrape_minutes(new_total, program=args.program)
         print_error(
             f"Interval {interval} min is too short for {new_total} routes "
             f"(est. scrape ~{est} min + 45 min buffer).\n"
@@ -2424,6 +2449,7 @@ def _schedule_add(args):
         "months": args.months,
         "date_from": args.date_from,
         "date_to": args.date_to,
+        "program": args.program,
         "added_at": datetime.now().isoformat(),
     }
 
@@ -3069,6 +3095,11 @@ def main(argv=None):
                               help="Only scrape up to this date (YYYY-MM-DD)")
     schedule_add.add_argument("--no-wake", action="store_true", default=False,
                               help="Skip wake timer configuration")
+    schedule_add.add_argument("--program", choices=["united", "aeroplan"],
+                              default="united",
+                              help="Award program for this route group (default: united). "
+                                   "Aeroplan runs headed single-route and requires a larger "
+                                   "minimum interval.")
 
     schedule_sub.add_parser("list", help="List all scheduled scrapes",
                             parents=[shared_parser])

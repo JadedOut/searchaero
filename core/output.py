@@ -119,7 +119,7 @@ def print_table(
 
 def print_error(
     error_code: str,
-    message: str,
+    message: str | None = None,
     suggestion: str | None = None,
     json_mode: bool = False,
 ) -> None:
@@ -136,7 +136,17 @@ def print_error(
     json_mode:
         When ``True``, emit JSON to stderr; otherwise print a
         Rich-formatted error.
+
+    Back-compat
+    -----------
+    Many call sites invoke ``print_error("some human message")`` with a single
+    string. When ``message`` is omitted, the lone argument is treated as the
+    human-readable message under a generic ``"ERROR"`` code (previously this
+    raised ``TypeError`` and crashed the caller).
     """
+    if message is None:
+        error_code, message = "ERROR", error_code
+
     if json_mode:
         payload: dict = {
             "error": error_code,

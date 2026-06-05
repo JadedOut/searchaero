@@ -1,9 +1,9 @@
 # Aeroplan — To-Do / Open Gates
 
-Running list of deferred Aeroplan work. **Nothing here is in progress** — these are
-parked, intentionally, with enough context to pick up cold later.
+Running list of deferred Aeroplan work — now also the index of the **three open Phase-3
+live gates** (the unattended machinery is built; the live runs are the user's).
 
-Last updated: 2026-06-03.
+Last updated: 2026-06-04.
 
 > **2026-06-03 update (Phase 2 built).** The Phase-2 scraper → store → query → alert path
 > is **BUILT and offline-tested**; the **live gate is the user's** (Slice A / Slice B in
@@ -11,6 +11,16 @@ Last updated: 2026-06-03.
 > is **RESOLVED — Option A (shared table + `program` column)**. The seats/quota deferral and
 > the email-responder / cold-Arkose gates (TODO-1, TODO-2) remain the **parked follow-ups**,
 > not blockers for the keyboard-driven MVP. Per-item status annotated inline below.
+
+> **2026-06-04 update (Phase 3 built).** The **unattended re-auth-and-resume loop is now
+> SHIPPED** (`core/aeroplan_runner.py::run_aeroplan_route_with_reauth`, tested 7/7), the
+> **email-2FA contract is locked** (`tests/test_aeroplan_email_2fa_contract.py`), and a
+> **program-aware scheduled path** is shipped (HEADED single-route Aeroplan command per
+> route; `schedule add --program aeroplan` with Aeroplan-aware minimum interval). The
+> remaining work is **three user-run live gates** — Gate 1 (email-2FA live = TODO-1),
+> Gate 2 (cold-profile Arkose = TODO-2), Gate 3 (end-to-end unattended cycle) — all
+> documented in the new runbook
+> [`phase-3-unattended.md`](./phase-3-unattended.md). See the new **Phase 3** section below.
 
 ---
 
@@ -22,16 +32,29 @@ every step, 2FA completed via the file-handoff protocol (SMS path). See
 [`phase-1-login-automation.md`](./phase-1-login-automation.md) → "Live validation
 2026-06-03". Two pieces from the Phase-1 build remain **unverified live**:
 
-### TODO-1 — Verify email-2FA selection + Gmail IMAP responder (live)
-- **Status:** NOT DONE. Built but never exercised against the real account.
+### TODO-1 — Verify email-2FA selection + Gmail IMAP responder (live)  ✅ DONE (2026-06-05)
+- **Status:** ✅ **DONE (live) — Gate 1 PASSED 2026-06-05.** `search --program aeroplan YYZ LAX
+  --mfa-method email` logged in via email 2FA with no human relaying a code (responder
+  matched `sender filter 'aeroplan.com'`, found the code via contextual match, wrote it back;
+  login confirmed, 10 rows stored). See [`phase-3-unattended.md`](./phase-3-unattended.md) →
+  *Gate 1 — PASSED*. Previously **contract-locked offline**
+  (`tests/test_aeroplan_email_2fa_contract.py`: login emits
+  `mfa_request{mfa_method:"email", sender_filter:"aeroplan.com"}`; the responder
+  accepts the aeroplan.com code and rejects united.com). Sender + email-selection step
+  corrected against the live Gigya DOM + a real code email (2026-06-04, from
+  `info@communications.aeroplan.com`). Still never exercised end-to-end against the real
+  account. **This is Gate 1** in the Phase-3 runbook —
+  [`phase-3-unattended.md`](./phase-3-unattended.md) → *Gate 1 (TODO-1) — Email-2FA, live*
+  has the exact two-terminal commands and GO/NO-GO criteria.
 - **Why deferred:** the 2026-06-03 live run used **SMS** (code relayed by the user). The
   email path was blocked because `SEARCHAERO_GMAIL_SENDER` / `SEARCHAERO_GMAIL_APP_PASSWORD`
   are not set in `~/.searchaero/.env`.
 - **What's unverified specifically:**
-  1. `select_email_2fa()` — the Gigya "try a different way" → **Email** → Continue ladder
-     (selectors are recon-informed, never confirmed against the live email-selection DOM).
+  1. `select_email_2fa()` — clicks the **Email** method's "Send Code" in `.tfa-email-method`
+     on the Gigya screen, then waits for the `emailCode` field. Selectors are now
+     DOM-confirmed (2026-06-04) but the click→send→fill→submit path has never run live.
   2. The **Gmail-IMAP responder** fetching the Aeroplan code end-to-end
-     (`mfa_request` `sender_filter="aircanada.com"` → responder reads Gmail → writes
+     (`mfa_request` `sender_filter="aeroplan.com"` → responder reads Gmail → writes
      `mfa_response`).
 - **What IS already proven:** the 2FA *completion* mechanism (poll file → fill code field →
   submit → logged-in) is identical for SMS and email and is proven live. Only the email
@@ -43,10 +66,14 @@ every step, 2FA completed via the file-handoff protocol (SMS path). See
   - Success = PHASE-1 VERDICT reports `logged_in_success` via email 2FA.
 - **Priority:** needed for **fully unattended** re-auth (Phase 3 scheduled scraping); NOT a
   blocker for building/testing the Phase-2 scraper at the keyboard with a warm session.
+  The re-auth loop that consumes this (Phase-3 item 3) is now **SHIPPED** — this live gate
+  is the last thing standing between the loop and fully unattended operation.
 
 ### TODO-2 — Re-verify Arkose on a cold profile / fresh IP
 - **Status:** NOT DONE (open gate). All passing Arkose results so far are on a **warmed**
-  profile (many prior manual logins same day/IP).
+  profile (many prior manual logins same day/IP). **This is Gate 2** in the Phase-3
+  runbook — [`phase-3-unattended.md`](./phase-3-unattended.md) → *Gate 2 (TODO-2) —
+  Cold-profile / fresh-IP Arkose* has the exact `--profile-dir` command and GO/NO-GO.
 - **Risk if bad:** a fresh profile or new IP may score worse and get an **interactive**
   FunCaptcha → unattended login from a clean machine is blocked (the session manager
   surfaces this as `status="arkose"` and bails; it never auto-solves).
@@ -112,3 +139,47 @@ mismatch (no conversion, no `currency` column yet).
 **Gating rule:** Phase 2's scraper was **built and is testable with the SMS/warm session**
 today. **Fully unattended** Phase-2/3 operation still depends on the parked follow-ups —
 TODO-1 (email responder) and TODO-2 (cold-profile Arkose) — being green.
+
+---
+
+## Phase 3 — Unattended re-auth + scheduled scrape (🟡 BUILT — Gate 1 PASSED 2026-06-05; Gates 2 + 3 open)
+
+> **2026-06-04.** The unattended machinery is **built and offline-tested**; the runbook
+> with the exact commands + GO/NO-GO for all three gates is
+> [`phase-3-unattended.md`](./phase-3-unattended.md). The discipline block there is a hard
+> read before any live run (HEADED-only, single account/route, **PC must SLEEP not shut
+> down**, and the machine must be **logged on with an interactive desktop on wake** or
+> Phase-3 scheduling is not viable as designed).
+
+Phase-3 prerequisites and items, with status annotated:
+
+1. ✅ **TODO-1 — email-2FA live: PASSED 2026-06-05 (Gate 1).** Logged in via email 2FA with
+   no human relaying a code, 10 rows stored. Contract pinned by
+   `tests/test_aeroplan_email_2fa_contract.py`; live result in
+   [`phase-3-unattended.md`](./phase-3-unattended.md) → *Gate 1 — PASSED*. See TODO-1 above.
+2. 🟡 **TODO-2 — cold-profile / fresh-IP Arkose.** **Live = Gate 2** in
+   [`phase-3-unattended.md`](./phase-3-unattended.md). See TODO-2 above.
+3. ✅ **SHIPPED — bounded re-auth-and-resume loop.**
+   `core/aeroplan_runner.py::run_aeroplan_route_with_reauth` drives `scrape_route_aeroplan`
+   in a bounded loop; on session expiry with windows remaining it re-authenticates
+   (`session.ensure_logged_in()` + warm-up) and resumes from the next unscraped window,
+   capped by `max_reauths` (default 4) and `deadline_seconds`. Wired into
+   `cli.py::_scrape_route_aeroplan_live`. Pure orchestration (no browser/DB/Playwright;
+   injectable clock). Tested by `tests/test_aeroplan_reauth_loop.py` (**7/7**).
+   (Previously parked under Phase-2 *Deferred follow-ups* → "Unattended re-auth loop";
+   now done.)
+4. ✅ **SHIPPED — program-aware scheduled path.** `scripts/scheduled_scrape.py` emits a
+   HEADED, single-route `cli.py search --program aeroplan <O> <D> --mfa-file --mfa-method
+   email` command per route for groups tagged `program="aeroplan"` (no
+   `--headless/--ephemeral/--file`); `searchaero schedule add --program aeroplan` registers
+   a wake-to-run task, persists `program` on the route group, and applies an Aeroplan-aware
+   (larger) minimum interval (`core/scheduler.py` heavier per-route + login constants).
+5. 🟡 **Gate 3 — end-to-end unattended cycle.** Register a single-route Aeroplan schedule
+   and observe one wake-triggered cycle (headed Chrome on the interactive desktop → email
+   2FA → scrape → re-auth across TTL → program-tagged rows). Run only after Gates 1 + 2 are
+   GO. Commands + GO/NO-GO in [`phase-3-unattended.md`](./phase-3-unattended.md) → *Gate 3*.
+
+**Status:** the loop and the scheduled path are **built and offline-tested**; unattended
+operation is gated by the **user's manual live runs** (Gate 1 email-2FA, Gate 2
+cold-profile Arkose, Gate 3 end-to-end cycle) in
+[`phase-3-unattended.md`](./phase-3-unattended.md).

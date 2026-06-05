@@ -101,6 +101,24 @@ def _clean_mfa_files():
             print(f"Cleaned stale {fname}", file=sys.stderr)
 
 
+def _append_window_flags(cmd, args, months, date_from, date_to):
+    """Append --months/--from/--to flags to cmd.
+
+    Per-group overrides (months/date_from/date_to) take priority; otherwise fall
+    back to the corresponding args values.  Mutates and returns cmd.
+    """
+    m = months if months is not None else args.months
+    df = date_from if date_from is not None else args.search_from
+    dt = date_to if date_to is not None else args.search_to
+    if m:
+        cmd.extend(["--months", m])
+    if df:
+        cmd.extend(["--from", df])
+    if dt:
+        cmd.extend(["--to", dt])
+    return cmd
+
+
 def _build_search_cmd(args, routes_file=None, months=None,
                       date_from=None, date_to=None):
     """Build the searchaero search command list.
@@ -123,17 +141,79 @@ def _build_search_cmd(args, routes_file=None, months=None,
     ]
     if args.db_path:
         cmd.extend(["--db-path", args.db_path])
-    # Per-group overrides take priority, then fall back to args
-    m = months if months is not None else args.months
-    df = date_from if date_from is not None else args.search_from
-    dt = date_to if date_to is not None else args.search_to
-    if m:
-        cmd.extend(["--months", m])
-    if df:
-        cmd.extend(["--from", df])
-    if dt:
-        cmd.extend(["--to", dt])
-    return cmd
+    return _append_window_flags(cmd, args, months, date_from, date_to)
+
+
+def _parse_routes_file(routes_file):
+    """Parse a routes file into a list of (origin, dest) tuples.
+
+    Thin wrapper over the canonical ``core.routes.load_routes`` parser (the
+    same one used by cli.py, hybrid_scraper, burn_in, orchestrate) plus a guard
+    for a missing/empty path.  Route lines are space-separated ``ORIGIN DEST``;
+    blank lines and ``#`` comments are skipped and codes are uppercased.
+    """
+    sys.path.insert(0, _PROJECT_ROOT)
+    from core.routes import load_routes
+
+    return load_routes(routes_file) if routes_file and os.path.isfile(routes_file) else []
+
+
+def _build_aeroplan_search_cmd(args, origin, dest, months=None,
+                               date_from=None, date_to=None):
+    """Build a HEADED, SINGLE-ROUTE Aeroplan search command list.
+
+    Aeroplan is single-route only (positional ORIGIN DEST, never --file) and
+    must run headed (no --headless / --ephemeral).  MFA is email/file-based.
+    """
+    cmd = [
+        sys.executable, os.path.join(_PROJECT_ROOT, "cli.py"),
+        "search",
+        "--program", "aeroplan",
+        origin, dest,
+        "--mfa-file",
+        "--mfa-method", "email",
+    ]
+    if args.db_path:
+        cmd.extend(["--db-path", args.db_path])
+    return _append_window_flags(cmd, args, months, date_from, date_to)
+
+
+def _build_group_search_cmds(args, grp):
+    """Return a list of (label, command) pairs for a route group.
+
+    Program-aware dispatch:
+      - program == "united" (or missing) -> exactly one command (unchanged
+        united shape via _build_search_cmd), labelled by the group name.
+      - program == "aeroplan" -> one HEADED single-route command per route in
+        the group's routes file, labelled "<group> <ORIGIN>-<DEST>".
+    """
+    program = grp.get("program", "united")
+    grp_name = grp.get("name", "default")
+    routes_file = grp.get("routes_file")
+    months = grp.get("months")
+    date_from = grp.get("date_from")
+    date_to = grp.get("date_to")
+
+    if program == "aeroplan":
+        cmds = []
+        for origin, dest in _parse_routes_file(routes_file):
+            label = f"{grp_name} {origin}-{dest}"
+            cmd = _build_aeroplan_search_cmd(
+                args, origin, dest,
+                months=months, date_from=date_from, date_to=date_to,
+            )
+            cmds.append((label, cmd))
+        return cmds
+
+    # United (default): exactly one command, unchanged shape.
+    cmd = _build_search_cmd(
+        args,
+        routes_file=routes_file,
+        months=months,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    return [(grp_name, cmd)]
 
 
 def _build_responder_cmd(args):
@@ -318,14 +398,8 @@ def main():
         print("=== DRY RUN ===")
         print(f"Responder: {' '.join(responder_cmd)}")
         for i, grp in enumerate(route_groups):
-            search_cmd = _build_search_cmd(
-                args,
-                routes_file=grp.get("routes_file"),
-                months=grp.get("months"),
-                date_from=grp.get("date_from"),
-                date_to=grp.get("date_to"),
-            )
-            print(f"Search [{grp.get('name', i)}]: {' '.join(search_cmd)}")
+            for label, search_cmd in _build_group_search_cmds(args, grp):
+                print(f"Search [{label}]: {' '.join(search_cmd)}")
         print(f"Log file:  {_LOG_FILE}")
         if args.no_eval:
             print("Eval:      SKIPPED (--no-eval)")
@@ -373,69 +447,66 @@ def main():
         for grp_idx, grp in enumerate(route_groups):
             grp_name = grp.get("name", f"group-{grp_idx}")
             grp_routes_file = grp.get("routes_file", "")
-            grp_start = time.monotonic()
 
-            search_cmd = _build_search_cmd(
-                args,
-                routes_file=grp_routes_file,
-                months=grp.get("months"),
-                date_from=grp.get("date_from"),
-                date_to=grp.get("date_to"),
-            )
+            # Program-aware: united -> 1 command; aeroplan -> 1 per route.
+            for label, search_cmd in _build_group_search_cmds(args, grp):
+                cmd_start = time.monotonic()
 
-            print(f"Running group '{grp_name}': {' '.join(search_cmd)}", file=sys.stderr)
-            result = subprocess.run(
-                search_cmd,
-                capture_output=True,
-                text=True,
-                cwd=_PROJECT_ROOT,
-            )
-            grp_exit = result.returncode
-            grp_duration = int(time.monotonic() - grp_start)
+                print(f"Running '{label}': {' '.join(search_cmd)}", file=sys.stderr)
+                result = subprocess.run(
+                    search_cmd,
+                    capture_output=True,
+                    text=True,
+                    cwd=_PROJECT_ROOT,
+                )
+                cmd_exit = result.returncode
+                cmd_duration = int(time.monotonic() - cmd_start)
 
-            if grp_exit == 0:
-                search_result = None
-                try:
-                    search_result = json.loads(result.stdout)
-                except (json.JSONDecodeError, ValueError):
-                    search_result = {"raw_stdout": result.stdout[:2000]}
+                if cmd_exit == 0:
+                    search_result = None
+                    try:
+                        search_result = json.loads(result.stdout)
+                    except (json.JSONDecodeError, ValueError):
+                        search_result = {"raw_stdout": result.stdout[:2000]}
 
-                log_entry = {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "status": "success",
-                    "group_name": grp_name,
-                    "routes_file": grp_routes_file,
-                    "duration_seconds": grp_duration,
-                    "search_result": search_result,
-                    "exit_code": 0,
-                    "eval_method": "deferred",
-                }
-                _write_log(log_entry)
-                print(f"Group '{grp_name}' completed in {grp_duration}s", file=sys.stderr)
+                    log_entry = {
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "status": "success",
+                        "group_name": grp_name,
+                        "label": label,
+                        "routes_file": grp_routes_file,
+                        "duration_seconds": cmd_duration,
+                        "search_result": search_result,
+                        "exit_code": 0,
+                        "eval_method": "deferred",
+                    }
+                    _write_log(log_entry)
+                    print(f"'{label}' completed in {cmd_duration}s", file=sys.stderr)
 
-                # Collect routes for eval
-                all_routes_scraped.extend(_parse_routes_from_result(search_result))
-            else:
-                stderr_tail = (result.stderr or "")[-500:]
-                error_msg = f"searchaero search exited with code {grp_exit} (group: {grp_name})"
+                    # Collect routes for eval
+                    all_routes_scraped.extend(_parse_routes_from_result(search_result))
+                else:
+                    stderr_tail = (result.stderr or "")[-500:]
+                    error_msg = f"searchaero search exited with code {cmd_exit} (label: {label})"
 
-                log_entry = {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "status": "error",
-                    "group_name": grp_name,
-                    "routes_file": grp_routes_file,
-                    "duration_seconds": grp_duration,
-                    "error": error_msg,
-                    "stderr_tail": stderr_tail,
-                    "exit_code": grp_exit,
-                    "eval_method": "skipped",
-                }
-                _write_log(log_entry)
-                print(f"Group '{grp_name}' failed ({error_msg})", file=sys.stderr)
-                if stderr_tail:
-                    print(f"stderr: {stderr_tail}", file=sys.stderr)
-                _notify_failure(error_msg, grp_routes_file, grp_duration)
-                exit_code = grp_exit  # propagate failure
+                    log_entry = {
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "status": "error",
+                        "group_name": grp_name,
+                        "label": label,
+                        "routes_file": grp_routes_file,
+                        "duration_seconds": cmd_duration,
+                        "error": error_msg,
+                        "stderr_tail": stderr_tail,
+                        "exit_code": cmd_exit,
+                        "eval_method": "skipped",
+                    }
+                    _write_log(log_entry)
+                    print(f"'{label}' failed ({error_msg})", file=sys.stderr)
+                    if stderr_tail:
+                        print(f"stderr: {stderr_tail}", file=sys.stderr)
+                    _notify_failure(error_msg, grp_routes_file, cmd_duration)
+                    exit_code = cmd_exit  # propagate failure
 
         # --- Step 5: Post-run summary and eval ---
         total_duration = int(time.monotonic() - start_time)
