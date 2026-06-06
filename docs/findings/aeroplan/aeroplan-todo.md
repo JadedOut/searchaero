@@ -70,10 +70,16 @@ every step, 2FA completed via the file-handoff protocol (SMS path). See
   is the last thing standing between the loop and fully unattended operation.
 
 ### TODO-2 — Re-verify Arkose on a cold profile / fresh IP
-- **Status:** NOT DONE (open gate). All passing Arkose results so far are on a **warmed**
-  profile (many prior manual logins same day/IP). **This is Gate 2** in the Phase-3
-  runbook — [`phase-3-unattended.md`](./phase-3-unattended.md) → *Gate 2 (TODO-2) —
-  Cold-profile / fresh-IP Arkose* has the exact `--profile-dir` command and GO/NO-GO.
+- **Status:** ⚪ **DEPRIORITIZED (2026-06-05) — not needed for the single-laptop deployment.**
+  The scheduled scraper runs from the same laptop / same persistent `--profile-dir` / stable
+  IP, so the profile stays **warm by construction** (the condition Gate 1 already passed on).
+  A cold profile only arises on a trust reset (new machine, wiped/corrupted profile, changed
+  IP) and is recoverable with a **one-time manual login**. Downgraded from a required gate to
+  a known edge case; **Gate 3 no longer waits on it.** Full reasoning in
+  [`phase-3-unattended.md`](./phase-3-unattended.md) → *Gate 2 → Reassessment (2026-06-05)*.
+  Still worth running once if you ever deploy on a fresh machine.
+- ~~**This is Gate 2** in the Phase-3 runbook — has the exact `--profile-dir` command and
+  GO/NO-GO.~~ (Commands remain in the runbook for the fresh-machine case.)
 - **Risk if bad:** a fresh profile or new IP may score worse and get an **interactive**
   FunCaptcha → unattended login from a clean machine is blocked (the session manager
   surfaces this as `status="arkose"` and bails; it never auto-solves).
@@ -142,7 +148,7 @@ TODO-1 (email responder) and TODO-2 (cold-profile Arkose) — being green.
 
 ---
 
-## Phase 3 — Unattended re-auth + scheduled scrape (🟡 BUILT — Gate 1 PASSED 2026-06-05; Gates 2 + 3 open)
+## Phase 3 — Unattended re-auth + scheduled scrape (🟡 BUILT — Gate 1 PASSED 2026-06-05; Gate 3 open; Gate 2 deprioritized 2026-06-05)
 
 > **2026-06-04.** The unattended machinery is **built and offline-tested**; the runbook
 > with the exact commands + GO/NO-GO for all three gates is
@@ -157,8 +163,10 @@ Phase-3 prerequisites and items, with status annotated:
    no human relaying a code, 10 rows stored. Contract pinned by
    `tests/test_aeroplan_email_2fa_contract.py`; live result in
    [`phase-3-unattended.md`](./phase-3-unattended.md) → *Gate 1 — PASSED*. See TODO-1 above.
-2. 🟡 **TODO-2 — cold-profile / fresh-IP Arkose.** **Live = Gate 2** in
-   [`phase-3-unattended.md`](./phase-3-unattended.md). See TODO-2 above.
+2. ⚪ **TODO-2 — cold-profile / fresh-IP Arkose: DEPRIORITIZED (2026-06-05).** Not needed for
+   the single-laptop deployment (profile stays warm by construction; cold is a recoverable
+   fresh-machine edge case). No longer gates Gate 3. See TODO-2 above and
+   [`phase-3-unattended.md`](./phase-3-unattended.md) → *Gate 2 → Reassessment*.
 3. ✅ **SHIPPED — bounded re-auth-and-resume loop.**
    `core/aeroplan_runner.py::run_aeroplan_route_with_reauth` drives `scrape_route_aeroplan`
    in a bounded loop; on session expiry with windows remaining it re-authenticates

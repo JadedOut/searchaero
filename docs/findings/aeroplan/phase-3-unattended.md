@@ -16,7 +16,7 @@ gate the three remaining GO/NO-GO behaviors. Agents built and offline-tested the
 
 ---
 
-## TL;DR — Status: 🟡 BUILT + offline-tested; **Gate 1 PASSED live (2026-06-05); Gates 2 + 3 OPEN.**
+## TL;DR — Status: 🟡 BUILT + offline-tested; **Gate 1 PASSED live (2026-06-05); Gate 3 OPEN; Gate 2 DEPRIORITIZED (2026-06-05).**
 
 **Phase 3 delivers** the bounded re-auth-and-resume loop, the email-2FA contract
 (login asks for the code by email; the Gmail-IMAP responder fetches the aeroplan.com
@@ -27,7 +27,7 @@ code), and a program-aware scheduled path that emits a HEADED, single-route Aero
 |---|---|
 | Survive the ~30–40 min TTL across a wide span? | ✅ **SHIPPED — bounded re-auth-and-resume loop.** `core/aeroplan_runner.py::run_aeroplan_route_with_reauth` drives `scrape_route_aeroplan`; on `expired=True` with windows remaining it re-authenticates and resumes from the next unscraped window. Capped by `max_reauths` (default 4) + `deadline_seconds`. Wired into `cli.py::_scrape_route_aeroplan_live`. Tested by `tests/test_aeroplan_reauth_loop.py` (**7/7**). |
 | Unattended 2FA (no human relay)? | ✅ **LIVE-VERIFIED — Gate 1 PASSED (2026-06-05).** `search --program aeroplan YYZ LAX --mfa-method email` logged in with NO human relaying a code: login clicked the Email "Send Code", `scripts/mfa_responder.py` detected the request (`sender filter 'aeroplan.com'`), fetched the code from Gmail via contextual match, wrote it back; login confirmed and stored 10 rows. Contract pinned by `tests/test_aeroplan_email_2fa_contract.py`; email-selection + sender corrected against the live Gigya DOM + real code email (2026-06-04). |
-| Cold-profile / fresh-IP Arkose? | 🟡 **UNVERIFIED.** Every passing Arkose result so far is on a *warmed* profile. **Gate 2** runs login against a fresh `--profile-dir`. |
+| Cold-profile / fresh-IP Arkose? | ⚪ **NOT NEEDED (2026-06-05) for the single-laptop deployment** — the profile stays warm by construction; cold only arises on a machine/profile/IP reset, recoverable with a one-time manual login. Downgraded from a gate to an edge case (see *Gate 2 → Reassessment*). |
 | Program-aware scheduling? | ✅ **SHIPPED.** `scripts/scheduled_scrape.py` emits a HEADED, single-route `cli.py search --program aeroplan <O> <D> --mfa-file --mfa-method email` per route for groups tagged `program="aeroplan"` (no `--headless/--ephemeral/--file`). `searchaero schedule add --program aeroplan` registers a wake-to-run task, persists `program` on the route group, and uses an Aeroplan-aware (larger) minimum interval. **Gate 3** is the end-to-end wake-triggered cycle. |
 | Live-validated end-to-end? | 🟡 **NO — that is Gate 3.** Everything below the loop is offline-tested; the unattended cycle is the user's final gate. |
 
@@ -287,12 +287,32 @@ empty directory for `--profile-dir` so nothing is warmed.)
 and bails). Unattended login from a clean machine is then blocked — record the step it
 appeared at and treat cold-machine scheduling as not-yet-safe.
 
+#### Reassessment (2026-06-05) — Gate 2 is NOT needed for the single-laptop deployment
+
+Gate 2 tests a condition that **does not occur in normal operation.** The scheduled scraper
+always runs from the **same laptop against the same persistent `--profile-dir`**, on a
+**stable residential IP**, every day — so the profile stays *warm by construction*
+(accumulating cookies/history that keep the Arkose score high → transparent, no-puzzle
+challenge). **Gate 1 already passed live under exactly these conditions.**
+
+A **cold** profile only arises on a **trust reset** — a new/reinstalled machine, a wiped or
+corrupted profile dir, or a materially changed IP — none of which are steady-state events.
+And even then the failure is **recoverable without code**: do **one manual interactive
+login** (solve the FunCaptcha yourself once) and the profile is warm permanently thereafter.
+
+So the realistic worst case is "a one-time manual warm-up after a machine change," not
+"unattended Aeroplan is broken." For a single-user, single-laptop deployment Gate 2 is
+**downgraded from a required gate to a known edge case** — run it only if you plan to deploy
+on a fresh machine / clean profile and want to confirm cold-start behavior ahead of time.
+**Gate 3 no longer waits on it.**
+
 ### Gate 3 — End-to-end unattended cycle
 
 **Purpose.** Prove the whole Phase-3 path runs **on a schedule, unattended**: the PC
 wakes, headed Chrome launches on the interactive desktop, logs in via email 2FA, scrapes,
 **re-auths if the span crosses a TTL boundary** (the shipped loop), and stores
-program-tagged rows. Run this **only after Gates 1 and 2 are GO.**
+program-tagged rows. Run this **after Gate 1 is GO.** (Gate 2 is no longer a prerequisite —
+see *Reassessment (2026-06-05)* above; it's a fresh-machine edge case, not a steady-state gate.)
 
 **Setup — register a single-route Aeroplan schedule** (one route file, one route):
 
