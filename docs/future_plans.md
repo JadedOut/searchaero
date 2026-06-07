@@ -213,6 +213,14 @@ Wall time stays ~2 min regardless of program count.
 
 ## Phase 3: MCP Decision Point
 
+> **RESOLVED (April 2026) — decided AGAINST MCP, and reversed an earlier build.** This was
+> not just decided in the abstract: an MCP server (`mcp_server.py`, ~1247 lines, FastMCP)
+> was actually built (impl-plan steps 14b–16b) and then **removed** in commit `917a514`,
+> replaced by the CLI + `/flights` agent skill. The "Stay CLI" branch below is the path
+> taken. The forward-looking analysis is kept as a record of the reasoning; treat it as
+> history, not a pending decision. (Unrelated to the **Gmail MCP**, which the skill still
+> uses — that's a third-party integration, not searchaero exposing itself over MCP.)
+
 After Aeroplan works, evaluate whether to refactor into an MCP server. **This is a decision gate, not a foregone conclusion.** The answer depends on what we learn in Phase 2:
 
 ### Go MCP if:
