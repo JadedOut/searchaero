@@ -55,18 +55,29 @@ the two is the easiest mistake here, so:**
 | | Interactive — "scrape YYZ-LAX on Aeroplan" (you → Claude) | Unattended — a scheduled timer fires at 3am (Gate 3) |
 |---|---|---|
 | Who fetches the code | **Claude, via the Gmail MCP** (`mcp__claude_ai_Gmail__search_threads`) — the OAuth Gmail connection in the live session | **`scripts/mfa_responder.py`**, a bare Python process, via **IMAP** |
-| Gmail credential needed | **NONE.** The MCP is already authenticated. No app password, no `.env` entry. | `SEARCHAERO_GMAIL_SENDER` + `SEARCHAERO_GMAIL_APP_PASSWORD` (a Google **App Password**), read from `~/.searchaero/.env` |
+| Gmail credential needed | **NONE.** The MCP is already authenticated. No app password, no `.env` entry. | `SEARCHAERO_GMAIL_SENDER` + `SEARCHAERO_GMAIL_APP_PASSWORD` (a Google **App Password**), loaded from an env file via `scheduled_scrape.py --env-file` |
 | When it runs | Every time you ask Claude to scrape Aeroplan | Only a fully-unattended scheduled run with no Claude/MCP present |
+
+**This credential ALREADY EXISTS — it is not a new thing to create.** Both keys are set in
+the repo-root **`./.env`** (gitignored). The unattended responder is **program-agnostic**:
+`scheduled_scrape.py` builds BOTH the United (`_build_search_cmd`, line 136) and Aeroplan
+(`_build_aeroplan_search_cmd`, line 174) scheduled commands with `--mfa-method email`, so
+**United's unattended path uses the exact same App Password + IMAP responder.** There is **no
+Aeroplan-specific credential step** — if United can scrape unattended, Aeroplan can too, on the
+identical mechanism. (Note: `scheduled_scrape.py` does not auto-load `./.env`; the registered
+schedule must pass `--env-file <path-to-.env>`, which `searchaero schedule add --env-file`
+wires into the generated `.bat`.)
 
 **Why the split:** the Gmail MCP only exists *inside a live Claude session*. A scheduled job
 that wakes the PC at 3am has no Claude and no MCP — so a standalone script polls Gmail the
 only way it can without Claude (IMAP), which needs its own credential. The App Password is
 **not** a second human login; it's the headless machine's way in when Claude isn't there.
 
-**Practical consequence:** if you only ever scrape Aeroplan by *asking Claude*, you **never
-need an App Password.** It is a **Gate-3 (unattended scheduling) prerequisite only.** This is
-also why United "just works" without one: United interactive is SMS (you paste the code), and
-a fully-unattended Aeroplan timer is the single path that has ever required the IMAP responder.
+**Practical consequence:** if you only ever scrape (United *or* Aeroplan) by *asking Claude*,
+the App Password is irrelevant — United interactive is SMS-paste, Aeroplan interactive is the
+MCP. The App Password matters **only** for fully-unattended scheduled runs of *either* program,
+and it is **already configured** in `./.env`. Earlier notes in this repo's history that framed
+it as a missing Aeroplan prerequisite were wrong: it exists, and it is shared with United.
 
 Program detection: `aeroplan` / `air canada` / `AC` → `program = aeroplan`; otherwise
 default `program = united`. A `PROGRAM` placeholder threads through the shared commands
