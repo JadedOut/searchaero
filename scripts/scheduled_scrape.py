@@ -303,8 +303,13 @@ def main():
         help="Override database path",
     )
     parser.add_argument(
-        "--env-file", default=None,
-        help="Path to .env file for mfa_responder environment variables",
+        "--env-file",
+        default=os.path.join(os.path.expanduser("~"), ".searchaero", ".env"),
+        help="Path to .env file for mfa_responder environment variables "
+             "(default: ~/.searchaero/.env, the canonical credential file). "
+             "All creds — airline logins AND Gmail (SEARCHAERO_GMAIL_SENDER / "
+             "SEARCHAERO_GMAIL_APP_PASSWORD) — live there, so unattended runs "
+             "find the Gmail responder creds without any extra flag.",
     )
     parser.add_argument(
         "--no-eval", action="store_true", default=False,
