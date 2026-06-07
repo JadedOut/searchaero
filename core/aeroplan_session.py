@@ -283,7 +283,38 @@ class AeroplanSession:
 
         log.info("AeroplanSession: not logged in — driving login (mfa_method=%s)",
                  mfa_method)
-        return self.login(mfa_method=mfa_method)
+        result = self.login(mfa_method=mfa_method)
+
+        # Cold-start guard: a FIRST-attempt creds_rejected is, in practice,
+        # usually a transient form-render race — the Gigya login widget hadn't
+        # painted its fields inside login()'s wait window, so nothing was
+        # submitted and the classifier fell through to creds_rejected ("login
+        # form still present after submit — credentials likely rejected OR
+        # submit did not advance"). The classifier cannot tell a real rejection
+        # from a non-advancing submit apart. creds_rejected means we never
+        # reached the 2FA wall, so a clean re-navigate + one retry is safe (no
+        # double 2FA, no extra code email). If the creds are genuinely bad, the
+        # retry also returns creds_rejected and we surface it. Observed live
+        # 2026-06-06: first attempt creds_rejected, immediate retry logged in.
+        if result.status == "creds_rejected":
+            log.warning("ensure_logged_in: first login attempt returned "
+                        "creds_rejected — re-navigating and retrying once "
+                        "(cold-start guard)")
+            try:
+                self._page.goto(
+                    AIRCANADA_HOME, wait_until="domcontentloaded", timeout=60000
+                )
+                time.sleep(SETTLE_SECONDS)
+            except Exception as exc:
+                log.warning("ensure_logged_in: retry navigation failed", exc_info=True)
+                return LoginResult(
+                    status="error",
+                    detail=f"cold-start retry navigation failed: {exc}",
+                    url=self._safe_url(),
+                )
+            result = self.login(mfa_method=mfa_method)
+
+        return result
 
     # ------------------------------------------------------------------
     # Login flow (Gigya A -> D, reusing the proven driver helpers)

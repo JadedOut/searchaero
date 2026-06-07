@@ -213,6 +213,34 @@ eyeball gates — no code assertion decides correctness.**
 > not bad creds (the classifier can't tell the two apart); a retry passed. The procedure
 > below is retained for re-runs.
 
+#### Known issue (2026-06-07) — cold-start login flake + profile mismatch
+
+Two operational findings, root-caused during a live `search --program aeroplan YYZ LAX
+--mfa-method email --months 7` run (which then succeeded: 35 fares stored across 7 July
+windows, 0 errors, no re-auth).
+
+1. **Cold-start `creds_rejected` is a timing flake, not bad creds.** The *first* headed
+   login of a session — when the persistent profile has sat idle — can lose a race with
+   Air Canada's Gigya form rendering: the member/password fields aren't found in
+   `AeroplanSession.login()`'s wait window, nothing is submitted (the run dies in ~16–19s,
+   *before* the ~25s post-submit wait would run), and the classifier falls through to
+   `creds_rejected` ("login form still present after submit — credentials likely rejected
+   **or submit did not advance**"). Proof it is not the creds/profile/Arkose: the same
+   creds + the *same* `~/.searchaero/.aeroplan-profile` reached the 2FA wall on every warm
+   retry, and a plain re-run of the real `search` path logged in cleanly. This matches the
+   "first attempt failed, retry passed" note in the Gate 1 result above — same root cause.
+   **Recommended fix (not yet applied):** in `ensure_logged_in`, wait for the Sign-in
+   entry / Gigya form to be visible before Step A (as `aeroplan_login_drive.py` does), or
+   retry `login()` once on a first `creds_rejected`. Small, testable; removes the flake.
+
+2. **The login-drive script and the real `search` path use DIFFERENT default profiles.**
+   `AeroplanSession` (and therefore `search`) defaults to `~/.searchaero/.aeroplan-profile`
+   (`core/aeroplan_session.py:78`, `DEFAULT_PROFILE_DIR`). The `aeroplan_login_drive.py`
+   diagnostic defaults to `scripts/experiments/.aeroplan-profile`. So Gate 1/2, run via the
+   login-drive, warmed a profile that **real scrapes do not use** — which is exactly why the
+   first `search` login was effectively cold. When warming or testing for a `search`/schedule
+   run, point the drive at the search profile: `--profile-dir ~/.searchaero/.aeroplan-profile`.
+
 **Purpose.** Prove the unattended 2FA channel end-to-end: login clicks the **Email**
 method's "Send Code" on the Gigya screen, the Gmail-IMAP responder fetches the
 **aeroplan.com** code (from `info@communications.aeroplan.com`), and the session reaches
