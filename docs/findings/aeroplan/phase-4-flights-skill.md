@@ -46,6 +46,28 @@ shared.
 | **Browser/profile** | may use `--ephemeral` (fresh browser) | **persistent profile, headed, NO `--ephemeral`** — needs the warm session |
 | **Time + display** | "~2 min"; `query ORIG DEST` | "tens of minutes, may re-auth"; `query ORIG DEST --program aeroplan` |
 
+### Two Gmail-2FA paths — and why only ONE needs a Google App Password
+
+Aeroplan's email-2FA code is fetched from Gmail two completely different ways depending on
+whether a human (with Claude) is present. **They use different Gmail credentials. Confusing
+the two is the easiest mistake here, so:**
+
+| | Interactive — "scrape YYZ-LAX on Aeroplan" (you → Claude) | Unattended — a scheduled timer fires at 3am (Gate 3) |
+|---|---|---|
+| Who fetches the code | **Claude, via the Gmail MCP** (`mcp__claude_ai_Gmail__search_threads`) — the OAuth Gmail connection in the live session | **`scripts/mfa_responder.py`**, a bare Python process, via **IMAP** |
+| Gmail credential needed | **NONE.** The MCP is already authenticated. No app password, no `.env` entry. | `SEARCHAERO_GMAIL_SENDER` + `SEARCHAERO_GMAIL_APP_PASSWORD` (a Google **App Password**), read from `~/.searchaero/.env` |
+| When it runs | Every time you ask Claude to scrape Aeroplan | Only a fully-unattended scheduled run with no Claude/MCP present |
+
+**Why the split:** the Gmail MCP only exists *inside a live Claude session*. A scheduled job
+that wakes the PC at 3am has no Claude and no MCP — so a standalone script polls Gmail the
+only way it can without Claude (IMAP), which needs its own credential. The App Password is
+**not** a second human login; it's the headless machine's way in when Claude isn't there.
+
+**Practical consequence:** if you only ever scrape Aeroplan by *asking Claude*, you **never
+need an App Password.** It is a **Gate-3 (unattended scheduling) prerequisite only.** This is
+also why United "just works" without one: United interactive is SMS (you paste the code), and
+a fully-unattended Aeroplan timer is the single path that has ever required the IMAP responder.
+
 Program detection: `aeroplan` / `air canada` / `AC` → `program = aeroplan`; otherwise
 default `program = united`. A `PROGRAM` placeholder threads through the shared commands
 (`query ORIG DEST --program PROGRAM …`).

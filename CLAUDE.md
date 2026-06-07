@@ -24,7 +24,7 @@ For flight queries and scraping, use the `/flights` skill or call searchaero CLI
 - `scrape.py` — Single-route scraper (called by CLI search)
 - `scripts/burn_in.py` — Multi-route runner with JSONL logging (supports `--one-shot` for single-pass and `--burn-limit` for auto-exit on cookie burns)
 - `scripts/orchestrate.py` — Parallel orchestrator: splits routes across N workers, monitors health via status files, kills burned-out workers
-- `scripts/mfa_responder.py` — Autonomous MFA code resolver (Gmail IMAP). Watches `~/.searchaero/mfa_request`, writes codes to `~/.searchaero/mfa_response`
+- `scripts/mfa_responder.py` — Autonomous MFA code resolver (Gmail IMAP). Watches `~/.searchaero/mfa_request`, writes codes to `~/.searchaero/mfa_response`. **This IMAP path (needs `SEARCHAERO_GMAIL_SENDER` + `SEARCHAERO_GMAIL_APP_PASSWORD` in `.env`) is for UNATTENDED/scheduled runs only.** Interactive `/flights` runs resolve the Aeroplan code via the **Gmail MCP** inside the live Claude session — no App Password needed. See `docs/findings/aeroplan/phase-4-flights-skill.md` → "Two Gmail-2FA paths"
 - `scripts/scheduled_scrape.py` — Program-aware wrapper: starts mfa_responder → runs `searchaero search` per route group → kills responder → logs to JSONL. United groups run one headless, ephemeral, multi-route batch; `program="aeroplan"` groups run a headed, single-route `search --program aeroplan <O> <D> --mfa-file --mfa-method email` command per route
 - `scripts/scheduled_scrape.bat` — Reference .bat template (legacy; use `searchaero schedule add` instead)
 - `core/scheduler.py` — Windows Task Scheduler management (schtasks, powercfg, .bat generation)
