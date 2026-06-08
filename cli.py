@@ -743,6 +743,7 @@ def _search_single_inproc(args):
                 orig, dest, conn,
                 delay=args.delay, json_mode=args.json, mfa_method=args.mfa_method,
                 months=args._months_list, from_date=args.search_from, to_date=args.search_to,
+                max_reauths=args.max_reauths,
             )
         else:
             mfa_prompt = _get_mfa_prompt(args)
@@ -2956,6 +2957,9 @@ def main(argv=None):
                                help="Only scrape windows overlapping this date or later (YYYY-MM-DD)")
     search_parser.add_argument("--to", dest="search_to", default=None,
                                help="Only scrape windows overlapping this date or earlier (YYYY-MM-DD)")
+    search_parser.add_argument("--max-reauths", type=int, default=4,
+                               help="Max Aeroplan re-authentications before stopping the span (default: 4). "
+                                    "Aeroplan only; ignored for United.")
 
     query_parser = subparsers.add_parser("query", help="Query stored availability data",
                                           parents=[shared_parser])

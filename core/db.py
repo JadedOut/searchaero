@@ -711,7 +711,7 @@ def get_scanned_routes_today(conn: sqlite3.Connection) -> set[tuple[str, str]]:
     return {(row[0], row[1]) for row in cur.fetchall()}
 
 
-def get_route_freshness(conn, origin, dest, ttl_seconds=43200):
+def get_route_freshness(conn, origin, dest, ttl_seconds=43200, program=None):
     """Check how fresh the cached data is for a route.
 
     Args:
@@ -719,15 +719,20 @@ def get_route_freshness(conn, origin, dest, ttl_seconds=43200):
         origin: 3-letter IATA origin code.
         dest: 3-letter IATA destination code.
         ttl_seconds: Time-to-live in seconds (default: 43200 = 12 hours).
+        program: Optional award program. When set, freshness is computed for
+            that program only (adds ``AND program = :program``). When None/unset,
+            freshness is computed across ALL programs (the original behavior).
 
     Returns:
         Dict with keys: latest_scraped_at (str|None), age_seconds (float|None),
         is_stale (bool), has_data (bool).
     """
-    cur = conn.execute(
-        "SELECT MAX(scraped_at) FROM availability WHERE origin = :origin AND destination = :destination",
-        {"origin": origin, "destination": dest},
-    )
+    sql = "SELECT MAX(scraped_at) FROM availability WHERE origin = :origin AND destination = :destination"
+    params = {"origin": origin, "destination": dest}
+    if program is not None:
+        sql += " AND program = :program"
+        params["program"] = program
+    cur = conn.execute(sql, params)
     row = cur.fetchone()
     scraped_at_str = row[0] if row else None
 

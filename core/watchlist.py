@@ -10,6 +10,7 @@ from core import db
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _BURN_IN_PY = str(_PROJECT_ROOT / "scripts" / "burn_in.py")
+_CLI_PY = str(_PROJECT_ROOT / "cli.py")
 from core import notify
 from core.matching import CABIN_FILTER_MAP, compute_match_hash as _compute_match_hash
 
@@ -118,44 +119,92 @@ def check_watches(conn, scrape=True, notify_enabled=True, db_path=None, verbose=
     if verbose:
         print(f"Found {len(due_watches)} due watches", file=sys.stderr)
 
-    # 3. Group by route to avoid duplicate scrapes
-    route_watches = {}  # (origin, dest) -> [watch, ...]
+    # 3. Group by (program, route) to avoid duplicate scrapes. A United watch
+    #    and an Aeroplan watch on the same route are handled independently, since
+    #    freshness and the refresh-scrape path both differ by program.
+    route_watches = {}  # (program, origin, dest) -> [watch, ...]
     for watch in due_watches:
-        key = (watch["origin"], watch["destination"])
+        key = (watch.get("program"), watch["origin"], watch["destination"])
         if key not in route_watches:
             route_watches[key] = []
         route_watches[key].append(watch)
 
-    # 4. Check freshness and scrape stale routes
-    stale_routes = []
-    for (origin, dest), watches in route_watches.items():
-        # Use the minimum interval among watches for this route as TTL
+    # 4. Check freshness (program-scoped) and collect stale routes, split by the
+    #    scrape path they require.
+    #      - United / unscoped (program is None or "united") -> burn_in.py batch.
+    #      - Aeroplan                                         -> per-route subprocess.
+    stale_united_routes = []          # list of "ORIGIN DEST" strings
+    stale_aeroplan_routes = []        # list of (origin, dest) tuples
+    for (program, origin, dest), watches in route_watches.items():
+        # Use the minimum interval among watches for this (program, route) as TTL
         min_interval = min(w["check_interval_minutes"] for w in watches)
         ttl_seconds = min_interval * 60
 
-        freshness = db.get_route_freshness(conn, origin, dest, ttl_seconds=ttl_seconds)
-        if freshness["is_stale"]:
-            stale_routes.append(f"{origin} {dest}")
+        # None means unscoped (all-program freshness — today's behavior).
+        freshness = db.get_route_freshness(
+            conn, origin, dest, ttl_seconds=ttl_seconds, program=program
+        )
+        if not freshness["is_stale"]:
+            continue
 
-    # 5. Scrape stale routes
-    if stale_routes and scrape:
-        if verbose:
-            print(f"Scraping {len(stale_routes)} stale routes", file=sys.stderr)
+        if program == "aeroplan":
+            stale_aeroplan_routes.append((origin, dest))
+        else:
+            # United or unscoped (NULL program) -> existing batch path.
+            stale_united_routes.append(f"{origin} {dest}")
 
-        # Write routes to temp file
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            for route in stale_routes:
-                f.write(route + "\n")
-            tmpfile = f.name
+    # 5. Scrape stale routes.
+    if scrape:
+        # 5a. United / unscoped: the EXISTING burn_in.py batch path, unchanged.
+        if stale_united_routes:
+            if verbose:
+                print(f"Scraping {len(stale_united_routes)} stale routes", file=sys.stderr)
 
-        try:
+            # Write routes to temp file
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+                for route in stale_united_routes:
+                    f.write(route + "\n")
+                tmpfile = f.name
+
+            try:
+                cmd = [
+                    sys.executable,
+                    _BURN_IN_PY,
+                    "--one-shot",
+                    "--routes-file", tmpfile,
+                    "--create-schema",
+                    "--headless",
+                ]
+                if db_path:
+                    cmd.extend(["--db-path", db_path])
+
+                if verbose:
+                    print(f"Running: {' '.join(cmd)}", file=sys.stderr)
+
+                result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+                if result.returncode != 0:
+                    print(f"WARNING: burn_in.py exited {result.returncode}: {result.stderr[:200]}", file=sys.stderr)
+                stats["scrapes_triggered"] += len(stale_united_routes)
+            finally:
+                try:
+                    os.unlink(tmpfile)
+                except OSError:
+                    pass
+
+        # 5b. Aeroplan: one HEADED, single-route subprocess per stale route.
+        #     Mirrors scripts/scheduled_scrape.py's Aeroplan command shape:
+        #     no --headless, no --ephemeral, no --file. Capped re-auth (1) so a
+        #     watch refresh stays bounded.
+        for origin, dest in stale_aeroplan_routes:
             cmd = [
                 sys.executable,
-                _BURN_IN_PY,
-                "--one-shot",
-                "--routes-file", tmpfile,
-                "--create-schema",
-                "--headless",
+                _CLI_PY,
+                "search",
+                "--program", "aeroplan",
+                origin, dest,
+                "--mfa-file",
+                "--mfa-method", "email",
+                "--max-reauths", "1",
             ]
             if db_path:
                 cmd.extend(["--db-path", db_path])
@@ -165,13 +214,8 @@ def check_watches(conn, scrape=True, notify_enabled=True, db_path=None, verbose=
 
             result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"WARNING: burn_in.py exited {result.returncode}: {result.stderr[:200]}", file=sys.stderr)
-            stats["scrapes_triggered"] = len(stale_routes)
-        finally:
-            try:
-                os.unlink(tmpfile)
-            except OSError:
-                pass
+                print(f"WARNING: aeroplan search exited {result.returncode}: {result.stderr[:200]}", file=sys.stderr)
+            stats["scrapes_triggered"] += 1
 
     # 6-10. Evaluate each due watch
     notify_config = None
