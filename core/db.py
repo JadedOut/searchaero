@@ -60,12 +60,21 @@ def ensure_schema(conn):
     if not _schema_exists(conn):
         create_schema(conn)
     ensure_program_column(conn)
+    ensure_alert_watch_program_columns(conn)
 
 
 def _has_column(conn, table, column):
     """Return True if `table` has a column named `column`."""
     cur = conn.execute(f"PRAGMA table_info({table})")
     return any(row[1] == column for row in cur.fetchall())
+
+
+def _table_exists(conn, table):
+    """Return True if `table` exists in the database."""
+    cur = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)
+    )
+    return cur.fetchone() is not None
 
 
 def ensure_program_column(conn):
@@ -185,6 +194,24 @@ def ensure_program_column(conn):
     except Exception:
         conn.rollback()
         raise
+
+
+def ensure_alert_watch_program_columns(conn):
+    """Idempotent migration: add a nullable `program` column to alerts/watches.
+
+    For brand-new DBs (created via create_schema) the column already exists and
+    this is a no-op. For legacy DBs it performs a plain ADD COLUMN — neither
+    table carries a unique key, so no table rebuild is required. The column is
+    nullable (NULL means "any program", matching the unscoped behaviour).
+
+    Safe to call repeatedly.
+    """
+    for table in ("alerts", "watches"):
+        if not _table_exists(conn, table):
+            continue
+        if not _has_column(conn, table, "program"):
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN program TEXT")
+    conn.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +337,8 @@ def create_schema(conn: sqlite3.Connection):
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             last_notified_at TEXT,
             last_notified_hash TEXT,
-            active INTEGER NOT NULL DEFAULT 1
+            active INTEGER NOT NULL DEFAULT 1,
+            program TEXT
         )
     """)
 
@@ -333,7 +361,8 @@ def create_schema(conn: sqlite3.Connection):
             last_checked_at TEXT,
             last_notified_at TEXT,
             last_notified_hash TEXT,
-            active INTEGER NOT NULL DEFAULT 1
+            active INTEGER NOT NULL DEFAULT 1,
+            program TEXT
         )
     """)
 
@@ -730,11 +759,11 @@ def get_route_freshness(conn, origin, dest, ttl_seconds=43200):
 # ---------------------------------------------------------------------------
 
 
-def create_alert(conn, origin, dest, max_miles, cabin=None, date_from=None, date_to=None):
+def create_alert(conn, origin, dest, max_miles, cabin=None, date_from=None, date_to=None, program=None):
     """Create a new price alert."""
     sql = """
-        INSERT INTO alerts (origin, destination, cabin, max_miles, date_from, date_to)
-        VALUES (:origin, :destination, :cabin, :max_miles, :date_from, :date_to)
+        INSERT INTO alerts (origin, destination, cabin, max_miles, date_from, date_to, program)
+        VALUES (:origin, :destination, :cabin, :max_miles, :date_from, :date_to, :program)
     """
     cur = conn.execute(sql, {
         "origin": origin,
@@ -743,6 +772,7 @@ def create_alert(conn, origin, dest, max_miles, cabin=None, date_from=None, date
         "max_miles": max_miles,
         "date_from": date_from,
         "date_to": date_to,
+        "program": program,
     })
     conn.commit()
     return cur.lastrowid
@@ -827,11 +857,11 @@ def expire_past_alerts(conn):
 # ---------------------------------------------------------------------------
 
 
-def create_watch(conn, origin, dest, max_miles, cabin=None, date_from=None, date_to=None, check_interval_minutes=720):
+def create_watch(conn, origin, dest, max_miles, cabin=None, date_from=None, date_to=None, check_interval_minutes=720, program=None):
     """Create a new watch."""
     sql = """
-        INSERT INTO watches (origin, destination, cabin, max_miles, date_from, date_to, check_interval_minutes)
-        VALUES (:origin, :destination, :cabin, :max_miles, :date_from, :date_to, :check_interval_minutes)
+        INSERT INTO watches (origin, destination, cabin, max_miles, date_from, date_to, check_interval_minutes, program)
+        VALUES (:origin, :destination, :cabin, :max_miles, :date_from, :date_to, :check_interval_minutes, :program)
     """
     cur = conn.execute(sql, {
         "origin": origin,
@@ -841,6 +871,7 @@ def create_watch(conn, origin, dest, max_miles, cabin=None, date_from=None, date
         "date_from": date_from,
         "date_to": date_to,
         "check_interval_minutes": check_interval_minutes,
+        "program": program,
     })
     conn.commit()
     return cur.lastrowid

@@ -192,6 +192,7 @@ def check_watches(conn, scrape=True, notify_enabled=True, db_path=None, verbose=
             cabin=cabin_filter,
             date_from=watch.get("date_from"),
             date_to=watch.get("date_to"),
+            program=watch.get("program"),
         )
 
         # Compute hash for dedup

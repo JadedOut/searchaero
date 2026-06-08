@@ -1567,7 +1567,7 @@ def _alert_add(args):
     try:
         alert_id = db.create_alert(conn, origin, dest, args.max_miles,
                                    cabin=args.cabin, date_from=args.date_from,
-                                   date_to=args.date_to)
+                                   date_to=args.date_to, program=args.program)
     finally:
         conn.close()
 
@@ -1605,16 +1605,17 @@ def _alert_list(args):
         print(json.dumps(alerts, indent=2))
         return 0
 
-    print(f"{'ID':>4}  {'Route':<10}{'Cabin':<12}{'Max Miles':>10}  {'Date Range':<24}{'Status'}")
+    print(f"{'ID':>4}  {'Route':<10}{'Cabin':<12}{'Program':<10}{'Max Miles':>10}  {'Date Range':<24}{'Status'}")
     for a in alerts:
         route = f"{a['origin']}-{a['destination']}"
         cabin = a["cabin"] or "any"
+        program = a.get("program") or "any"
         miles = f"{a['max_miles']:,}"
         date_range = ""
         if a.get("date_from") or a.get("date_to"):
             date_range = f"{a.get('date_from') or '...'} to {a.get('date_to') or '...'}"
         status = "active" if a["active"] else "expired"
-        print(f"{a['id']:>4}  {route:<10}{cabin:<12}{miles:>10}  {date_range:<24}{status}")
+        print(f"{a['id']:>4}  {route:<10}{cabin:<12}{program:<10}{miles:>10}  {date_range:<24}{status}")
     return 0
 
 
@@ -1664,7 +1665,7 @@ def _alert_check(args):
             matches = db.check_alert_matches(
                 conn, alert["origin"], alert["destination"], alert["max_miles"],
                 cabin=cabin_filter, date_from=alert.get("date_from"),
-                date_to=alert.get("date_to"))
+                date_to=alert.get("date_to"), program=alert.get("program"))
 
             if not matches:
                 continue
@@ -1785,7 +1786,8 @@ def _watch_add(args):
         watch_id = db.create_watch(conn, origin, dest, args.max_miles,
                                    cabin=args.cabin, date_from=args.date_from,
                                    date_to=args.date_to,
-                                   check_interval_minutes=interval)
+                                   check_interval_minutes=interval,
+                                   program=args.program)
     finally:
         conn.close()
 
@@ -1831,10 +1833,11 @@ def _watch_list(args):
         print(json.dumps(watches, indent=2))
         return 0
 
-    print(f"{'ID':>4}  {'Route':<10}{'Cabin':<12}{'Max Miles':>10}  {'Every':<9}{'Last Checked':<21}{'Status'}")
+    print(f"{'ID':>4}  {'Route':<10}{'Cabin':<12}{'Program':<10}{'Max Miles':>10}  {'Every':<9}{'Last Checked':<21}{'Status'}")
     for w in watches:
         route = f"{w['origin']}-{w['destination']}"
         cabin = w["cabin"] or "any"
+        program = w.get("program") or "any"
         miles = f"{w['max_miles']:,}"
         interval_mins = w["check_interval_minutes"]
         if interval_mins == 60:
@@ -1848,7 +1851,7 @@ def _watch_list(args):
             every = f"{interval_mins}m"
         last_checked = w.get("last_checked_at") or "\u2014"
         status = "active" if w["active"] else "expired"
-        print(f"{w['id']:>4}  {route:<10}{cabin:<12}{miles:>10}  {every:<9}{last_checked:<21}{status}")
+        print(f"{w['id']:>4}  {route:<10}{cabin:<12}{program:<10}{miles:>10}  {every:<9}{last_checked:<21}{status}")
     return 0
 
 
@@ -3018,6 +3021,9 @@ def main(argv=None):
                            help="Start date for travel window (YYYY-MM-DD)")
     alert_add.add_argument("--to", dest="date_to", default=None,
                            help="End date for travel window (YYYY-MM-DD)")
+    alert_add.add_argument("--program", default=None,
+                           choices=["united", "aeroplan"],
+                           help="Scope alert to one program (default: any program)")
 
     alert_list = alert_sub.add_parser("list", help="List alerts",
                                      parents=[shared_parser])
@@ -3049,6 +3055,9 @@ def main(argv=None):
                            help="End date for travel window (YYYY-MM-DD)")
     watch_add.add_argument("--every", default="12h",
                            help="Check frequency: hourly, 6h, 12h, daily, twice-daily (default: 12h)")
+    watch_add.add_argument("--program", default=None,
+                           choices=["united", "aeroplan"],
+                           help="Scope watch to one program (default: any program)")
 
     watch_list = watch_sub.add_parser("list", help="List watched routes",
                                       parents=[shared_parser])

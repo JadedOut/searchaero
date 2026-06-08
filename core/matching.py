@@ -16,14 +16,16 @@ CABIN_FILTER_MAP = {
 def compute_match_hash(matches) -> str | None:
     """Compute a content hash of matching availability for dedup.
 
-    Hashes matches by date|cabin|award_type|miles, returns sha256[:16] hex digest.
+    Hashes matches by program|date|cabin|award_type|miles, returns sha256[:16]
+    hex digest. Including the per-row program makes the dedup hash program-
+    sensitive: otherwise-identical fares from different programs hash distinctly.
     Returns None if no matches.
     """
     if not matches:
         return None
     parts = []
     for m in matches:
-        parts.append(f"{m['date']}|{m['cabin']}|{m['award_type']}|{m['miles']}")
+        parts.append(f"{m.get('program')}|{m['date']}|{m['cabin']}|{m['award_type']}|{m['miles']}")
     return hashlib.sha256("\n".join(parts).encode()).hexdigest()[:16]
 
 
