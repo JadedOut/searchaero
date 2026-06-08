@@ -355,3 +355,18 @@ The simplest design that works: **one real headed Chrome (Playwright), logged in
 **Strip:** the entire curl_cffi "fast replay" half of the United design — counterproductive here, because re-implementing SigV4 externally is more fragile than calling from the page. Effort against FareNet/Glassbox reduces to an optional domain-block. **Cannot strip:** the real browser, session reuse, and in-page calling.
 
 > **Open caveat (unverified):** how long the session/STS credentials stay valid (FlyerTalk anecdote: ~5–10 min idle). If minutes not hours, the "log in once, stay warm" assumption tightens — keep the page active with light background navigation and accept more frequent re-auth. **First thing to measure when building:** a throwaway-account spike that logs in, fires one `air-calendars` from inside the page, and times how long the credentials survive — that single number decides how aggressive the session-reuse loop can be.
+
+---
+
+## Addendum (2026-06-08, manual) — Arkose is reputation-driven, NOT mouse-driven. Do NOT add cursor simulation.
+
+**Decision: the Aeroplan scraper does NOT need synthetic mouse movement ("ghost cursor"), and adding it would more likely hurt than help. Keep it off.** Researched after a scare that Arkose might escalate to an interactive FunCaptcha specifically because our headed `AeroplanSession` does zero mouse simulation.
+
+- **Arkose's transparent-vs-challenge decision is dominated by device/browser fingerprint integrity + IP/ASN reputation + warm-session/cookie trust.** Behavioral biometrics (mouse dynamics) are a **secondary escalation signal**, not the gate. Lack of mouse movement alone is a LOW-risk escalation trigger.
+- **First-party proof:** `phase-1-login-automation.md` — the live 2026-06-03 scripted login reached `logged_in_success` with **"Arkose: none detected at ANY step"**, driving real Chrome, doing **no mouse simulation**. Reputation/warmth alone held. The web research only explains *why* (reputation-dominated gate).
+- **Adding ghost cursor could *hurt*:** Arkose looks for *organic neuromotor micro-tremors*; a perfect Bézier curve lacking them can *raise* the score, and synthetic CDP pointer events carry their own detectable tells (coalesced-pointer-event artifacts can't be hidden from a JS wrapper).
+- **The "empty mouse array invalidates the Arkose token" signal is real but does NOT apply to us** — it's about the *challenge-solve / token-submission* path. Our scraper never solves a challenge; `AeroplanSession` detects Arkose and bails (`status="arkose"`, never auto-solves). We avoid the challenge, not pass it.
+- **The actual Arkose risk corner is NOT mouse — it's the still-OPEN cold-profile/fresh-IP gate and login velocity.** Spend effort there (keep the profile warm, IP clean/residential, login frequency low), not on cursor work.
+- **Re-check only if** `status="arkose"` ever starts appearing on a *warm* profile, or if Air Canada changes config so the login itself requires an Arkose token round-trip with behavioral data even at low risk.
+
+See `docs/findings/united/ghost-cursor-findings.md` for why the ghost-cursor implementation itself is also unreliable (separate, United-side finding).
