@@ -530,7 +530,8 @@ def _scrape_route_live(origin, dest, conn, delay=3.0, json_mode=False, headless=
         conn: SQLite connection (schema must already exist).
         delay: Seconds between API calls.
         json_mode: If True, suppress verbose stdout output.
-        headless: If True, run browser in headless mode.
+        headless: Accepted for API compat but IGNORED — cookie_farm force-runs
+            United headed (Akamai blocks headless). The visible window always opens.
         proxy: Proxy URL (e.g., socks5://user:pass@host:port). Also reads PROXY_URL env var.
         ephemeral: If True, use ephemeral browser profile (default: persistent).
         mfa_method: MFA delivery channel — "sms" or "email" (default: "sms").
@@ -2180,7 +2181,8 @@ Alerts are one-shot checks against cached data (no daemon needed).
     "scraping": """
 [bold]Scraping Guide[/bold]
 
-Searchaero scrapes United's award calendar API via a headless browser.
+Searchaero scrapes United's award calendar API via a real headed Chrome browser
+(headless is blocked by United's Akamai Bot Manager, so the window is always visible).
 
 [bold]Single route:[/bold]
   searchaero search YYZ LAX                    (~2 min, 12 API calls)
@@ -2192,7 +2194,7 @@ Searchaero scrapes United's award calendar API via a headless browser.
   searchaero search --file routes/canada_us_all.txt --workers 3
 
 [bold]Options:[/bold]
-  --headless        Run browser without GUI (default for batch/parallel)
+  --headless        NO-OP for United (Akamai blocks headless; always runs headed)
   --proxy URL       Route traffic through a proxy
   --delay N         Seconds between API calls (default: 3.0)
   --mfa-file        Use file-based MFA instead of stdin prompt
@@ -2932,7 +2934,7 @@ def main(argv=None):
     search_parser.add_argument("route", nargs="*", help="ORIGIN DEST (e.g., YYZ LAX)")
     search_parser.add_argument("--file", "-f", default=None, help="Path to routes file")
     search_parser.add_argument("--workers", "-w", type=int, default=1, help="Number of parallel workers (default: 1)")
-    search_parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
+    search_parser.add_argument("--headless", action="store_true", help="(no-op for United — Akamai blocks headless, so it always runs headed)")
     search_parser.add_argument("--proxy", type=str, default=None,
         help="Proxy URL (e.g., socks5://user:pass@host:port). Also reads PROXY_URL env var.")
     search_parser.add_argument("--delay", type=float, default=3.0, help="Seconds between API calls (default: 3.0)")

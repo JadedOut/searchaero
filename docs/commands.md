@@ -67,7 +67,7 @@ searchaero search --file routes/canada_us_all.txt --workers 3
 | `ORIGIN DEST` | — | IATA airport codes (e.g., YYZ LAX) |
 | `--file, -f` | — | Route list file (one `ORIGIN DEST` per line) |
 | `--workers, -w` | 1 | Parallel browser workers (requires `--file`) |
-| `--headless` | off (single), on (batch) | Run browser without GUI |
+| `--headless` | **no-op** | Ignored for United — Akamai blocks headless, so the browser always runs headed (cookie_farm force-overrides this flag) |
 | `--proxy` | — | SOCKS5/HTTP proxy URL |
 | `--delay` | 3.0 | Seconds between API calls |
 | `--mfa-file` | off | Use file-based MFA handoff instead of stdin |

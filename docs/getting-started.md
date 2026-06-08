@@ -70,7 +70,7 @@ searchaero search YYZ LAX
 ```
 
 **What happens:**
-1. A Chromium browser launches (headless by default)
+1. A Chrome browser launches **headed** (a visible window — United's Akamai blocks headless, so the browser is always visible)
 2. It logs into united.com with your credentials
 3. **United sends an SMS code to your phone** — enter it when prompted:
    ```

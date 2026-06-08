@@ -18,7 +18,7 @@ In short:
 - **Playwright** — used once to log in and harvest cookies
 - **curl_cffi** — used for everything else (all flight queries, all data fetching), with browser-grade TLS fingerprints to avoid bot detection
 
-Note: Playwright runs in headless mode by default for batch scrapes (`--headless`). A headed (visible) browser is only needed if you want to watch the login flow.
+Note: United scraping **always runs headed** (a visible Chrome window opens). Headless is **not viable** against United's Akamai Bot Manager — `core/cookie_farm.py` force-overrides `--headless` back to headed and prints a warning. The `--headless` flag is effectively a no-op for United.
 
 ## Scraping
 
