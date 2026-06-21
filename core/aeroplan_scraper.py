@@ -30,10 +30,9 @@ imports even where Playwright is unavailable.
 """
 
 import logging
-import random
 import time
 
-from core import aeroplan_api, db, models
+from core import aeroplan_api, db, humanize, models
 from core.aeroplan_session import LOGIN_HOST
 
 log = logging.getLogger(__name__)
@@ -333,10 +332,22 @@ def scrape_route_aeroplan(origin, dest, session, conn, *, delay=5.0,
                             found=total_found, stored=total_stored)
 
         # 6. Human-paced jittered delay between windows (skip after the last).
+        # Log-normal (human-shaped), NOT uniform: a flat random.uniform() jitter is
+        # itself a detectable fingerprint ("the jitter trap"). We keep the SAME mean
+        # (``delay``) and the SAME clamp range as the old uniform jitter, only the
+        # distribution shape changes to right-skewed human timing.
         if i < total_windows - 1:
-            jitter_range = max(0.5, delay * 0.3)
-            jittered = max(delay * 0.5,
-                           delay + random.uniform(-jitter_range, jitter_range))
+            if delay > 0:
+                jitter_range = max(0.5, delay * 0.3)
+                jittered = humanize.human_delay(
+                    mean=delay,
+                    lo=max(delay * 0.5, delay - jitter_range),
+                    hi=delay + jitter_range,
+                )
+            else:
+                # No base delay to jitter (e.g. fast tests) — log-normal needs a
+                # positive mean, so just honour the (zero) delay directly.
+                jittered = delay
             time.sleep(jittered)
 
     return {

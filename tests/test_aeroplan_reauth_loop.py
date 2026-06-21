@@ -142,6 +142,7 @@ def test_reauth_fires_once_on_expiry_then_complete():
         warmup=lambda s: warmups.append(s),
         from_date=SPAN_FROM, months=SPAN_MONTHS,
         step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
+        sleep=lambda *_: None,  # no real cooldown sleep in tests
         verbose=False,
     )
 
@@ -175,6 +176,7 @@ def test_resume_from_next_unscraped_window():
         scrape_fn=scraper, warmup=None,
         from_date=SPAN_FROM, months=SPAN_MONTHS,
         step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
+        sleep=lambda *_: None,  # no real cooldown sleep in tests
         verbose=False,
     )
 
@@ -215,6 +217,7 @@ def test_always_expired_terminates_at_max_reauths(max_reauths):
         from_date=SPAN_FROM, months=SPAN_MONTHS,
         step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
         max_reauths=max_reauths,
+        sleep=lambda *_: None,  # no real cooldown sleep in tests
         verbose=False,
     )
 
@@ -311,6 +314,7 @@ def test_totals_aggregate_across_batches():
         scrape_fn=scraper, warmup=None,
         from_date=SPAN_FROM, months=SPAN_MONTHS,
         step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
+        sleep=lambda *_: None,  # no real cooldown sleep in tests
         verbose=False,
     )
 
@@ -353,9 +357,159 @@ def test_deadline_cap_stops_span_without_sleeping():
         step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
         max_reauths=99, deadline_seconds=150.0,
         monotonic=fake_monotonic,
+        sleep=lambda *_: None,  # no real cooldown sleep in tests
         verbose=False,
     )
 
     assert result["span_complete"] is False
     # Deadline tripped before the (very high) re-auth cap.
     assert result["reauths"] < 99
+    # The stop_reason distinguishes a deadline-hit from a cap exhaustion.
+    assert result["stop_reason"] == "deadline"
+
+
+# ---------------------------------------------------------------------------
+# 7. stop_reason distinguishes complete / deadline / max_reauths
+# ---------------------------------------------------------------------------
+
+def test_stop_reason_complete_on_normal_completion():
+    """A span that finishes all windows reports stop_reason == "complete"."""
+    session = FakeSession()
+    scraper = StubScraper(script=[_ok_batch(found=7, stored=6)])
+
+    result = aeroplan_runner.run_aeroplan_route_with_reauth(
+        "YYZ", "LAX", session, conn=None,
+        scrape_fn=scraper, warmup=None,
+        from_date=SPAN_FROM, months=SPAN_MONTHS,
+        step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
+        verbose=False,
+    )
+
+    assert result["span_complete"] is True
+    assert result["stop_reason"] == "complete"
+
+
+def test_stop_reason_complete_when_expired_on_final_window():
+    """Expiry on the final window still completes the span → "complete"."""
+    windows = _windows()
+    assert len(windows) >= 2
+    session = FakeSession()
+    # Expire on the LAST window → no resume point → span effectively complete.
+    scraper = StubScraper(script=[_expired_batch(windows[-1], found=1, stored=1)])
+
+    result = aeroplan_runner.run_aeroplan_route_with_reauth(
+        "YYZ", "LAX", session, conn=None,
+        scrape_fn=scraper, warmup=None,
+        from_date=SPAN_FROM, months=SPAN_MONTHS,
+        step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
+        verbose=False,
+    )
+
+    assert result["span_complete"] is True
+    assert result["stop_reason"] == "complete"
+
+
+def test_stop_reason_max_reauths_on_cap_exhaustion():
+    """An always-expired span stopped by the re-auth cap reports
+    stop_reason == "max_reauths" (NOT "deadline")."""
+    windows = _windows()
+    assert len(windows) >= 3
+    expired_at = windows[0]
+
+    session = FakeSession()
+    scraper = StubScraper(always=_expired_batch(expired_at, found=1, stored=1))
+
+    result = aeroplan_runner.run_aeroplan_route_with_reauth(
+        "YYZ", "LAX", session, conn=None,
+        scrape_fn=scraper, warmup=None,
+        from_date=SPAN_FROM, months=SPAN_MONTHS,
+        step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
+        max_reauths=2,
+        sleep=lambda *_: None,  # no real cooldown sleep in tests
+        verbose=False,
+    )
+
+    assert result["span_complete"] is False
+    assert result["stop_reason"] == "max_reauths"
+
+
+def test_stop_reason_deadline_reports_windows_scraped():
+    """A deadline-hit reports stop_reason == "deadline" and a windows_scraped
+    count strictly less than the requested span (so the alert can render X/Y)."""
+    windows = _windows()
+    assert len(windows) >= 3
+
+    session = FakeSession()
+    # Expire on the SECOND window so >=1 window is "scraped" before the deadline.
+    scraper = StubScraper(always=_expired_batch(windows[1], found=1, stored=1))
+
+    ticks = {"t": 0.0}
+
+    def fake_monotonic():
+        ticks["t"] += 100.0
+        return ticks["t"]
+
+    result = aeroplan_runner.run_aeroplan_route_with_reauth(
+        "YYZ", "LAX", session, conn=None,
+        scrape_fn=scraper, warmup=None,
+        from_date=SPAN_FROM, months=SPAN_MONTHS,
+        step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
+        max_reauths=99, deadline_seconds=150.0,
+        monotonic=fake_monotonic,
+        sleep=lambda *_: None,  # no real cooldown sleep in tests
+        verbose=False,
+    )
+
+    assert result["stop_reason"] == "deadline"
+    # Resume point is windows[1]; windows_scraped is its index (1).
+    assert result["windows_scraped"] == windows.index(windows[1])
+    assert result["windows_scraped"] < result["total_windows"]
+
+
+# ---------------------------------------------------------------------------
+# 8. log-normal re-auth cooldown: fires EXACTLY once per re-auth (sleep spy),
+#    each slept value drawn from core.humanize and clamped to [60, 240]
+#    (NOT random.uniform). This is the key oracle: N re-auths => N cooldowns.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("max_reauths", [2, 3])
+def test_reauth_cooldown_fires_once_per_reauth(max_reauths):
+    import random as _random
+
+    windows = _windows()
+    assert len(windows) >= 3
+    # Always expire on a NON-final window so a resume point always exists and
+    # the loop re-auths up to the cap.
+    expired_at = windows[0]
+
+    session = FakeSession()
+    scraper = StubScraper(always=_expired_batch(expired_at, found=1, stored=1))
+
+    slept = []
+
+    def sleep_spy(d):
+        slept.append(d)
+
+    # Deterministic rng so the run is reproducible (the cooldown sample is a
+    # log-normal draw from core.humanize, fed by this rng — not random.uniform).
+    rng = _random.Random(1234).random
+
+    result = aeroplan_runner.run_aeroplan_route_with_reauth(
+        "YYZ", "LAX", session, conn=None,
+        scrape_fn=scraper, warmup=None,
+        from_date=SPAN_FROM, months=SPAN_MONTHS,
+        step_days=STEP_DAYS, max_windows=MAX_WINDOWS,
+        max_reauths=max_reauths,
+        reauth_cooldown=(60.0, 240.0),
+        sleep=sleep_spy,
+        rng=rng,
+        verbose=False,
+    )
+
+    # N re-auths => N cooldown sleeps (exactly once before each re-auth fire).
+    assert result["reauths"] == max_reauths
+    assert len(session.ensure_calls) == max_reauths
+    assert len(slept) == max_reauths
+    # Every slept value is a positive duration inside the clamp window.
+    for d in slept:
+        assert 60.0 <= d <= 240.0

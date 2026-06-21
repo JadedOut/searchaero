@@ -43,6 +43,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from core import humanize
+
 # Reuse the PROVEN Gigya flow: selector ladders, helpers, masking, MFA-file
 # protocol, and process hygiene — imported (no copy) from the Phase-1 driver.
 # This module-level import has NO side effects (verified: no browser launches).
@@ -79,6 +81,17 @@ DEFAULT_PROFILE_DIR = Path.home() / ".searchaero" / ".aeroplan-profile"
 
 # How long to wait for a logged-in / app-redirect signal after the login flow.
 _LOGIN_SETTLE_DEADLINE_SECONDS = 30
+
+
+def _settle() -> None:
+    """Human-shaped post-navigate/click settle pause.
+
+    Replaces the fixed ``time.sleep(SETTLE_SECONDS)`` clockwork cadence on the
+    login path with a mean-preserving LOG-NORMAL sleep (same ~3 s feel, human
+    shape). A flat/fixed settle is itself a behavioral-biometrics tell; this is
+    sampled via ``core.humanize`` (NOT ``random.uniform``).
+    """
+    humanize.human_sleep(mean=3.0, lo=1.5, hi=5.5)
 
 
 @dataclass
@@ -268,7 +281,7 @@ class AeroplanSession:
                 self._page.goto(
                     AIRCANADA_HOME, wait_until="domcontentloaded", timeout=60000
                 )
-                time.sleep(SETTLE_SECONDS)  # let the SPA settle before reading DOM
+                _settle()  # let the SPA settle before reading DOM
         except Exception as exc:
             log.warning("ensure_logged_in: navigation failed", exc_info=True)
             return LoginResult(
@@ -304,7 +317,6 @@ class AeroplanSession:
                 self._page.goto(
                     AIRCANADA_HOME, wait_until="domcontentloaded", timeout=60000
                 )
-                time.sleep(SETTLE_SECONDS)
             except Exception as exc:
                 log.warning("ensure_logged_in: retry navigation failed", exc_info=True)
                 return LoginResult(
@@ -312,6 +324,13 @@ class AeroplanSession:
                     detail=f"cold-start retry navigation failed: {exc}",
                     url=self._safe_url(),
                 )
+            # Short log-normal backoff before re-trying the rejected cold start
+            # (this ALSO serves as the post-navigate settle here — no DOM is read
+            # between the goto above and the retry login() below, so a separate
+            # fixed SETTLE_SECONDS settle would only stack into a double-sleep)
+            # (human-shaped pause, NOT a fixed/uniform delay) — paces the retry
+            # so a back-to-back re-submit doesn't read like credential-stuffing.
+            humanize.human_sleep(mean=10, lo=5, hi=25)
             result = self.login(mfa_method=mfa_method)
 
         return result
@@ -362,7 +381,7 @@ class AeroplanSession:
                     runlog(f"login[A]: Sign-in entry click raised ({exc}); continuing")
             else:
                 runlog("login[A]: no Sign-in entry visible; maybe already on form")
-            time.sleep(SETTLE_SECONDS)
+            _settle()
 
             # Wait for the Gigya form: on login host OR an id/password field.
             deadline = time.time() + 20
@@ -383,11 +402,17 @@ class AeroplanSession:
             id_field, id_sel = first_visible_locator(page, LOGIN_ID_SELECTORS)
             if id_field is not None:
                 try:
-                    id_field.fill(self._number, timeout=5000)
-                    runlog(f"login[B]: filled member# via {id_sel!r} "
+                    # Type key-by-key with per-key log-normal timing (NOT
+                    # .fill() "paste", NOT a single uniform delay) so the entry
+                    # looks human to behavioral biometrics.
+                    id_field.fill("", timeout=5000)
+                    for ch in self._number:
+                        id_field.press(ch, timeout=5000)
+                        humanize.human_sleep(mean=0.11, lo=0.04, hi=0.30)
+                    runlog(f"login[B]: typed member# via {id_sel!r} "
                            f"(value {redact_member_number(self._number)})")
                 except Exception as exc:
-                    runlog(f"login[B]: member# fill raised ({exc}); continuing")
+                    runlog(f"login[B]: member# typing raised ({exc}); continuing")
             else:
                 runlog("login[B]: no member-number field found; continuing")
 
@@ -398,7 +423,7 @@ class AeroplanSession:
                     runlog(f"login[B]: clicked Continue/Next via {cont_sel!r}")
                 except Exception as exc:
                     runlog(f"login[B]: continue click raised ({exc}); continuing")
-            time.sleep(SETTLE_SECONDS)
+            _settle()
 
             ark = detect_arkose(page)
             if ark.get("present"):
@@ -408,11 +433,20 @@ class AeroplanSession:
             pw_field, pw_sel = first_visible_locator(page, LOGIN_PASSWORD_SELECTORS)
             if pw_field is not None:
                 try:
-                    pw_field.fill(self._password, timeout=5000)
-                    runlog(f"login[C]: filled password via {pw_sel!r} "
+                    # Type key-by-key with per-key log-normal timing (NOT
+                    # .fill() "paste") — see member# entry above.
+                    pw_field.fill("", timeout=5000)
+                    for ch in self._password:
+                        pw_field.press(ch, timeout=5000)
+                        humanize.human_sleep(mean=0.11, lo=0.04, hi=0.30)
+                    runlog(f"login[C]: typed password via {pw_sel!r} "
                            f"(value {mask_secret(self._password)})")
                 except Exception as exc:
-                    runlog(f"login[C]: password fill raised ({exc}); continuing")
+                    runlog(f"login[C]: password typing raised ({exc}); continuing")
+
+                # Human dwell between the final field and submit — a person
+                # pauses to read/verify before hitting Enter.
+                humanize.human_sleep(mean=0.8, lo=0.3, hi=2.0)
 
                 # Submit: Enter on the password field (most reliable for Gigya's
                 # native form), then a visible submit-ladder click as backup.
@@ -434,13 +468,13 @@ class AeroplanSession:
                 # Wait ~25s for a post-submit state change (off form / 2FA /
                 # Arkose), mirroring the driver's Step-C poll.
                 self._wait_post_submit(page, runlog)
-                time.sleep(SETTLE_SECONDS)
+                _settle()
             else:
                 runlog("login[C]: no password field appeared after step B "
                        "(selector-blocked or Arkose-gated); continuing to classify")
 
             # ---------- Step D — classify ----------
-            time.sleep(SETTLE_SECONDS)
+            _settle()
             return self._classify_and_complete(page, runlog, mfa_method)
 
         except Exception as exc:

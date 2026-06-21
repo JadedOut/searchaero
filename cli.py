@@ -642,7 +642,49 @@ def _aeroplan_warmup(session):
     time.sleep(2)  # extra fixed settle once the chain has quiesced
 
 
-def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_method, months, from_date, to_date, max_reauths=4, deadline_seconds=None):
+def _alert_aeroplan_deadline_hit(origin, dest, totals, deadline_seconds, *, autonomous):
+    """Surface the Aeroplan deadline-hit warn-on-hit alert.
+
+    Channel is chosen SOLELY by the `autonomous` flag (never by isatty):
+      - autonomous=False (default/interactive) → print a Rich warning to the
+        console (a human at the terminal / the /flights skill relay sees it).
+        NO Discord.
+      - autonomous=True (unattended wrappers) → send via
+        core.notify.notify_deadline_hit (Discord). If no webhook is configured
+        (notify returns falsy), fall back to the console + a stderr note.
+
+    `totals` is the runner's aggregated dict; we read windows scraped vs. the
+    requested span size for the message.
+    """
+    from core import notify
+
+    route = f"{origin}→{dest}"
+    requested = int(totals.get("total_windows", 0) or 0)
+    # The runner tracks how many full-span windows were covered before it
+    # stopped (windows_scraped). Fall back to the requested count if absent.
+    scraped = int(totals.get("windows_scraped", requested) or 0)
+
+    message = notify.deadline_hit_message(route, scraped, requested, deadline_seconds)
+
+    if not autonomous:
+        # Interactive: print to the console only. No Discord.
+        console = get_console()
+        console.print(f"[bold yellow]⚠ Deadline hit:[/bold yellow] {message}")
+        return
+
+    # Autonomous: route to Discord; fall back to console + stderr if unconfigured.
+    sent = notify.notify_deadline_hit(route, scraped, requested, deadline_seconds)
+    if not sent:
+        console = get_console()
+        console.print(f"[bold yellow]⚠ Deadline hit:[/bold yellow] {message}")
+        print(
+            "WARNING: --autonomous set but no Discord webhook configured; "
+            "deadline alert printed to console instead.",
+            file=sys.stderr,
+        )
+
+
+def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_method, months, from_date, to_date, max_reauths=2, deadline_seconds=1800.0, autonomous=False):
     """Scrape a single route from Aeroplan in-process (HEADED browser only).
 
     Constructs an AeroplanSession (headed — never headless), ensures login,
@@ -662,8 +704,17 @@ def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_met
         mfa_method: MFA delivery channel (Aeroplan defaults to "email").
         months: Optional list of month ints to restrict scraping.
         from_date / to_date: Optional date-window filters (YYYY-MM-DD).
-        max_reauths: Max re-authentications before stopping (default 4).
-        deadline_seconds: Overall wall-clock budget for the span (None = none).
+        max_reauths: Max re-authentications before stopping (default 2).
+        deadline_seconds: Per-route-span wall-clock backstop in seconds
+            (default 1800 = 30 min). A backstop for a hang, NOT a normal-run
+            limit. On a deadline-hit the runner returns stop_reason="deadline"
+            and we surface a warn-on-hit alert (console by default; Discord
+            under autonomous).
+        autonomous: When True, route the deadline-hit alert to Discord
+            (unattended). When False (default/interactive), print a Rich warning
+            to the console. The channel is decided SOLELY by this flag — never
+            by sys.stdin.isatty() (a scheduled job and the /flights skill are
+            both TTY-less and cannot be told apart that way).
 
     Returns:
         Aggregated dict with keys: found, stored, rejected, errors,
@@ -715,6 +766,16 @@ def _scrape_route_aeroplan_live(origin, dest, conn, *, delay, json_mode, mfa_met
                 f"(reauths={totals.get('reauths')}, batches={totals.get('batches')}) "
                 f"— a re-auth/deadline cap was hit."
             )
+
+        # Warn-on-hit: ONLY a deadline-hit (not a max_reauths/reauth-failed stop)
+        # surfaces the raise-it-with-risk alert. The channel is decided SOLELY by
+        # the --autonomous flag — NO sys.stdin.isatty() (a scheduled job and the
+        # /flights skill are both TTY-less and indistinguishable that way).
+        if totals.get("stop_reason") == "deadline":
+            _alert_aeroplan_deadline_hit(
+                origin, dest, totals, deadline_seconds, autonomous=autonomous,
+            )
+
         return totals
 
     finally:
@@ -744,6 +805,8 @@ def _search_single_inproc(args):
                 delay=args.delay, json_mode=args.json, mfa_method=args.mfa_method,
                 months=args._months_list, from_date=args.search_from, to_date=args.search_to,
                 max_reauths=args.max_reauths,
+                deadline_seconds=getattr(args, "deadline_seconds", 1800.0),
+                autonomous=getattr(args, "autonomous", False),
             )
         else:
             mfa_prompt = _get_mfa_prompt(args)
@@ -2957,9 +3020,23 @@ def main(argv=None):
                                help="Only scrape windows overlapping this date or later (YYYY-MM-DD)")
     search_parser.add_argument("--to", dest="search_to", default=None,
                                help="Only scrape windows overlapping this date or earlier (YYYY-MM-DD)")
-    search_parser.add_argument("--max-reauths", type=int, default=4,
-                               help="Max Aeroplan re-authentications before stopping the span (default: 4). "
-                                    "Aeroplan only; ignored for United.")
+    search_parser.add_argument("--max-reauths", type=int, default=2,
+                               help="Max Aeroplan re-authentications before stopping the span (default: 2). "
+                                    "Kept low for login-velocity safety: each re-auth is a fresh Gigya "
+                                    "login + 2FA, so repeated re-auths in a short window look like "
+                                    "credential-stuffing. Aeroplan only; ignored for United.")
+    search_parser.add_argument("--deadline-seconds", type=float, default=1800.0,
+                               help="Per-route-span wall-clock backstop in seconds (default: 1800 = 30 min). "
+                                    "This is NOT a normal-run limit (a typical span is ~4 min; --max-reauths "
+                                    "caps the common case) — it only fires on a hang/pathology within one "
+                                    "route's loop. When a span hits it, a warn-on-hit alert surfaces so you "
+                                    "can decide whether to raise it; raising it lets a single login session "
+                                    "run longer, which INCREASES account-flag risk. Aeroplan only.")
+    search_parser.add_argument("--autonomous", action="store_true", default=False,
+                               help="Explicit opt-in for unattended runs. Routes the Aeroplan deadline-hit "
+                                    "alert to Discord instead of the terminal. Default (off) = interactive: "
+                                    "the alert prints to the console (a human / the /flights skill sees it). "
+                                    "The channel is decided SOLELY by this flag — never by TTY detection.")
 
     query_parser = subparsers.add_parser("query", help="Query stored availability data",
                                           parents=[shared_parser])

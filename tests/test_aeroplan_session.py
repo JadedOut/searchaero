@@ -257,9 +257,14 @@ def test_email_2fa_fills_and_submits_code(monkeypatch, tmp_path):
         page, lambda m: None, tfa_loc,
         'input[autocomplete="one-time-code"]', tmp_path)
 
-    # The exact code from mfa_response was filled into the code field.
-    filled_values = [v for (_sel, v) in page.fills]
-    assert "778899" in filled_values, f"code not filled; fills={page.fills}"
+    # The exact code from mfa_response was TYPED key-by-key into the code
+    # field: the field is cleared via fill("") then each char is press()ed.
+    typed_code = "".join(
+        k for (_sel, k) in page.presses
+        if k not in ("Enter",)
+    )
+    assert "778899" in typed_code, (
+        f"code not typed key-by-key; presses={page.presses}")
     # A submit was attempted (the real Gigya submit control) and recorded.
     assert any("gigya-input-submit" in sel for sel in page.clicks), \
         f"no submit click; clicks={page.clicks}"

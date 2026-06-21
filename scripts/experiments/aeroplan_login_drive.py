@@ -59,6 +59,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from core import humanize
+
 log = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------------
@@ -81,8 +83,20 @@ LOGIN_HOST = "login.aircanada.com"
 LOGIN_FORM_URL_MARKER = "clogin/pages/login"
 
 # Settle pause after a navigate / click (cookie_farm discipline: let the SPA
-# settle before reading the DOM).
+# settle before reading the DOM). Kept for reference/other consumers; the login
+# path no longer sleeps a FIXED SETTLE_SECONDS (see _settle() below).
 SETTLE_SECONDS = 3
+
+
+def _settle() -> None:
+    """Human-shaped post-navigate/click settle pause.
+
+    Replaces the fixed ``time.sleep(SETTLE_SECONDS)`` clockwork cadence on the
+    login path with a mean-preserving LOG-NORMAL sleep (same ~3 s feel, human
+    shape) sampled via ``core.humanize`` — a flat/fixed settle is itself a
+    behavioral-biometrics tell. NOT ``random.uniform`` (the jitter trap).
+    """
+    humanize.human_sleep(mean=3.0, lo=1.5, hi=5.5)
 
 # .env location (reused from the sigv4 probe / cookie_farm) + credential vars.
 ENV_FILE = Path.home() / ".searchaero" / ".env"
@@ -1126,7 +1140,7 @@ def select_email_2fa(page, runlog) -> bool:
         runlog(f"    Email 'Send Code' click raised ({exc}); cannot confirm the "
                "email request. NOT falling back to SMS unattended.")
         return False
-    time.sleep(SETTLE_SECONDS)
+    _settle()
 
     # (2) Confirm the EMAIL one-time-code field appeared (scoped to
     # .tfa-email-method so the auto-sent phone code field is never mistaken for it).
@@ -1147,12 +1161,17 @@ def _fill_submit_and_wait_2fa(page, runlog, tfa_locator, tfa_sel, code,
     ['error_text'] / ['submitted']. Used by BOTH the SMS and email paths so the
     fill/submit/wait logic is not duplicated.
     """
-    # Fill the code field.
+    # Type the code field key-by-key with per-key log-normal timing (NOT
+    # .fill() "paste", NOT a single uniform delay) so 2FA entry looks human.
+    # Shared by both the email and SMS paths.
     try:
-        tfa_locator.fill(code, timeout=5000)
-        runlog(f"    filled 2FA code via {tfa_sel!r} (value {mask_code(code)})")
+        tfa_locator.fill("", timeout=5000)
+        for ch in code:
+            tfa_locator.press(ch, timeout=5000)
+            humanize.human_sleep(mean=0.11, lo=0.04, hi=0.30)
+        runlog(f"    typed 2FA code via {tfa_sel!r} (value {mask_code(code)})")
     except Exception as exc:
-        runlog(f"    2FA code fill raised ({exc}); attempting submit anyway.")
+        runlog(f"    2FA code typing raised ({exc}); attempting submit anyway.")
 
     submit_method = None
     verify, verify_sel = first_visible_locator(page, TFA_VERIFY_SELECTORS)
@@ -1405,7 +1424,7 @@ def run_live(args) -> int:
             page.goto(AIRCANADA_HOME, wait_until="domcontentloaded", timeout=60000)
         except Exception as exc:
             runlog(f"    initial navigate raised: {exc}")
-        time.sleep(SETTLE_SECONDS)
+        _settle()
 
         if is_logged_in_dom(page):
             runlog("STILL-LOGGED-IN — abort (need real logout). The warmed "
@@ -1437,7 +1456,7 @@ def run_live(args) -> int:
             else:
                 runlog("    no visible Sign-in entry found; maybe already on the "
                        "login form. Continuing.")
-            time.sleep(SETTLE_SECONDS)
+            _settle()
 
             # Wait for the Gigya form: URL on login host OR an id/password field.
             deadline = time.time() + 20
@@ -1487,7 +1506,7 @@ def run_live(args) -> int:
                     runlog(f"    continue click raised ({exc}); continuing.")
             else:
                 runlog("    no visible Continue/Next button found; continuing.")
-            time.sleep(SETTLE_SECONDS)
+            _settle()
         except Exception as exc:
             runlog(f"    STEP B raised ({exc}); continuing to classification.")
         arkose_b = detect_arkose(page)
@@ -1580,7 +1599,7 @@ def run_live(args) -> int:
                 else:
                     runlog("    no post-submit transition observed within ~25s "
                            "(still on the login form?).")
-                time.sleep(SETTLE_SECONDS)
+                _settle()
             else:
                 runlog("    no visible password field appeared after step B — "
                        "the two-step flow may be blocked here (selector-blocked "
@@ -1601,7 +1620,7 @@ def run_live(args) -> int:
         # ===== Step D — classify final state =====
         runlog("\n>>> STEP D — classify final state (NO 2FA code entered)")
         # Give the post-submit transition a moment to land.
-        time.sleep(SETTLE_SECONDS)
+        _settle()
         # Re-run Arkose detection here too (post-submit may escalate Arkose).
         arkose_d = detect_arkose(page)
 

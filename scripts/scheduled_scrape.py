@@ -172,6 +172,8 @@ def _build_aeroplan_search_cmd(args, origin, dest, months=None,
         origin, dest,
         "--mfa-file",
         "--mfa-method", "email",
+        # Scheduled/unattended run: route any deadline-hit alert to Discord.
+        "--autonomous",
     ]
     if args.db_path:
         cmd.extend(["--db-path", args.db_path])

@@ -27,19 +27,34 @@ The returned dict is the per-batch scraper dict aggregated across batches, plus:
     - `batches`        — how many scrape passes ran.
     - `span_complete`  — True iff the whole requested span was covered (no
                          expiry left the span unfinished and no cap was hit).
+    - `stop_reason`    — WHY the loop stopped, distinguishing the three outcomes
+                         that `span_complete` alone conflates:
+                           "complete"     — the span finished all windows
+                                            (span_complete True).
+                           "deadline"     — the wall-clock deadline tripped
+                                            before completion (span_complete
+                                            False); this is the only outcome
+                                            that warrants the warn-on-hit alert.
+                           "max_reauths"  — the re-auth cap was exhausted before
+                                            completion (span_complete False).
 """
 
 import logging
+import random
 import time
 
 from core import aeroplan_api
+from core import humanize
 
 log = logging.getLogger(__name__)
 
 # Default cap on re-authentications for one span (a wide span across several
-# ~30-40 min sessions). Generous enough for a multi-hour span, small enough that
-# a pathological always-expiring session can't spin forever.
-DEFAULT_MAX_REAUTHS = 4
+# ~30-40 min sessions). Small enough that a pathological always-expiring session
+# can't spin forever, and tuned low (login-velocity safety): each re-auth is a
+# fresh Gigya login + 2FA, so repeated re-auths in a short window look like
+# credential-stuffing to Aeroplan. A cap of 2 covers a typical multi-window span
+# across one TTL boundary without hammering the login endpoint.
+DEFAULT_MAX_REAUTHS = 2
 
 # Prefix the scraper writes into error_messages when it stops on expiry, e.g.
 # "session expired at window 2026-08-15: ...". Used to recover the exact window
@@ -120,6 +135,9 @@ def run_aeroplan_route_with_reauth(
     max_reauths=DEFAULT_MAX_REAUTHS,
     deadline_seconds=None,
     monotonic=time.monotonic,
+    sleep=time.sleep,
+    rng=random.random,
+    reauth_cooldown=(60.0, 240.0),
     verbose=True,
     **scrape_kwargs,
 ):
@@ -149,37 +167,59 @@ def run_aeroplan_route_with_reauth(
             against `monotonic()` deltas — no real sleeping is introduced here.
         monotonic: Injectable monotonic clock (default time.monotonic) so tests
             can control elapsed time.
+        sleep: Injectable blocking call (default time.sleep) used ONLY for the
+            per-re-auth cooldown. Tests pass a no-op (or a spy) so they never
+            block.
+        rng: Injectable 0..1 uniform source (default random.random) feeding the
+            log-normal cooldown sample.
+        reauth_cooldown: (lo, hi) clamp tuple (seconds) for the log-normal
+            cooldown sampled (mean 120s) BEFORE each re-auth fire. `None` disables
+            the cooldown entirely (the fake-clock tests pass None / a no-op sleep).
         verbose: Forwarded to the scraper and used for progress logging.
         **scrape_kwargs: Extra kwargs forwarded verbatim to `scrape_fn`
             (e.g. delay, capture_timeout, progress_cb).
 
     Returns:
-        Aggregated scraper dict plus `reauths`, `batches`, and
-        `span_complete` (bool — True iff the span was fully covered).
+        Aggregated scraper dict plus `reauths`, `batches`, `span_complete`
+        (bool — True iff the span was fully covered) and `stop_reason`
+        (`"complete"` | `"deadline"` | `"max_reauths"` — see module docstring).
         Note: `expired` reflects ONLY the LAST batch's expiry flag, not the
         span as a whole — it is the raw signal from the final pass. The
-        authoritative "did we finish the whole span" answer is `span_complete`.
-        Both can be True simultaneously (e.g. expiry happened on the final
-        window, which still counts as completing the span).
+        authoritative "did we finish the whole span" answer is `span_complete`;
+        `stop_reason` says WHY (only a `"deadline"` stop triggers a warn alert).
+        Both `span_complete` and `expired` can be True simultaneously (e.g.
+        expiry happened on the final window, which still counts as completing
+        the span — `stop_reason` is `"complete"` there).
     """
     start = monotonic()
-    # Compute the true total window count ONCE from the full requested span.
+    # Compute the true total window list ONCE from the full requested span.
     # (Per-batch total_windows shrinks as we resume, so it must NOT be summed.)
-    span_total_windows = len(aeroplan_api.window_dates(
+    span_windows = aeroplan_api.window_dates(
         from_date=from_date, to_date=to_date, months=months,
         step_days=step_days, max_windows=max_windows,
-    ))
+    )
+    span_total_windows = len(span_windows)
+
+    def _windows_scraped(next_from):
+        """How many full-span windows precede `next_from` (the resume point) —
+        i.e. how many were covered before the loop stopped. Best-effort: if the
+        resume point is not in the span list, fall back to 0."""
+        if next_from in span_windows:
+            return span_windows.index(next_from)
+        return 0
     agg = {
         "found": 0,
         "stored": 0,
         "rejected": 0,
         "errors": 0,
         "total_windows": span_total_windows,
+        "windows_scraped": span_total_windows,
         "error_messages": [],
         "expired": False,
         "reauths": 0,
         "batches": 0,
         "span_complete": False,
+        "stop_reason": "complete",
     }
 
     cur_from = from_date
@@ -199,6 +239,7 @@ def run_aeroplan_route_with_reauth(
         if not batch.get("expired"):
             # Pass finished without expiry → the span is fully covered.
             agg["span_complete"] = True
+            agg["stop_reason"] = "complete"
             break
 
         # Expired before the span finished. Figure out where to resume.
@@ -214,6 +255,7 @@ def run_aeroplan_route_with_reauth(
         if next_from is None:
             # Expired on the final window (or no resume point) → effectively done.
             agg["span_complete"] = True
+            agg["stop_reason"] = "complete"
             break
 
         # ---- Cap checks BEFORE attempting another re-auth ----
@@ -225,6 +267,8 @@ def run_aeroplan_route_with_reauth(
                     max_reauths, origin, dest, next_from,
                 )
             agg["span_complete"] = False
+            agg["stop_reason"] = "max_reauths"
+            agg["windows_scraped"] = _windows_scraped(next_from)
             break
 
         if deadline_seconds is not None and (monotonic() - start) >= deadline_seconds:
@@ -235,9 +279,32 @@ def run_aeroplan_route_with_reauth(
                     deadline_seconds, origin, dest, next_from,
                 )
             agg["span_complete"] = False
+            agg["stop_reason"] = "deadline"
+            agg["windows_scraped"] = _windows_scraped(next_from)
             break
 
         # ---- Re-authenticate + warm up, then resume ----
+        # Log-normal cooldown BEFORE each re-auth fire (login-velocity safety):
+        # back-to-back Gigya logins look like credential-stuffing to Aeroplan, so
+        # we pace them with a human-shaped (NOT uniform) pause. This fires exactly
+        # once per re-auth — only on the mid-span re-login path, never on the
+        # initial login (which the live wrapper drives before this loop). The
+        # sleep + rng are injected so unit tests stay fast/deterministic.
+        if reauth_cooldown is not None:
+            cooldown = humanize.human_delay(
+                mean=120,
+                lo=reauth_cooldown[0],
+                hi=reauth_cooldown[1],
+                rng=rng,
+            )
+            if verbose:
+                log.info(
+                    "Aeroplan re-auth cooldown for %s-%s: pausing %.1fs before "
+                    "re-login (re-auth %d/%d).",
+                    origin, dest, cooldown, reauths + 1, max_reauths,
+                )
+            sleep(cooldown)
+
         if verbose:
             log.info(
                 "Aeroplan session expired mid-span for %s-%s; re-authenticating "
@@ -260,6 +327,10 @@ def run_aeroplan_route_with_reauth(
                 log.warning("Aeroplan re-auth failed for %s-%s: %s",
                             origin, dest, msg)
             agg["span_complete"] = False
+            # A failed re-auth is its own failure mode (not a deadline hit, so it
+            # must NOT trigger the deadline warn-alert). Tag it distinctly.
+            agg["stop_reason"] = "reauth_failed"
+            agg["windows_scraped"] = _windows_scraped(next_from)
             break
 
         if warmup is not None:

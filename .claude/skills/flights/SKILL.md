@@ -111,6 +111,7 @@ $SEARCHAERO search --program aeroplan ORIG DEST --mfa-file --mfa-method email 2>
 - **Aeroplan is single-route only.** Pass exactly one origin/destination positional pair. The CLI hard-rejects `--file` and `--workers`, and `--ephemeral` must NOT be used — the persistent browser profile is required to hold the warm headed session.
 - **This is headed and takes tens of minutes**, not the United "~60s / 2 min" budget. The scraper navigates per 5-day window and may re-authenticate mid-run across the ~30–40 min session TTL. Tell the user: "Starting an Aeroplan scrape — this runs headed and can take tens of minutes (it logs in, navigates window-by-window, and may re-authenticate partway through)."
 - Run it in background and do NOT declare failure just because it has not finished in ~2 minutes. Only treat it as failed on an actual error/traceback or the escalation rule in Error Handling.
+- **Per-route deadline (`--deadline-seconds`, default 30 min):** Aeroplan routes have a per-route-span wall-clock backstop, default 1800 s (30 min). It is NOT a normal-run limit — it only fires on a hang/pathology. If a route reports it **hit the deadline** (a deadline-hit warning prints to the console, which you relay to the user), the user MAY raise it by re-running with a larger `--deadline-seconds` to capture more windows. Surface this option to the user **with the explicit caveat that a longer single login session raises account-flag (ban) risk** — only raise it deliberately.
 
 Then proceed to Step 3.
 

@@ -181,3 +181,66 @@ def notify_watch_matches(watch: dict, matches: list, config: dict) -> bool:
         return False
 
     return send_discord(webhook_url, embeds=[embed])
+
+
+# ---------------------------------------------------------------------------
+# Deadline-hit notification formatter
+# ---------------------------------------------------------------------------
+
+
+def notify_deadline_hit(route, scraped, requested, deadline, config=None) -> bool:
+    """Format and send a deadline-hit warning for an Aeroplan route span.
+
+    Fired when ``run_aeroplan_route_with_reauth`` returns
+    ``stop_reason == "deadline"`` under autonomous (unattended) mode: the span
+    hit its per-route-span wall-clock backstop before covering every window.
+    The message names the route, windows scraped vs. requested, the deadline
+    value, and the account-flag risk of raising it (so a human deciding whether
+    to bump ``--deadline-seconds`` sees the trade-off).
+
+    Args:
+        route: Route label, e.g. ``"YYZ→LAX"``.
+        scraped: Windows actually scraped before the deadline tripped.
+        requested: Total windows the span requested.
+        deadline: The deadline value in seconds that was hit.
+        config: Dict from load_notify_config() with discord_webhook_url. Loaded
+            lazily if None.
+
+    Returns:
+        True iff a Discord send happened (caller uses a falsy return to detect
+        "no webhook configured" and fall back to console). Gated by
+        webhook-presence exactly like notify_watch_matches.
+    """
+    if config is None:
+        config = load_notify_config()
+
+    message = deadline_hit_message(route, scraped, requested, deadline)
+
+    embed = {
+        "title": f"Aeroplan deadline hit: {route}",
+        "color": 0xE17055,
+        "description": message,
+        "fields": [
+            {"name": "Route", "value": str(route), "inline": True},
+            {"name": "Windows", "value": f"{scraped}/{requested}", "inline": True},
+            {"name": "Deadline", "value": f"{deadline:.0f}s", "inline": True},
+        ],
+    }
+
+    webhook_url = config.get("discord_webhook_url", "")
+    if not webhook_url:
+        print("No notification channels configured, skipping deadline alert",
+              file=sys.stderr)
+        return False
+
+    return send_discord(webhook_url, embeds=[embed])
+
+
+def deadline_hit_message(route, scraped, requested, deadline) -> str:
+    """Build the human-readable deadline-hit warning line (shared by the
+    console path in cli.py and the Discord embed above)."""
+    return (
+        f"{route} hit its {deadline:.0f}s deadline, scraped "
+        f"{scraped}/{requested} windows. Raise --deadline-seconds to capture "
+        f"more, but a longer single login session increases account-flag risk."
+    )

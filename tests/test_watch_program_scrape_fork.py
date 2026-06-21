@@ -126,12 +126,12 @@ def test_freshness_no_program_preserves_all_program_behavior(conn):
 # ---------------------------------------------------------------------------
 
 
-def test_search_max_reauths_default_is_4():
-    """--max-reauths defaults to 4 (preserves manual-search behavior)."""
+def test_search_max_reauths_default_is_2():
+    """--max-reauths defaults to 2 (login-velocity safety: low re-auth cap)."""
     import cli
 
     ns = _parse_via_main(cli, ["search", "YYZ", "LAX"])
-    assert ns.max_reauths == 4
+    assert ns.max_reauths == 2
 
     ns2 = _parse_via_main(cli, ["search", "--program", "aeroplan",
                                 "YYZ", "LAX", "--max-reauths", "2"])
@@ -201,6 +201,93 @@ def test_search_threads_max_reauths_into_aeroplan_live(conn, monkeypatch):
     ns.route = ("YYZ", "LAX")
     cli._search_single_inproc(ns)
     assert captured.get("max_reauths") == 2
+
+
+# ---------------------------------------------------------------------------
+# 2b. search --deadline-seconds / --autonomous: argparse defaults + threading.
+# ---------------------------------------------------------------------------
+
+
+def test_search_deadline_seconds_default_is_1800():
+    """--deadline-seconds defaults to 1800.0 (30-min per-route-span backstop)."""
+    import cli
+
+    ns = _parse_via_main(cli, ["search", "YYZ", "LAX"])
+    assert ns.deadline_seconds == 1800.0
+
+    ns2 = _parse_via_main(cli, ["search", "--program", "aeroplan",
+                                "YYZ", "LAX", "--deadline-seconds", "600"])
+    assert ns2.deadline_seconds == 600.0
+
+
+def test_search_autonomous_default_is_false():
+    """--autonomous is a store_true flag defaulting to False."""
+    import cli
+
+    ns = _parse_via_main(cli, ["search", "YYZ", "LAX"])
+    assert ns.autonomous is False
+
+    ns2 = _parse_via_main(cli, ["search", "YYZ", "LAX", "--autonomous"])
+    assert ns2.autonomous is True
+
+
+def test_search_threads_deadline_seconds_into_aeroplan_live(conn, monkeypatch):
+    """`search --program aeroplan ...` passes a non-None deadline_seconds (the
+    CLI default 1800) into _scrape_route_aeroplan_live, mirroring --max-reauths."""
+    import cli
+
+    captured = {}
+
+    def fake_live(origin, dest, conn, **kwargs):
+        captured.update(kwargs)
+        return {"found": 0, "stored": 0, "rejected": 0, "errors": 0,
+                "total_windows": 0, "expired": False, "error_messages": [],
+                "reauths": 0, "batches": 1, "span_complete": True,
+                "stop_reason": "complete"}
+
+    monkeypatch.setattr(cli, "_scrape_route_aeroplan_live", fake_live)
+    monkeypatch.setattr(cli.db, "get_connection", lambda *a, **k: conn)
+    monkeypatch.setattr(cli.db, "ensure_schema", lambda c: None)
+
+    ns = _parse_via_main(cli, ["search", "--program", "aeroplan",
+                               "YYZ", "LAX", "--json"])
+    # CLI default reaches the namespace.
+    assert ns.deadline_seconds == 1800.0
+    assert ns.autonomous is False
+
+    ns._months_list = None
+    ns.route = ("YYZ", "LAX")
+    cli._search_single_inproc(ns)
+    # The non-None CLI default deadline reaches the live-scrape call.
+    assert captured.get("deadline_seconds") == 1800.0
+    assert captured.get("deadline_seconds") is not None
+    assert captured.get("autonomous") is False
+
+
+def test_search_threads_autonomous_into_aeroplan_live(conn, monkeypatch):
+    """`search --program aeroplan ... --autonomous` threads autonomous=True
+    into _scrape_route_aeroplan_live."""
+    import cli
+
+    captured = {}
+
+    def fake_live(origin, dest, conn, **kwargs):
+        captured.update(kwargs)
+        return {"found": 0, "stored": 0, "rejected": 0, "errors": 0,
+                "total_windows": 0, "expired": False, "error_messages": [],
+                "reauths": 0, "batches": 1, "span_complete": True,
+                "stop_reason": "complete"}
+
+    monkeypatch.setattr(cli, "_scrape_route_aeroplan_live", fake_live)
+    monkeypatch.setattr(cli.db, "get_connection", lambda *a, **k: conn)
+    monkeypatch.setattr(cli.db, "ensure_schema", lambda c: None)
+
+    ns = _parse_via_main(cli, ["search", "--program", "aeroplan",
+                               "YYZ", "LAX", "--autonomous", "--json"])
+    ns._months_list = None
+    ns.route = ("YYZ", "LAX")
+    cli._search_single_inproc(ns)
+    assert captured.get("autonomous") is True
 
 
 # ---------------------------------------------------------------------------
@@ -274,6 +361,8 @@ def test_stale_aeroplan_watch_routes_to_cli_search(conn):
     assert "--max-reauths" in cmd
     mr_idx = cmd.index("--max-reauths")
     assert cmd[mr_idx + 1] == "1"
+    # Unattended watch refresh routes any deadline-hit alert to Discord.
+    assert "--autonomous" in cmd
     # These United/ephemeral/batch flags must be ABSENT.
     assert "--headless" not in cmd
     assert "--ephemeral" not in cmd

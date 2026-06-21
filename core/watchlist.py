@@ -205,6 +205,9 @@ def check_watches(conn, scrape=True, notify_enabled=True, db_path=None, verbose=
                 "--mfa-file",
                 "--mfa-method", "email",
                 "--max-reauths", "1",
+                # Unattended watch refresh: route any deadline-hit alert to
+                # Discord (not the console nobody is watching).
+                "--autonomous",
             ]
             if db_path:
                 cmd.extend(["--db-path", db_path])
