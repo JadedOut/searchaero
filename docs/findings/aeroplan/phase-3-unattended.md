@@ -25,7 +25,7 @@ code), and a program-aware scheduled path that emits a HEADED, single-route Aero
 
 | Question | Result |
 |---|---|
-| Survive the ~30–40 min TTL across a wide span? | ✅ **SHIPPED — bounded re-auth-and-resume loop.** `core/aeroplan_runner.py::run_aeroplan_route_with_reauth` drives `scrape_route_aeroplan`; on `expired=True` with windows remaining it re-authenticates and resumes from the next unscraped window. Capped by `max_reauths` (default 4) + `deadline_seconds`. Wired into `cli.py::_scrape_route_aeroplan_live`. Tested by `tests/test_aeroplan_reauth_loop.py` (**7/7**). |
+| Survive the ~30–40 min TTL across a wide span? | ✅ **SHIPPED — bounded re-auth-and-resume loop.** `core/aeroplan_runner.py::run_aeroplan_route_with_reauth` drives `scrape_route_aeroplan`; on `expired=True` with windows remaining it re-authenticates (after a randomized log-normal cooldown) and resumes from the next unscraped window. Capped by `max_reauths` (default **2** — lowered from 4 by the login-hardening pass) + `deadline_seconds` (CLI default **1800 s**). Wired into `cli.py::_scrape_route_aeroplan_live`. Tested by `tests/test_aeroplan_reauth_loop.py` (**14/14**). |
 | Unattended 2FA (no human relay)? | ✅ **LIVE-VERIFIED — Gate 1 PASSED (2026-06-05).** `search --program aeroplan YYZ LAX --mfa-method email` logged in with NO human relaying a code: login clicked the Email "Send Code", `scripts/mfa_responder.py` detected the request (`sender filter 'aeroplan.com'`), fetched the code from Gmail via contextual match, wrote it back; login confirmed and stored 10 rows. Contract pinned by `tests/test_aeroplan_email_2fa_contract.py`; email-selection + sender corrected against the live Gigya DOM + real code email (2026-06-04). |
 | Cold-profile / fresh-IP Arkose? | ⚪ **NOT NEEDED (2026-06-05) for the single-laptop deployment** — the profile stays warm by construction; cold only arises on a machine/profile/IP reset, recoverable with a one-time manual login. Downgraded from a gate to an edge case (see *Gate 2 → Reassessment*). |
 | Program-aware scheduling? | ✅ **SHIPPED.** `scripts/scheduled_scrape.py` emits a HEADED, single-route `cli.py search --program aeroplan <O> <D> --mfa-file --mfa-method email` per route for groups tagged `program="aeroplan"` (no `--headless/--ephemeral/--file`). `searchaero schedule add --program aeroplan` registers a wake-to-run task, persists `program` on the route group, and uses an Aeroplan-aware (larger) minimum interval. **Gate 3** is the end-to-end wake-triggered cycle. |
@@ -70,8 +70,8 @@ wraps it.
      ├─ _aeroplan_warmup(session)            (absorb post-login OIDC consent redirect)
      └─ core/aeroplan_runner.run_aeroplan_route_with_reauth(...)
            └─ loops scrape_route_aeroplan; on expired=True + windows left:
-                 ensure_logged_in() + warmup ► resume from next unscraped window
-                 (capped by max_reauths=4 and deadline_seconds)
+                 log-normal cooldown ► ensure_logged_in() + warmup ► resume from next window
+                 (capped by max_reauths=2 and deadline_seconds; CLI default 1800 s)
                               │
                               ▼
         program-tagged rows in the shared `availability` table  (program='aeroplan')
@@ -88,20 +88,59 @@ imports Playwright. Behavior:
   ~30–40 min session.
 - On `expired=True` **with windows remaining**, it recovers the exact window the scraper
   bailed on (parsed from the scraper's `"session expired at window {date}: …"` message),
-  re-authenticates (`ensure_logged_in()` + `warmup`), and **resumes from that first
-  unscraped window** — not from the start.
-- **Bounds (whichever trips first stops cleanly):** `max_reauths` (default **4**) and
-  `deadline_seconds` (overall wall-clock budget; `None` = unbounded).
+  waits a **randomized log-normal cooldown** (mean ~120 s, clamp 60–240 s), re-authenticates
+  (`ensure_logged_in()` + `warmup`), and **resumes from that first unscraped window** — not
+  from the start. The cooldown (injectable `sleep`/`rng`/`reauth_cooldown`) paces logins so
+  back-to-back re-auths don't trip login-velocity detection.
+- **Bounds (whichever trips first stops cleanly):** `max_reauths` (default **2**, lowered
+  from 4 by the login-hardening pass) and `deadline_seconds` (overall wall-clock budget; the
+  runner signature still defaults to `None`/unbounded for unit tests, but the **CLI supplies
+  a default of 1800 s** — a per-route-span backstop, not a normal-run limit).
 - Returns the per-batch scraper dict **aggregated across batches**, plus `reauths`,
-  `batches`, and `span_complete` (True iff the whole requested span was covered). A cap
-  that stops the span early yields `span_complete=False` — `cli.py` logs a WARNING.
+  `batches`, `span_complete` (True iff the whole requested span was covered), and a
+  `stop_reason` (`complete` / `deadline` / `max_reauths`) so the CLI can tell *why* a span
+  stopped. A cap or deadline that stops the span early yields `span_complete=False` — and on
+  a `deadline` stop the CLI raises a warn-on-hit alert (see Login-hardening below).
 - The wall-clock deadline uses an **injectable monotonic clock** so the unit tests
   control elapsed time without real sleeping.
 
 Wired into `cli.py::_scrape_route_aeroplan_live` (the live `search --program aeroplan`
 path), which constructs the headed `AeroplanSession`, logs in, runs `_aeroplan_warmup`,
-then hands the route to the loop. Tested by `tests/test_aeroplan_reauth_loop.py` — **7/7
-passing**.
+then hands the route to the loop. Tested by `tests/test_aeroplan_reauth_loop.py` — **14/14
+passing** (includes a sleep-spy test asserting the cooldown fires exactly once per re-auth).
+
+### Login-hardening (behavioral anti-bot) — SHIPPED
+
+The re-auth loop above is strong on *identity* (real headed Chrome, warm profile,
+detect-and-bail on Arkose) but was weak on *behavior*: it could re-authenticate up to ~5×
+back-to-back with no spacing (the textbook **login-velocity** account-freeze trigger), and it
+`.fill()`-pasted the member #, password, and 2FA code in one event with fixed 3.000 s settles
+between steps (a clockwork cadence that **behavioral biometrics** flag). A behavioral-hardening
+pass (audited in [`antibot-hardening-report.html`](./antibot-hardening-report.html)) fixed both,
+all driven by one tested timing primitive:
+
+- **`core/humanize.py` (the keystone).** `human_delay`/`human_sleep` sample **mean-preserving
+  log-normal** delays (`mu = ln(mean) - sigma²/2`, Box-Muller), clamped, with an injectable RNG
+  so they are deterministic under test. This replaces uniform `random.uniform()` jitter
+  everywhere on the login/scrape paths — a flat distribution is itself a detectable fingerprint
+  ("the jitter trap"). Unit-tested in `tests/test_humanize.py` (right-skew, mean-preservation,
+  clamp, determinism).
+- **Circuit breaker.** `DEFAULT_MAX_REAUTHS` 4 → **2** (the watch fork still passes `1`).
+- **Time budget.** `search --deadline-seconds` (default **1800 s** / 30 min) is a per-route-span
+  wall-clock backstop. The runner returns a `stop_reason`; a **deadline-hit raises a warn alert**
+  routed by an explicit **`--autonomous` flag** (default off): default (interactive) prints a Rich
+  warning to the console (the `/flights` skill relays it into the Claude response); `--autonomous`
+  routes it to Discord via `core/notify.py::notify_deadline_hit`. No `isatty` auto-detection — the
+  unattended wrappers (`scheduled_scrape.py`, the watch fork) pass `--autonomous`.
+- **Cooldown / backoff.** A log-normal cooldown precedes each re-auth (above); the cold-start
+  `creds_rejected` retry backs off (mean ~10 s, clamp 5–25 s) before retrying.
+- **Politeness.** The fixed `time.sleep(SETTLE_SECONDS)` login-step settles are now log-normal
+  human sleeps (mean ~3 s, clamp 1.5–5.5 s); signal-driven waits are left as-is.
+- **Humanization.** The member #, password, and 2FA code are **typed key-by-key**
+  (`fill("")` then a `press(ch)` loop with per-key log-normal timing, ~110 ms, clamp 40–300 ms) —
+  no `.fill()` of secret values — with a human dwell (~0.8 s) before submit.
+- **Out of scope:** blast-radius containment (one account = whole risk) is an architectural/product
+  decision tracked separately, not a code fix.
 
 ### The email-2FA contract (LOCKED, not live)
 
@@ -149,12 +188,18 @@ floor. The task is registered with **wake-to-run** enabled (AC wake timers via `
 
 | File | Role | New/changed |
 |---|---|---|
-| `core/aeroplan_runner.py` | `run_aeroplan_route_with_reauth` — bounded re-auth-and-resume loop over one span. Pure orchestration; injectable clock; `max_reauths`/`deadline_seconds` bounds; returns aggregated totals + `reauths`/`batches`/`span_complete`. | **NEW** |
-| `cli.py` | `_scrape_route_aeroplan_live` now drives the loop (was a single scrape pass); `_aeroplan_warmup` reused as the post-reauth warm-up hook. `schedule add --program {united,aeroplan}`. | changed |
+| `core/humanize.py` | Log-normal timing keystone — `human_delay`/`human_sleep` (mean-preserving, Box-Muller, clamped, injectable RNG). Consumed by the cooldown, settles, per-key typing, and scraper jitter. | **NEW (login-hardening)** |
+| `core/aeroplan_runner.py` | `run_aeroplan_route_with_reauth` — bounded re-auth-and-resume loop. Pure orchestration; injectable clock; `max_reauths` (default **2**)/`deadline_seconds` bounds; **log-normal cooldown before each re-auth** (injectable `sleep`/`rng`/`reauth_cooldown`); returns aggregated totals + `reauths`/`batches`/`span_complete` + **`stop_reason`**. | **NEW**; changed (login-hardening) |
+| `core/aeroplan_session.py` | Cold-start `creds_rejected` retry now backs off (log-normal); fixed `SETTLE_SECONDS` settles → log-normal human sleeps; member # + password **typed key-by-key** (no `.fill()` of secrets) + pre-submit dwell. | changed (login-hardening) |
+| `scripts/experiments/aeroplan_login_drive.py` | Settle sites → log-normal; 2FA code **typed key-by-key** (shared by email + SMS). | changed (login-hardening) |
+| `core/aeroplan_scraper.py` | Inter-window jitter `random.uniform` → `humanize.human_delay` (same mean, log-normal). | changed (login-hardening) |
+| `core/notify.py` | `notify_deadline_hit(route, scraped, requested, deadline, …)` — Discord formatter for the deadline warn-on-hit alert (webhook-gated). | changed (login-hardening) |
+| `cli.py` | `_scrape_route_aeroplan_live` drives the loop; `_aeroplan_warmup` post-reauth hook. `schedule add --program {united,aeroplan}`. **`search --deadline-seconds` (default 1800) + `--autonomous` flags; deadline-hit alert routing (console default, Discord under `--autonomous`, no isatty); `--max-reauths` default 2.** | changed |
 | `scripts/scheduled_scrape.py` | `_build_aeroplan_search_cmd` (HEADED single-route Aeroplan command) + `_build_group_search_cmds` program-aware dispatch (aeroplan → one command per route). | changed |
 | `scripts/mfa_responder.py` | `get_email_code(sender_filter=…)` filters Gmail on the request's sender; honors `sender_filter="aeroplan.com"`. | changed (Phase 1/2 base) |
 | `core/scheduler.py` | Aeroplan-aware `estimate_scrape_minutes` / `compute_min_interval(program=…)`; heavier per-route + login constants. | changed |
-| `tests/test_aeroplan_reauth_loop.py` | Loop coverage — resume math, caps, deadline, span_complete (**7/7**). | **NEW** |
+| `tests/test_aeroplan_reauth_loop.py` | Loop coverage — resume math, caps, deadline, span_complete, `stop_reason`, and a cooldown sleep-spy (**14/14**). | **NEW**; changed (login-hardening) |
+| `core/humanize.py` tests | `tests/test_humanize.py` — log-normal skew, mean-preservation, clamp, determinism. | **NEW (login-hardening)** |
 | `tests/test_aeroplan_email_2fa_contract.py` | Email-2FA contract — `mfa_method:"email"` + `sender_filter:"aeroplan.com"`; responder accept/reject + real-email (`418595`) extraction fixture. | **NEW** |
 
 ---

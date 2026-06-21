@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aeroplan Anti-Bot Hardening — Findings &amp; Implementation</title>
+<style>
+  :root{
+    --bg:#0f1116; --panel:#171a22; --panel2:#1d212b; --ink:#e7ebf2; --muted:#9aa4b2;
+    --line:#2a2f3a; --accent:#5b9bff; --red:#ff6b6b; --amber:#ffb454; --green:#3ecf8e;
+    --code:#0b0d12;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:920px;margin:0 auto;padding:40px 22px 80px;}
+  h1{font-size:30px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 28px}
+  h2{font-size:22px;margin:38px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+  h3{font-size:17px;margin:22px 0 6px;color:#cfe0ff}
+  p{margin:10px 0}
+  .lead{font-size:17px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:16px 0}
+  .card.tier1{border-left:4px solid var(--red)}
+  .card.tier2{border-left:4px solid var(--amber)}
+  .card.tier3{border-left:4px solid #d9c96a}
+  .card.safe{border-left:4px solid var(--green)}
+  .pill{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.04em;
+    padding:3px 9px;border-radius:999px;text-transform:uppercase;vertical-align:middle}
+  .p-red{background:rgba(255,107,107,.15);color:#ff9a9a}
+  .p-amber{background:rgba(255,180,84,.15);color:#ffce8a}
+  .p-yellow{background:rgba(217,201,106,.15);color:#e6da94}
+  .p-green{background:rgba(62,207,142,.15);color:#7ee3b5}
+  .p-blue{background:rgba(91,155,255,.15);color:#a8c8ff}
+  code,kbd{background:var(--code);border:1px solid var(--line);border-radius:5px;
+    padding:1px 6px;font:13px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#d6e2ff}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:9px;
+    padding:13px 15px;overflow:auto;font:13px/1.55 "SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#cdd6e6}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:#cfe0ff;font-size:13px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  .pro{color:var(--green)} .con{color:var(--red)}
+  .muted{color:var(--muted)}
+  ul{margin:8px 0;padding-left:22px} li{margin:5px 0}
+  .kvs{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:10px 0;font-size:14.5px}
+  .kvs div:nth-child(odd){color:var(--muted)}
+  a{color:var(--accent)}
+  .callout{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:9px;padding:14px 18px;margin:16px 0}
+  .small{font-size:13px;color:var(--muted)}
+  .tag{font:12px/1 "SF Mono",monospace;color:var(--muted)}
+  footer{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Aeroplan Anti-Bot Hardening</h1>
+  <p class="sub">How our scraper could get caught, why, and exactly what to fix &middot; grounded in the codebase + external research &middot; 2026-06-12</p>
+
+  <div class="callout">
+    <strong>The one-sentence version.</strong> The realistic ways we'd get an account flagged aren't exotic — they boil
+    down to <strong>logging in too often</strong> and <strong>typing like a machine</strong>. Both are small, contained
+    code fixes. The browser itself already looks 100% real. And United sidesteps the whole problem because it never logs
+    into your account at all.
+  </div>
+
+  <h2>1. United vs Aeroplan — corrected</h2>
+  <div class="callout" style="border-left-color:var(--red)">
+    <strong>Correction (2026-06-12).</strong> An earlier draft claimed "United never logs in, zero account risk." That was
+    <strong>wrong.</strong> Web research + a closer code read show United <strong>locked award search behind a MileagePlus
+    login</strong> (tested ~Aug 2025, mandatory by late 2025, still in force 2026 — logged-out users see <em>cash fares
+    only</em>, miles/award space is hidden). United is the first US carrier to do this, following Aeroplan. The shipped code
+    also <strong>does</strong> log into a member account by default. United is <em>not</em> a safe anonymous haven.
+  </div>
+  <table>
+    <tr><th></th><th>United</th><th>Aeroplan</th></tr>
+    <tr><td><strong>Award search needs login? (2026, real world)</strong></td>
+        <td class="con">Yes — login wall since ~Aug 2025 (cash-only when logged out)</td>
+        <td class="con">Yes — login wall since Mar 2025 + 2FA</td></tr>
+    <tr><td><strong>Does our code log in?</strong></td>
+        <td class="con">Yes — <code>ensure_logged_in</code> w/ <code>UNITED_MP_NUMBER</code>/<code>PASSWORD</code> by default</td>
+        <td class="con">Yes — Gigya login + 2FA</td></tr>
+    <tr><td><strong>Legacy anonymous path?</strong></td>
+        <td class="muted">Code still has <code>/api/auth/anonymous-token</code> + <code>SOFT_LOGGED_IN:false</code> (pre-wall era) — <strong>may or may not still return miles data</strong></td>
+        <td class="muted">None — never anonymous</td></tr>
+    <tr><td><strong>Re-auth loop?</strong></td>
+        <td>No explicit loop; re-farms cookies on burn (Akamai bot cookies are not login-tied)</td>
+        <td class="con"><code>run_aeroplan_route_with_reauth</code>, up to 4 logins/span</td></tr>
+    <tr><td><strong>Account-freeze risk</strong></td>
+        <td class="con">Real if the anonymous API is now gated (TBD) — code logs in regardless</td>
+        <td class="con">Real — every re-login hammers one account</td></tr>
+  </table>
+  <div class="callout" style="border-left-color:var(--green)">
+    <strong>RESOLVED (2026-06-12, confirmed firsthand):</strong> United's anonymous-token path does <strong>not</strong>
+    return award miles data anymore — award/miles is gated at the <strong>API level</strong>, not just the UI. A logged-out
+    session gets cash only, so United now <strong>requires a logged-in MileagePlus session</strong> for award data. The
+    code's anonymous path is effectively dead for award data; the MP login is required, not best-effort.
+  </div>
+  <p><strong>Settled conclusion:</strong> there is <strong>no anonymous safe haven</strong> — United and Aeroplan both
+  require a personal login for award data, so both carry account-freeze risk. <em>"United-first is safer" is false.</em>
+  The login-velocity + human-typing hardening below applies to <strong>both</strong> programs. For a low-user-risk product
+  this points to the operator-runs-accounts or crowdsourced-human-searches models — not BYO-on-your-main-account.</p>
+
+  <h2>2. How we'd actually get caught (ranked)</h2>
+
+  <div class="card tier1">
+    <span class="pill p-red">Tier 1 · highest value</span>
+    <h3>① Login velocity — logging in too often, too fast</h3>
+    <p>When the ~30–40 min session expires, the code re-logs-in <em>instantly</em>, up to ~5 full logins on one account in
+    ~3 hours, with no pause between them. A clockwork "expire → instant re-login" rhythm is the cleanest bot signal there is,
+    and per our own docs it's "the exact thing that freezes accounts."</p>
+    <p class="small tag">core/aeroplan_runner.py:42,120,230,247 &middot; cli.py:645 &middot; max_reauths=4, deadline_seconds=None</p>
+  </div>
+
+  <div class="card tier1">
+    <span class="pill p-red">Tier 1 · highest value</span>
+    <h3>② Scripted typing — "pasted, not typed"</h3>
+    <p>The member #, password, and 2FA code are dropped in all at once via <code>.fill()</code> — one event, zero typing
+    rhythm. Glassbox and others specifically flag fields filled with no per-keystroke timing. Research confirms this is a
+    real, used signal.</p>
+    <p class="small tag">core/aeroplan_session.py:386,411 &middot; aeroplan_login_drive.py:1152</p>
+  </div>
+
+  <div class="card tier2">
+    <span class="pill p-amber">Tier 2 · environmental</span>
+    <h3>③ No enforced internet-connection (IP) control</h3>
+    <p>The session uses whatever connection the host has. Fine on a home residential IP (why it works today), but IP
+    reputation is the <em>primary</em> Arkose gate — nothing stops a future cloud/datacenter/VPN run from silently looking
+    like a bot. <code>AeroplanSession</code> has no <code>proxy=</code> param (unlike <code>cookie_farm</code>).</p>
+  </div>
+
+  <div class="card tier2">
+    <span class="pill p-amber">Tier 2 · environmental</span>
+    <h3>④ Machine-uniform login timing</h3>
+    <p>A fixed <strong>exactly 3.000 s</strong> wait between every login step. Humans don't move on a metronome.
+    <span class="small tag">SETTLE_SECONDS, aeroplan_login_drive.py:85</span></p>
+  </div>
+
+  <div class="card safe">
+    <span class="pill p-green">Already safe — don't touch</span>
+    <ul>
+      <li><strong>Browser fingerprint</strong> — real Chrome + headed + real GPU closes WebGL/canvas/audio/font/TLS/HTTP-2. It genuinely looks like a real browser.</li>
+      <li><strong>Request signatures (SigV4)</strong> — we never forge or replay them; we read the real site's own signed responses. Nothing to get caught on.</li>
+      <li><strong>Telemetry scripts</strong> — we block nothing, so we avoid the "why is this browser hiding?" tell. Only our <em>behavior</em> (①②) needs to look human.</li>
+      <li><strong>Schedule cadence</strong> — hard-floored; an Aeroplan job can't run more than ~once / 75 min, so "every 15 min" doesn't apply.</li>
+    </ul>
+  </div>
+
+  <h2>3. Do they really watch the mouse &amp; keyboard? (research)</h2>
+  <p>Short answer: <strong>yes, both — but as secondary signals.</strong> The primary gates are IP reputation, browser
+  fingerprint, and account warmth. Behavioral biometrics are the tiebreaker on top.</p>
+  <div class="kvs">
+    <div>Mouse dynamics</div><div>Collected &amp; scored by Akamai, Arkose, DataDome, HUMAN. <strong>Secondary</strong> layer, applied mainly at login/checkout.</div>
+    <div>Keystroke / typing</div><div>Dwell &amp; flight times collected. <strong>"Pasted vs typed" is a real, used tell</strong> — a clean signal when present.</div>
+    <div>Fake mouse (ghost cursor)</div><div><strong>Detectable.</strong> ML spots too-perfect Bézier curves + automation-injected pointer artifacts. Can <em>raise</em> your score.</div>
+    <div>For Arkose specifically</div><div>Reputation-first. Behavior matters far less than IP + fingerprint + warm session.</div>
+  </div>
+  <p class="callout"><strong>The asymmetry that decides what to fix:</strong> human <em>typing</em> is cheap, safe, and removes a
+  clean tell → <strong>worth doing</strong>. Fake <em>mouse</em> movement is high-effort, detectable, and can backfire →
+  <strong>not worth doing</strong>.</p>
+
+  <h3>Why we don't use a ghost cursor — it's BOTH reasons</h3>
+  <table>
+    <tr><th>Reason</th><th>Detail</th></tr>
+    <tr><td><strong>Strategic</strong><br><span class="small">(Aeroplan/Arkose)</span></td>
+        <td>Wouldn't help, could hurt. Arkose is reputation-driven; our session <strong>detects Arkose and bails</strong>,
+        so it never faces the challenge where a cursor matters. Synthetic curves lack organic micro-tremors and carry
+        their own tells. <span class="small tag">bot-detection.md:361-371 · commit 8e9fa97</span></td></tr>
+    <tr><td><strong>Technical</strong><br><span class="small">(United/Akamai)</span></td>
+        <td>Our implementation is genuinely broken: it grabs a stale button handle and clicks by raw coordinate → misses
+        ~1/3 of the time → 15 s stalls; and it needs <code>scipy</code>, which isn't installed, so it never ran in prod.
+        <span class="small tag">ghost-cursor-findings.md:7-35 · core/ghost_click.py:29-40</span></td></tr>
+  </table>
+  <p class="small">Bottom line: keep ghost cursor <strong>off</strong>. Neither backend needs mouse movement to pass, and faking it has negative expected value. The research backs the existing decision.</p>
+
+  <h2>4. How to implement the fixes</h2>
+
+  <h3>① Login velocity <span class="pill p-blue">Tier 1</span></h3>
+  <ul>
+    <li><strong>Cap re-auths 4 → 2.</strong> Change <code>DEFAULT_MAX_REAUTHS</code> and the <code>--max-reauths</code> default. (Watches already pass <code>1</code>.)</li>
+    <li><strong>Default a 90-min deadline</strong> at the CLI layer (keep the runner unbounded so unit tests stay clean); add a <code>--deadline-seconds</code> flag.</li>
+    <li><strong>Random 60–180 s cooldown before each re-login.</strong> Must use an <em>injectable</em> sleep/RNG, because the re-auth loop is unit-tested with a fake clock — a bare <code>time.sleep</code> would make the suite hang.</li>
+  </ul>
+  <pre># core/aeroplan_runner.py — inject sleep + cooldown, fire AFTER the cap checks
+sleep=time.sleep, reauth_cooldown=(60.0,180.0), rng=random.uniform
+...
+if reauth_cooldown is not None:
+    sleep(rng(*reauth_cooldown))     # human pacing before ensure_logged_in()</pre>
+
+  <h3>④ Login-step timing jitter <span class="pill p-blue">Tier 2</span></h3>
+  <p>Replace the fixed <code>SETTLE_SECONDS=3</code> with a small randomized dwell via one helper, used at ~6 login-step call sites.</p>
+  <pre>def settle():                          # instead of time.sleep(SETTLE_SECONDS)
+    time.sleep(random.uniform(1.5, 4.0))</pre>
+
+  <h3>② Human typing <span class="pill p-blue">Tier 1</span></h3>
+  <p>Swap <code>.fill()</code> for click → clear → <code>press_sequentially(value, delay=random.uniform(80,180))</code> at the three credential/2FA fields. (One shared 2FA helper covers both email &amp; SMS paths.) No unit tests assert on <code>.fill</code>, so nothing breaks.</p>
+
+  <h2>5. The small stuff — pro / con each</h2>
+  <p class="small">(There are actually <strong>four</strong> Tier-3 items, not three — listing them all.)</p>
+  <table>
+    <tr><th>Item</th><th>How to fix</th><th>Pro / Con</th></tr>
+    <tr>
+      <td><strong>webdriver flag</strong><br><span class="small">unverified stealth flag</span></td>
+      <td>Add a context <code>add_init_script</code> forcing <code>navigator.webdriver=undefined</code> + a startup check that logs a warning if it's still set.</td>
+      <td><span class="pro">Pro:</span> survives a Chrome update silently breaking the flag.<br><span class="con">Con:</span> a clumsy override is itself fingerprintable — validate against the live wall first.</td>
+    </tr>
+    <tr>
+      <td><strong>--max-windows cap</strong><br><span class="small">no limit today (≈12)</span></td>
+      <td>Add a <code>--max-windows</code> flag, thread it through the runner. Keep default 12; document ~6 as the safer setting.</td>
+      <td><span class="pro">Pro:</span> fewer windows ⇒ more chance the whole span fits in ONE login (zero re-auths — the biggest win).<br><span class="con">Con:</span> a low cap can mean more separate runs (more sessions) for wide ranges unless paced.</td>
+    </tr>
+    <tr>
+      <td><strong>viewport</strong><br><span class="small">fixed 1280×800 every time</span></td>
+      <td>Best: <code>no_viewport=True</code> so the real headed window drives size/DPR. (Alt: jitter the size per session.)</td>
+      <td><span class="pro">Pro:</span> most realistic — real window dims, no emulation layer, kills the "identical every session" tell.<br><span class="con">Con:</span> less deterministic window size (fine here — it's headed-only with a real desktop).</td>
+    </tr>
+    <tr>
+      <td><strong>cold-start retry</strong><br><span class="small">retries login within seconds</span></td>
+      <td>Add a random 8–20 s backoff before the one retry on <code>creds_rejected</code>.</td>
+      <td><span class="pro">Pro:</span> two back-to-back login attempts is a velocity tell; the pause looks human.<br><span class="con">Con:</span> adds up to 20 s latency even when the creds are genuinely bad.</td>
+    </tr>
+  </table>
+
+  <h2>6. Change footprint &amp; recommendation</h2>
+  <div class="kvs">
+    <div>Files touched</div><div>~6 source + 3 test files, ~25–30 edits</div>
+    <div>Heaviest file</div><div><code>core/aeroplan_session.py</code> (typing, timing, viewport, webdriver, cold-start)</div>
+    <div>Highest value / lowest risk</div><div>① cap re-auths + cooldown, and ② human typing</div>
+    <div>Validate-on-live before shipping</div><div>The webdriver override (D1) — only item that could backfire</div>
+    <div>No change needed</div><div><code>core/watchlist.py</code> (already passes <code>--max-reauths 1</code>)</div>
+  </div>
+  <p class="callout"><strong>Net effect:</strong> with ①–④ done, an Aeroplan run on a warm home residential profile looks very
+  close to a keen award member checking their favorite routes — which is exactly the "safe enough to run on your own
+  account" bar. And remember: <strong>United already clears that bar for free</strong> because it never logs in.</p>
+
+  <h2>Sources</h2>
+  <ul class="small">
+    <li>Akamai — <a href="https://techdocs.akamai.com/cloud-security/docs/detection-methods">Detection methods</a> (behavioral is a Premier-tier secondary layer)</li>
+    <li>Castle — <a href="https://blog.castle.io/bot-or-not-can-you-spot-the-automated-mouse-movements/">Can you spot automated mouse movements?</a> (Bézier fakes ARE detectable via ML)</li>
+    <li>Castle — <a href="https://blog.castle.io/bot-detection-101-how-to-detect-bots-in-2025-2/">Bot detection 101 (2025)</a> (correlative model; behavior not used in isolation)</li>
+    <li>DataDome — <a href="https://datadome.co/anti-detect-tools/behavioral-bot-classification/">Behavioral bot classification</a> &amp; <a href="https://datadome.co/threat-research/how-new-headless-chrome-the-cdp-signal-are-impacting-bot-detection/">CDP signal</a></li>
+    <li>Arkose — <a href="https://azureflow.github.io/arkose-fp-docs/arkose_re_docs.html">FP signals docs</a> (reputation-first risk tiering)</li>
+    <li>Scrapfly — <a href="https://scrapfly.io/blog/posts/how-to-bypass-kasada-anti-scraping-waf">Bypass Kasada</a> (IP reputation + TLS dominate)</li>
+    <li>SEON — <a href="https://seon.io/resources/behavioral-biometrics-against-fraud/">Behavioral biometrics</a> (paste/clipboard, rhythm variance as signals)</li>
+    <li>Wikipedia — <a href="https://en.wikipedia.org/wiki/Keystroke_dynamics">Keystroke dynamics</a> (dwell / flight time)</li>
+    <li>Internal — <code>docs/findings/aeroplan/bot-detection.md</code>, <code>docs/findings/united/ghost-cursor-findings.md</code>, commit <code>8e9fa97</code></li>
+  </ul>
+
+  <footer>
+    Generated from a four-subagent audit of the searchaero codebase + web research &middot; read-only findings, no code changed &middot; 2026-06-12
+  </footer>
+</div>
+</body>
+</html>

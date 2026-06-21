@@ -49,7 +49,8 @@ searchaero help scraping     # How scraping works
 
 ### `searchaero search`
 
-Scrape award availability from United.
+Scrape award availability. Defaults to United (`--program united`); `--program aeroplan` runs
+the HEADED, single-route Air Canada Aeroplan path.
 
 ```bash
 # Single route (~2 min)
@@ -60,11 +61,15 @@ searchaero search --file routes/canada_test.txt
 
 # Parallel workers
 searchaero search --file routes/canada_us_all.txt --workers 3
+
+# Aeroplan (HEADED, single-route, email 2FA)
+searchaero search --program aeroplan YYZ LAX
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `ORIGIN DEST` | — | IATA airport codes (e.g., YYZ LAX) |
+| `--program` | united | `united` or `aeroplan`. Aeroplan is HEADED + single-route only (no `--file`/`--workers`) |
 | `--file, -f` | — | Route list file (one `ORIGIN DEST` per line) |
 | `--workers, -w` | 1 | Parallel browser workers (requires `--file`) |
 | `--headless` | **no-op** | Ignored for United — Akamai blocks headless, so the browser always runs headed (cookie_farm force-overrides this flag) |
@@ -73,6 +78,20 @@ searchaero search --file routes/canada_us_all.txt --workers 3
 | `--mfa-file` | off | Use file-based MFA handoff instead of stdin |
 | `--skip-scanned` | on | Skip already-scraped routes in parallel mode |
 | `--json` | off | Machine-readable output |
+
+**Aeroplan-only flags** (account-safety / login-hardening — the single account makes every login a risk):
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--mfa-method` | email | `email` or `sms` 2FA delivery for the Aeroplan login |
+| `--max-reauths` | 2 | Circuit breaker: max mid-span re-authentications before the span stops. Lowered from 4 to pace logins (login-velocity safety). The watch fork uses `1` |
+| `--deadline-seconds` | 1800 | Per-route-span wall-clock backstop (30 min). NOT a normal-run limit — it only fires on a hang. A deadline-hit raises a warn alert. Raising it captures more windows but a longer single session increases account-flag risk |
+| `--autonomous` | off | Explicit opt-in for unattended runs. Routes the deadline warn alert to **Discord** (`notify_deadline_hit`) instead of the **terminal/console** (the default — a human/`/flights` sees it). No `isatty` auto-detection; the scheduled + watch wrappers pass this |
+
+> Aeroplan login behavior is **humanized**: the member #, password, and 2FA code are typed
+> key-by-key with per-key log-normal timing (not pasted), login-step settles and the re-auth
+> cooldown are log-normal (not uniform jitter), and the cap + deadline + cooldown pace logins.
+> See `docs/findings/aeroplan/phase-3-unattended.md` → *Login-hardening*.
 
 ---
 

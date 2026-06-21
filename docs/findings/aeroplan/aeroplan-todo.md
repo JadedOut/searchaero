@@ -3,7 +3,7 @@
 Running list of deferred Aeroplan work — now also the index of the **three open Phase-3
 live gates** (the unattended machinery is built; the live runs are the user's).
 
-Last updated: 2026-06-04.
+Last updated: 2026-06-21.
 
 > **2026-06-03 update (Phase 2 built).** The Phase-2 scraper → store → query → alert path
 > is **BUILT and offline-tested**; the **live gate is the user's** (Slice A / Slice B in
@@ -21,6 +21,19 @@ Last updated: 2026-06-04.
 > Gate 2 (cold-profile Arkose = TODO-2), Gate 3 (end-to-end unattended cycle) — all
 > documented in the new runbook
 > [`phase-3-unattended.md`](./phase-3-unattended.md). See the new **Phase 3** section below.
+
+> **2026-06-21 update (login-hardening shipped).** A behavioral anti-bot pass landed (audit:
+> [`antibot-hardening-report.html`](./antibot-hardening-report.html)). It makes the HEADED
+> single-account login look human and stops the two behaviors most likely to flag the account —
+> **logging in too often / back-to-back** and **typing like a machine**. Shipped, offline-tested:
+> a log-normal timing keystone (`core/humanize.py` + `tests/test_humanize.py`); the re-auth cap
+> lowered **4 → 2**; a configurable per-route-span deadline (`--deadline-seconds`, default 1800 s)
+> with a warn-on-hit alert routed by an explicit `--autonomous` flag (console default, Discord
+> when unattended); a log-normal cooldown before each re-auth + a cold-start backoff; log-normal
+> login-step settles; and member #/password/2FA **typed key-by-key** (no `.fill()` of secrets)
+> with a pre-submit dwell. No `random.uniform()` remains as a timing source on the login/scrape
+> paths. **Live login is still a manual post-build step** — it inherits the never-run Gate-3
+> conditions (see the new *Phase 4* section below).
 
 ---
 
@@ -170,10 +183,11 @@ Phase-3 prerequisites and items, with status annotated:
 3. ✅ **SHIPPED — bounded re-auth-and-resume loop.**
    `core/aeroplan_runner.py::run_aeroplan_route_with_reauth` drives `scrape_route_aeroplan`
    in a bounded loop; on session expiry with windows remaining it re-authenticates
-   (`session.ensure_logged_in()` + warm-up) and resumes from the next unscraped window,
-   capped by `max_reauths` (default 4) and `deadline_seconds`. Wired into
+   (a randomized log-normal cooldown → `session.ensure_logged_in()` + warm-up) and resumes
+   from the next unscraped window, capped by `max_reauths` (default **2** since the
+   login-hardening pass) and `deadline_seconds` (CLI default 1800 s). Wired into
    `cli.py::_scrape_route_aeroplan_live`. Pure orchestration (no browser/DB/Playwright;
-   injectable clock). Tested by `tests/test_aeroplan_reauth_loop.py` (**7/7**).
+   injectable clock). Tested by `tests/test_aeroplan_reauth_loop.py` (**14/14**).
    (Previously parked under Phase-2 *Deferred follow-ups* → "Unattended re-auth loop";
    now done.)
 4. ✅ **SHIPPED — program-aware scheduled path.** `scripts/scheduled_scrape.py` emits a
@@ -191,3 +205,38 @@ Phase-3 prerequisites and items, with status annotated:
 operation is gated by the **user's manual live runs** (Gate 1 email-2FA, Gate 2
 cold-profile Arkose, Gate 3 end-to-end cycle) in
 [`phase-3-unattended.md`](./phase-3-unattended.md).
+
+---
+
+## Phase 4 — Login-hardening (behavioral anti-bot) (✅ SHIPPED — offline-tested 2026-06-21)
+
+Makes the login *look human* and paces logins so the single account doesn't get flagged.
+Audit + rationale: [`antibot-hardening-report.html`](./antibot-hardening-report.html),
+`antibot-doing-vs-should.html`, `not-getting-caught-explainer.html`. Built per
+[`specs/aeroplan-login-hardening.md`](../../../specs/aeroplan-login-hardening.md). Behavioral
+detail lives in [`phase-3-unattended.md`](./phase-3-unattended.md) → *Login-hardening*.
+
+1. ✅ **Log-normal timing keystone.** `core/humanize.py` — `human_delay`/`human_sleep`
+   (mean-preserving log-normal, Box-Muller, clamped, injectable RNG). Replaces uniform
+   `random.uniform()` jitter everywhere (the "jitter trap"). `tests/test_humanize.py`.
+2. ✅ **Circuit breaker.** `DEFAULT_MAX_REAUTHS` 4 → 2; `search --max-reauths` default 2; the
+   watch fork still passes `1`.
+3. ✅ **Deadline / time budget.** `search --deadline-seconds` (default 1800 s) per-route-span
+   backstop; runner returns a `stop_reason`; deadline-hit warn alert routed by `--autonomous`
+   (console default; Discord via `notify_deadline_hit` when unattended). No isatty detection.
+4. ✅ **Cooldown / backoff.** Log-normal cooldown before each re-auth; cold-start `creds_rejected`
+   retry backs off.
+5. ✅ **Politeness.** Fixed `SETTLE_SECONDS` login-step settles → log-normal human sleeps.
+6. ✅ **Humanization.** Member #, password, and 2FA code typed key-by-key with per-key log-normal
+   timing (no `.fill()` of secrets) + a pre-submit dwell.
+
+**Gate (still the user's):** live login is NOT validated offline. All oracles are
+unit/argparse/grep/scripted — they prove the code paths + timing logic. A real Gigya/Arkose
+login with human-typed credentials inherits the never-run **Gate 3** conditions (headed Chrome,
+interactive desktop, email-2FA) and is a **manual, post-build** step:
+`searchaero search --program aeroplan YYZ LAX` on a warm profile, observing a login, one re-auth
+cooldown, and human-typed entry.
+
+**Out of scope:** blast-radius containment (one account = whole risk) — an architectural/product
+decision (operator-pool vs. crowdsource), tracked separately (see the `project_united_award_login_wall`
+memory).

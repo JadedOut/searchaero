@@ -38,7 +38,7 @@ Core principles:
 
 3. **Scheduling via CLI.** `searchaero schedule add` manages a **single consolidated master schedule** via Windows Task Scheduler. Multiple route groups accumulate into one Task Scheduler task — `schedule add --routes yyz_nrt.txt` creates the master, subsequent `schedule add --routes yyz_wuh.txt --months 6,7,12` appends route groups to it. One `.bat`, one browser session, one schtasks task regardless of how many route groups exist. The CLI enforces `MAX_ROUTES = 10` and a minimum interval based on estimated scrape time + 45-min buffer (`compute_min_interval()`). The .bat payload calls `scripts/scheduled_scrape.py --schedule-name master` which loads route groups from the registry and runs one `searchaero search` per group sequentially (mfa_responder → search group 1 → search group 2 → ... → eval → notify). A lockfile (`~/.searchaero/scrape.lock`) prevents overlapping runs. `schedule list` shows per-group details with estimated scrape time; `schedule remove <group>` removes a single group; `schedule remove master` tears down everything. Metadata stored in `~/.searchaero/schedules.json`; generated files in `~/.searchaero/schedules/`.
 
-4. **Two modes, two notification paths.** In **interactive mode** (user typing in chat), the calling agent handles notification delivery — it has access to Gmail MCP, Slack, whatever. In **autonomous mode** (scheduled pipeline, no agent in the loop), the pipeline sends Discord webhook notifications directly via `core.notify.send_discord`. Watch conditions are stored in `~/.searchaero/watches.yaml`; the LLM evaluates them and composes contextual alerts. Template fallback if the API is down.
+4. **Two modes, two notification paths.** In **interactive mode** (user typing in chat), the calling agent handles notification delivery — it has access to Gmail MCP, Slack, whatever. In **autonomous mode** (scheduled pipeline, no agent in the loop), the pipeline sends Discord webhook notifications directly via `core.notify.send_discord`. Watch conditions are stored in `~/.searchaero/watches.yaml`; the LLM evaluates them and composes contextual alerts. Template fallback if the API is down. This distinction is now an **explicit `--autonomous` CLI flag** (default off = interactive), not an auto-detected mode: both a scheduled job and the `/flights` skill run the CLI with no TTY, so `isatty` cannot tell them apart. Only the unattended callers (`scheduled_scrape.py`, the watch fork) pass `--autonomous`. The Aeroplan deadline warn-on-hit alert routes by this flag — terminal/console by default, Discord under `--autonomous`.
 
 5. **No agent instructions in config files.** Agent discoverability happens through `searchaero schema` (+ `--json`), not by embedding CLI manuals in agent-specific config files (.cursorrules, etc.). The tool describes itself; agents don't need a cheat sheet.
 
@@ -65,6 +65,28 @@ As of 2026, United is rated 2/5 difficulty for scraping by Scraperly (https://sc
 **Session management:** Use Playwright with persistent browser contexts to save login state between runs. Sessions stay alive for hours; the hourly scrape cadence naturally keeps them warm. Re-authentication is only needed when sessions expire (roughly once per day).
 
 **Anti-bot evasion:** United uses dual-layer bot protection: Cloudflare (TLS fingerprinting at the edge) and Akamai Bot Manager (JavaScript sensor cookies). curl_cffi with Chrome TLS impersonation handles Cloudflare, but Akamai requires a real browser to generate and maintain `_abck` cookies. The proven approach is a hybrid architecture: Playwright runs in the background as a "cookie farm" keeping Akamai cookies fresh, while curl_cffi makes the actual API calls using those cookies. See `docs/findings/united/curl-cffi-feasibility.md` and `docs/findings/united/hybrid-architecture.md`.
+
+### Account safety (Aeroplan single-account login)
+
+United scrapes from a cookie farm and can rotate profiles; the Air Canada **Aeroplan** path is
+different and riskier — it runs a **HEADED, single-account** Gigya login (one account = the whole
+blast radius), so the strategy is to make that login *look human* and *log in rarely*. The
+login-hardening pass (audited in `docs/findings/aeroplan/antibot-hardening-report.html`, shipped
+2026-06-21) addresses the two behaviors most likely to freeze the account:
+
+- **Login velocity** — a circuit breaker (re-auth cap default **2**), a per-route-span wall-clock
+  deadline (`--deadline-seconds`, default 1800 s, warn-on-hit), and a randomized **log-normal
+  cooldown** before each re-auth plus a cold-start backoff. Together these stop back-to-back
+  re-authentication, the textbook account-freeze trigger.
+- **Behavioral biometrics** — credentials and the 2FA code are **typed key-by-key** with per-key
+  log-normal timing (never `.fill()`-pasted), login-step settles are log-normal human sleeps, and
+  the scraper's inter-window jitter is log-normal — all driven by one tested primitive
+  (`core/humanize.py`). Naïve `random.uniform()` jitter is itself a detectable fingerprint (the
+  "jitter trap"), so a flat distribution is not used anywhere on the login/scrape paths.
+
+**Out of scope (tracked separately):** blast-radius containment — moving off one account to an
+operator-pool or crowdsourced-credential model. That is an architectural/product decision, not a
+code fix. Detail: `docs/findings/aeroplan/phase-3-unattended.md` → *Login-hardening*.
 
 ### Scrape volume math
 

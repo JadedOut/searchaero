@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The named concepts of not getting caught</title>
+<style>
+  :root {
+    --ivory:   #FAF9F5;
+    --slate:   #141413;
+    --clay:    #D97757;
+    --oat:     #E3DACC;
+    --olive:   #788C5D;
+    --sky:     #6A8CAF;
+    --gold:    #C2A83E;
+    --gray-150:#F0EEE6;
+    --gray-300:#D1CFC5;
+    --gray-500:#87867F;
+    --gray-700:#3D3D3A;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans:  system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--ivory);
+    color: var(--gray-700);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    padding: 56px 24px 120px;
+  }
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 48px;
+  }
+  @media (max-width: 960px) { .page { grid-template-columns: 1fr; } aside { order: 2; position: static; } }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--gray-500); margin-bottom: 10px;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 500; font-size: 33px;
+    color: var(--slate); letter-spacing: -0.01em; margin-bottom: 12px;
+  }
+  .lead { max-width: 660px; margin-bottom: 8px; }
+  h2 { font-family: var(--serif); font-weight: 500; font-size: 22px; color: var(--slate); margin: 44px 0 12px; }
+  h3 { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--clay); margin: 22px 0 6px; }
+  .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--clay); margin: 52px 0 -28px; }
+  p { margin-bottom: 12px; max-width: 680px; }
+  ul { max-width: 680px; margin: 0 0 12px 20px; }
+  li { margin-bottom: 7px; }
+  code { font-family: var(--mono); font-size: 13px; background: var(--gray-150); padding: 1px 4px; border-radius: 4px; }
+  em { color: var(--slate); font-style: italic; }
+  .term { border-bottom: 1.5px dotted var(--clay); cursor: help; color: var(--slate); }
+  .caption { font-size: 13px; color: var(--gray-500); max-width: 640px; }
+  .tagdo  { font-family: var(--mono); font-size: 10px; letter-spacing:.04em; padding:1px 6px; border-radius: 999px; background: rgba(120,140,93,.16); color:#5d6f47; }
+  .tagstop{ font-family: var(--mono); font-size: 10px; letter-spacing:.04em; padding:1px 6px; border-radius: 999px; background: rgba(176,74,63,.14); color:#B04A3F; }
+  .tagadd { font-family: var(--mono); font-size: 10px; letter-spacing:.04em; padding:1px 6px; border-radius: 999px; background: rgba(106,140,175,.16); color:#4f6f90; }
+
+  /* demo panel */
+  .demo { border: 1.5px solid var(--gray-300); border-radius: 14px; background: #fff; padding: 24px; margin: 12px 0 8px; }
+  .demo-grid { display: grid; grid-template-columns: 1fr 248px; gap: 28px; align-items: center; }
+  @media (max-width: 760px) { .demo-grid { grid-template-columns: 1fr; } }
+  svg.viz { display: block; width: 100%; }
+  .controls { font-size: 13px; }
+  .controls .row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .controls label { width: 64px; color: var(--gray-500); font-family: var(--mono); font-size: 11px; }
+  .controls .val { font-family: var(--mono); font-size: 12px; color: var(--slate); width: 40px; text-align: right; }
+  .controls input[type=range] { flex: 1; accent-color: var(--clay); }
+  .controls button { appearance: none; border: 1.5px solid var(--gray-300); background: var(--gray-150); border-radius: 6px; font-family: var(--mono); font-size: 11px; padding: 6px 10px; cursor: pointer; margin-right: 6px; }
+  .controls button:hover { background: var(--oat); }
+  .readout { border-top: 1px solid var(--gray-300); margin-top: 16px; padding-top: 14px; font-size: 13px; }
+  .readout .insight b { color: var(--slate); }
+  .readout .insight .hot { color: var(--clay); font-family: var(--mono); }
+  .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+
+  /* tables */
+  table { border-collapse: collapse; width: 100%; max-width: 700px; font-size: 13.5px; margin: 12px 0; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--gray-300); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-500); font-weight: 500; }
+  td.bad { color: #B04A3F; } td.good { color: var(--olive); }
+  td:first-child { color: var(--slate); font-family: var(--serif); font-size: 14px; }
+
+  /* glossary */
+  aside { position: sticky; top: 32px; align-self: start; max-height: calc(100vh - 64px); overflow-y: auto; scroll-behavior: smooth; overscroll-behavior: contain; border: 1.5px solid var(--gray-300); border-radius: 12px; background: #fff; padding: 18px 18px 8px; }
+  aside::-webkit-scrollbar { width: 8px; }
+  aside::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 4px; }
+  aside::-webkit-scrollbar-track { background: transparent; }
+  aside .label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gray-500); margin-bottom: 12px; }
+  aside dl dt { font-family: var(--serif); font-size: 15px; color: var(--slate); margin-top: 0; }
+  aside dl dd { font-size: 12.5px; line-height: 1.5; color: var(--gray-700); margin: 2px 0 14px; }
+  aside dl dt.hl, aside dl dt.hl + dd { background: rgba(217,119,87,0.10); margin-left: -8px; margin-right: -8px; padding-left: 8px; padding-right: 8px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <main>
+    <div class="eyebrow">Anti-bot · concept explainer</div>
+    <h1>The named concepts of not getting caught</h1>
+    <p class="lead">You already do most of this by instinct. The point of this page is to hand you the <em>vocabulary</em> — the "defensive-programming"-style umbrella terms — so you can reason about your scraper in named patterns instead of vibes. Everything sorts into one question: <span class="term" data-term="avoidance-resilience">avoidance or resilience</span>.</p>
+
+    <h2>Two questions, three camps</h2>
+    <p>Every anti-detection idea answers one of two questions: <em>"how do I not get detected?"</em> (<span class="term" data-term="avoidance-resilience">detection-avoidance</span>) or <em>"how do I survive being blocked or failing without making it worse?"</em> (<span class="term" data-term="avoidance-resilience">detection-resilience</span>). Your situation forces a third, practical camp: <em>"if I do get caught, how small is the damage?"</em> — <span class="term" data-term="least-privilege">risk-containment</span>. That three-way split is the spine of everything below.</p>
+    <p>The one strategic fact that makes the vocabulary worth learning: you face <span class="term" data-term="defense-in-depth">defense in depth</span> — Akamai (network/TLS) → fingerprint → Arkose (behavioral) → challenge, stacked. You can't "win" one layer. A perfect real-browser fingerprint is <em>wasted</em> if your timing is robotic, because the next layer up catches it.</p>
+
+    <h2>Camp 1 — Evasion (don't get detected)</h2>
+    <p>Your strongest design instinct, named: you lean <em>away</em> from spoofing and <em>toward</em> being a real-enough client. That's <span class="term" data-term="fingerprint-coherence">fingerprint coherence</span> — a real headed Chrome is automatically self-consistent (its UA, WebGL, TLS, fonts all agree), whereas spoofing risks contradictions that detectors catch. It's why running real Chrome and <em>not</em> faking the mouse is correct, not lazy.</p>
+    <p>You avoid the riskiest action through <span class="term" data-term="session-reuse">session reuse</span> (a warm persistent profile that skips login) gated by a <span class="term" data-term="liveness">liveness probe</span> (the cheap "am I still logged in?" check). The gap is at the keyboard: <span class="term" data-term="humanization">humanization</span> — typing char-by-char with varied cadence — because the defender layer you're exposed to is <span class="term" data-term="behavioral-biometrics">behavioral biometrics</span> (scoring keystroke and mouse timing). Pasting a password in one event is the textbook tell it catches.</p>
+    <p>And the subtle one: the fix for robotic timing is <em>not</em> "add randomness." It's <span class="term" data-term="distribution-matching">distribution matching</span> — sampling from the shape humans actually produce (log-normal, heavy-tailed), so your timing is <em>statistically indistinguishable</em> from human. Naïve uniform randomness backfires; that failure mode has a name — <span class="term" data-term="jitter-trap">the jitter trap</span> — and it's the demo below. (Your fixed 3-second waits are a crude <span class="term" data-term="politeness">politeness policy</span>; the upgrade is making the spacing log-normal, not constant.)</p>
+
+    <h2>Camp 2 — Resilience (survive failures &amp; blocks)</h2>
+    <p>The single highest-risk thing your scraper does is log in, and the signal that freezes accounts is <span class="term" data-term="velocity">login-velocity detection</span> — too many logins per unit time. Back-to-back re-auth is exactly this. The countermeasures are all named patterns: pace retries with <span class="term" data-term="backoff">exponential backoff</span>; hard-cap the riskiest operation with a <span class="term" data-term="circuit-breaker">circuit breaker</span> (stop entirely after N, cool down); bound the whole loop with a <span class="term" data-term="deadline">deadline</span> (wall-clock budget).</p>
+    <p>You already nail two resilience patterns. Resuming from the next un-scraped window instead of redoing work is <span class="term" data-term="durable-execution">durable execution</span> (checkpoint-and-resume), and it only stays safe because re-scraping a window doesn't corrupt data — <span class="term" data-term="idempotency">idempotency</span>. And detecting an Arkose challenge and <em>bailing</em> rather than submitting a junk token is <span class="term" data-term="fail-safe">fail-safe degradation</span> (fail closed) — correct, because a fake/empty solve is a high-confidence bot tell.</p>
+
+    <h2>Camp 3 — Risk-containment (limit the damage)</h2>
+    <p>Your one personal account <em>is</em> your entire blast radius, so everything risk-related is <span class="term" data-term="least-privilege">least privilege / blast-radius containment</span>: capping and pacing logins are blast-radius controls on your highest-privilege identity. And the reason "don't rotate the profile" is a rule, not a preference, is <span class="term" data-term="reputation">reputation-based detection</span> — detectors score an identity by its <em>history</em>; a stable, long-lived, clean profile accrues trust, and rotating throws it away (and looks like evasion). Minimizing logins, bailing on Arkose, and keeping one profile all point the same direction: protect accrued trust.</p>
+
+    <!-- ── FLAGSHIP DEMO ─────────────────────────────── -->
+    <h2>The jitter trap</h2>
+    <p>This is the most counterintuitive idea, so make it clickable. The bars are a histogram of the delays your scraper waits between actions. Drag <b>human</b> from 0 (pure <code>random.uniform()</code>) toward 100 (log-normal, human-shaped) and watch the flat slab collapse into a right-skewed hump with a long tail. The lesson: <em>adding uniform randomness doesn't hide you — a flat distribution is a shape no human produces, so it's its own fingerprint.</em></p>
+    <div class="demo">
+      <div class="demo-grid">
+        <svg class="viz" id="viz" viewBox="0 0 360 210"></svg>
+        <div class="controls">
+          <div class="row">
+            <label>human</label>
+            <input id="s1" type="range" min="0" max="100" value="0">
+            <span class="val" id="v1">0</span>
+          </div>
+          <div><button id="reset">reset</button></div>
+          <div class="readout" id="readout"></div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Same mean delay throughout — only the <em>shape</em> changes. Defenders (Varonis "Jitter-Trap", keystroke-cadence models) test the shape, not the average.</p>
+
+    <h2>What I do / should do / should stop — by name</h2>
+    <table>
+      <thead><tr><th>Named concept</th><th>Camp</th><th>My status</th></tr></thead>
+      <tbody>
+        <tr><td>Session reuse</td><td>Evasion</td><td class="good">✓ doing — warm profile skips login</td></tr>
+        <tr><td>Liveness probe</td><td>Evasion</td><td class="good">✓ doing — checks before re-auth</td></tr>
+        <tr><td>Fingerprint coherence</td><td>Evasion</td><td class="good">✓ doing — real headed Chrome, no fake mouse</td></tr>
+        <tr><td>Humanization</td><td>Evasion</td><td class="bad">→ should add — currently pastes input</td></tr>
+        <tr><td>Distribution matching</td><td>Evasion</td><td class="bad">→ should add — switch to log-normal</td></tr>
+        <tr><td>The jitter trap</td><td>Evasion</td><td class="bad">✗ stop — uniform <code>random.uniform()</code></td></tr>
+        <tr><td>Politeness policy</td><td>Evasion</td><td class="bad">~ crude — fixed 3s waits, upgrade</td></tr>
+        <tr><td>Login-velocity</td><td>Resilience</td><td class="bad">✗ stop — 4× back-to-back re-auth</td></tr>
+        <tr><td>Exponential backoff</td><td>Resilience</td><td class="bad">→ should add — pace re-auths</td></tr>
+        <tr><td>Circuit breaker</td><td>Resilience</td><td class="bad">→ should lower the re-auth cap</td></tr>
+        <tr><td>Deadline / time budget</td><td>Resilience</td><td class="bad">→ should add wall-clock bound</td></tr>
+        <tr><td>Durable execution</td><td>Resilience</td><td class="good">✓ doing — resume per window</td></tr>
+        <tr><td>Fail-safe degradation</td><td>Resilience</td><td class="good">✓ doing — bail on Arkose</td></tr>
+        <tr><td>Blast-radius containment</td><td>Containment</td><td>⚠ one account = whole risk</td></tr>
+        <tr><td>Reputation-based detection</td><td>Containment</td><td class="good">✓ doing — one stable profile, don't rotate</td></tr>
+        <tr><td>Defense in depth</td><td>Containment</td><td>— the terrain you're on (theirs)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Part II pivot -->
+    <div class="kicker">Part II — what matters most</div>
+    <h2>Ranked for your case</h2>
+    <p>Not all named concepts weigh the same for an authenticated airline scraper. In order:</p>
+    <h3>1 · Login-velocity → circuit breaker + backoff</h3>
+    <p>Your back-to-back 4× re-auth is the single biggest account-freeze trigger. Cap it low (<span class="term" data-term="circuit-breaker">circuit breaker</span>) and space it (<span class="term" data-term="backoff">backoff</span>). Highest leverage, by far.</p>
+    <h3>2 · Reputation-based detection</h3>
+    <p>The unifying "why" behind don't-rotate, bail-on-Arkose, and minimize-logins: protect the accrued trust on <span class="term" data-term="reputation">one identity</span>.</p>
+    <h3>3 · Behavioral biometrics → distribution matching</h3>
+    <p>Your real fingerprint is wasted while your timing is robotic. Defeat <span class="term" data-term="behavioral-biometrics">behavioral biometrics</span> with log-normal <span class="term" data-term="distribution-matching">distribution matching</span> — and stop walking into <span class="term" data-term="jitter-trap">the jitter trap</span>.</p>
+    <h3>4 · Blast-radius containment</h3>
+    <p>One personal account = your whole risk surface. Every login you avoid shrinks the <span class="term" data-term="least-privilege">blast radius</span>.</p>
+    <h3>5 · Durable execution + deadline</h3>
+    <p>You already checkpoint per window (<span class="term" data-term="durable-execution">durable execution</span>); adding the <span class="term" data-term="deadline">deadline</span> completes the loop.</p>
+    <h3>6 · Already right — keep them</h3>
+    <p><span class="term" data-term="fingerprint-coherence">Fingerprint coherence</span> and <span class="term" data-term="fail-safe">fail-safe degradation</span>: the two instincts you got right. Now you have their names, so you'll keep them on purpose.</p>
+  </main>
+
+  <aside>
+    <div class="label">Glossary</div>
+    <dl id="gloss">
+      <dt data-g="avoidance-resilience">Avoidance vs. resilience</dt>
+      <dd>The organizing axis: avoiding detection vs. surviving failure/blocks. Plus a third camp — risk-containment — for limiting damage if caught.</dd>
+      <dt data-g="defense-in-depth">Defense in depth</dt>
+      <dd>Detection stacked in independent layers (network → fingerprint → behavioral → challenge); beating one still gets caught by the next.</dd>
+      <dt data-g="fingerprint-coherence">Fingerprint coherence</dt>
+      <dd>All client signals must be mutually consistent. A real browser is coherent for free; spoofing risks contradictions detectors flag.</dd>
+      <dt data-g="session-reuse">Session reuse</dt>
+      <dd>Reuse a persistent authenticated profile so you appear as an ongoing user and skip the high-risk login flow.</dd>
+      <dt data-g="liveness">Liveness probe</dt>
+      <dd>A cheap pre-flight that confirms the session is still authenticated before deciding to re-log-in.</dd>
+      <dt data-g="humanization">Humanization</dt>
+      <dd>Making automated input look human — char-by-char typing with realistic, variable cadence rather than one-shot fills.</dd>
+      <dt data-g="behavioral-biometrics">Behavioral biometrics</dt>
+      <dd>The defender technique that scores keystroke/mouse/scroll timing to separate humans from bots, after fingerprint checks pass.</dd>
+      <dt data-g="distribution-matching">Distribution matching</dt>
+      <dd>Don't just randomize — sample from the human distribution (log-normal, heavy-tailed) so timing is statistically indistinguishable.</dd>
+      <dt data-g="jitter-trap">The jitter trap</dt>
+      <dd>When your randomness is itself a fingerprint: uniform <code>random.uniform()</code> makes a flat distribution no human produces.</dd>
+      <dt data-g="politeness">Crawler politeness policy</dt>
+      <dd>Self-imposed spacing of requests/actions; the crude version is a fixed delay, the good version is log-normal spacing.</dd>
+      <dt data-g="velocity">Login-velocity detection</dt>
+      <dd>The #1 account-takeover signal: too many logins per unit time from one identity/device. Back-to-back re-auth trips it.</dd>
+      <dt data-g="backoff">Exponential backoff</dt>
+      <dd>On repeated failure, wait progressively longer between retries (with jitter to de-synchronize).</dd>
+      <dt data-g="circuit-breaker">Circuit breaker</dt>
+      <dd>After N failures, stop trying entirely for a cooldown instead of hammering a hostile endpoint. A hard re-auth cap is one.</dd>
+      <dt data-g="deadline">Deadline / time budget</dt>
+      <dd>A hard wall-clock upper bound on how long a loop may run before it gives up cleanly.</dd>
+      <dt data-g="durable-execution">Durable execution</dt>
+      <dd>Persist progress so an interrupted long job resumes from the last completed step instead of redoing work (checkpoint-and-resume).</dd>
+      <dt data-g="idempotency">Idempotency</dt>
+      <dd>A retried step doesn't double-apply; re-scraping a window can't corrupt data. The required companion to durable execution.</dd>
+      <dt data-g="fail-safe">Fail-safe degradation</dt>
+      <dd>When you can't proceed safely, degrade to a safe non-action (fail closed) — e.g. bail on a challenge instead of guessing.</dd>
+      <dt data-g="least-privilege">Least privilege / blast radius</dt>
+      <dd>Limit the scope of damage one compromise can cause. Your single account is your entire blast radius.</dd>
+      <dt data-g="reputation">Reputation-based detection</dt>
+      <dd>Scoring an identity/device by its history; trust accrues to stable, long-lived clean identities and is destroyed by suspicious events.</dd>
+    </dl>
+  </aside>
+
+</div>
+
+<script>
+/* ── deterministic hash: stable pseudo-random for demo data ── */
+function h(s) {
+  s = String(s);
+  let x = 2166136261;
+  for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = (x * 16777619) >>> 0; }
+  return x / 4294967296;            // 0..1, identical every load
+}
+
+/* ── DEMO: the jitter trap — uniform morphs to log-normal ── */
+const viz = document.getElementById("viz");
+const s1 = document.getElementById("s1"), v1 = document.getElementById("v1");
+const readout = document.getElementById("readout");
+
+const N = 600;          // sampled delays
+const BINS = 26;        // histogram buckets
+const MAXMS = 520;      // x-axis range (ms)
+const BW = MAXMS / BINS;
+
+// Precompute a uniform sample and a log-normal sample per point (deterministic).
+const samples = Array.from({length: N}, (_, i) => {
+  // uniform 40..400 ms (flat slab)
+  const uni = 40 + h("u" + i) * 360;
+  // log-normal via Box–Muller, centered ~110ms with a right tail
+  const u1 = Math.max(1e-6, h("a" + i));
+  const u2 = h("b" + i);
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  let logn = Math.exp(Math.log(110) + 0.5 * z);
+  logn = Math.max(20, Math.min(500, logn));
+  return { uni, logn };
+});
+
+function lerpHex(a, b, t) {            // a,b = [r,g,b]
+  const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+const CLAY = [217,119,87], OLIVE = [120,140,93];
+
+function render() {
+  const p1 = +s1.value;
+  v1.textContent = p1;
+  const t = p1 / 100;                  // 0 = uniform, 1 = log-normal
+
+  // bin the morphed samples
+  const counts = new Array(BINS).fill(0);
+  for (const s of samples) {
+    const ms = s.uni * (1 - t) + s.logn * t;
+    let b = Math.floor(ms / BW);
+    if (b < 0) b = 0; if (b >= BINS) b = BINS - 1;
+    counts[b]++;
+  }
+  const maxc = Math.max(1, ...counts);
+  const fill = lerpHex(CLAY, OLIVE, t);
+
+  // plot geometry
+  const x0 = 8, x1 = 352, base = 182, top = 14;
+  const plotW = x1 - x0, plotH = base - top;
+  const slotW = plotW / BINS;
+
+  let svg = "";
+  // baseline
+  svg += `<line x1="${x0}" y1="${base}" x2="${x1}" y2="${base}" stroke="var(--gray-300)" stroke-width="1"/>`;
+  // bars
+  for (let b = 0; b < BINS; b++) {
+    const hgt = (counts[b] / maxc) * plotH;
+    const x = x0 + b * slotW + 1.2;
+    const w = slotW - 2.4;
+    const y = base - hgt;
+    svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${hgt.toFixed(1)}" rx="1.5" fill="${fill}" style="transition:all .12s ease"/>`;
+  }
+  // x-axis ticks: 0, 200, 400 ms
+  [0, 200, 400].forEach(ms => {
+    const x = x0 + (ms / MAXMS) * plotW;
+    svg += `<text x="${x.toFixed(1)}" y="${base + 16}" font-family="var(--mono)" font-size="9" fill="var(--gray-500)" text-anchor="middle">${ms}ms</text>`;
+  });
+  viz.innerHTML = svg;
+
+  // insight
+  const flagged = t < 0.5;
+  const verdict = flagged
+    ? `<b>FLAGGED.</b> A near-flat slab — <span class="hot">no human</span> acts on a uniform distribution. The jitter is the tell.`
+    : `<b>Blends in.</b> Right-skewed, log-normal — statistically <span class="hot">indistinguishable</span> from human cadence.`;
+  readout.innerHTML = `<div class="insight">human&nbsp;=&nbsp;<span class="hot">${p1}</span> / 100<br>${verdict}</div>`;
+}
+s1.oninput = render;
+document.getElementById("reset").onclick = () => { s1.value = 0; render(); };
+
+/* ── glossary hover wiring (do not edit) ── */
+function revealInAside(dt) {
+  const box = dt.closest("aside");
+  if (!box) return;
+  const dd = dt.nextElementSibling;
+  const top = dt.offsetTop;
+  const bottom = dd ? dd.offsetTop + dd.offsetHeight : dt.offsetTop + dt.offsetHeight;
+  const pad = 12;
+  if (top - pad < box.scrollTop) box.scrollTop = top - pad;
+  else if (bottom + pad > box.scrollTop + box.clientHeight) box.scrollTop = bottom + pad - box.clientHeight;
+}
+document.querySelectorAll(".term").forEach(el => {
+  const dt = document.querySelector(`dt[data-g="${el.dataset.term}"]`);
+  if (!dt) return;
+  el.addEventListener("mouseenter", () => { dt.classList.add("hl"); revealInAside(dt); });
+  el.addEventListener("mouseleave", () => dt.classList.remove("hl"));
+});
+
+render();
+</script>
+</body>
+</html>

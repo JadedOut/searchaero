@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aeroplan Anti-Bot — Doing vs. Should Do vs. Stop</title>
+<style>
+  :root{
+    --bg:#0f1116; --panel:#171a22; --panel2:#1d212b; --ink:#e7ebf2; --muted:#9aa4b2;
+    --line:#2a2f3a; --accent:#5b9bff; --red:#ff6b6b; --amber:#ffb454; --green:#3ecf8e; --code:#0b0d12;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 22px 80px;}
+  h1{font-size:30px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 26px}
+  h2{font-size:22px;margin:36px 0 6px;padding-top:16px;border-top:1px solid var(--line)}
+  h2 .dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:9px;vertical-align:middle}
+  h3{font-size:15px;margin:18px 0 4px;color:#cfe0ff;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+  p{margin:9px 0}
+  .lead{font-size:17px}
+  .callout{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:9px;padding:14px 18px;margin:16px 0}
+  .callout.warn{border-left-color:var(--amber)}
+  ul{margin:8px 0;padding-left:0;list-style:none}
+  li{margin:9px 0;padding:11px 14px;background:var(--panel);border:1px solid var(--line);border-radius:9px}
+  li.g{border-left:3px solid var(--green)}
+  li.b{border-left:3px solid var(--accent)}
+  li.r{border-left:3px solid var(--red)}
+  .t{font-weight:650}
+  .why{color:var(--muted);font-size:14px;display:block;margin-top:3px}
+  code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+    font:12.5px/1.5 "SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#d6e2ff}
+  .tag{font:11.5px/1 "SF Mono",monospace;color:var(--muted)}
+  .pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 8px;
+    border-radius:999px;text-transform:uppercase;margin-left:6px}
+  .p-hi{background:rgba(255,107,107,.16);color:#ff9a9a}
+  .p-med{background:rgba(255,180,84,.16);color:#ffce8a}
+  .p-low{background:rgba(154,164,178,.16);color:#bcc6d4}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:#cfe0ff;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  .num{color:var(--accent);font-weight:700}
+  a{color:var(--accent)}
+  footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Aeroplan Anti-Bot: Doing vs. Should Do vs. Stop</h1>
+  <p class="sub">What we already do to stay un-flagged, what to add, what to remove &middot; code audit + 2026 defender research &middot; login-velocity &amp; scripted-input axes (IP scope excluded per request)</p>
+
+  <div class="callout">
+    <strong>The reassuring headline:</strong> defender research says the <strong>#1 lever for not getting an account
+    flagged is logging in as rarely as possible on a warm, consistent session</strong> — and that is exactly where our
+    architecture is already strong (warm persistent profile + skip-login-when-still-authed + detect-and-bail). Our weak
+    spots are all <em>secondary</em>: burst pacing of the rare re-logins, and machine-like keystrokes/timing at the login form.
+  </div>
+
+  <div class="callout warn">
+    <strong>The one counterintuitive trap (new finding):</strong> <strong>uniform random jitter is itself a detection
+    signal.</strong> Defenders (Varonis "Jitter-Trap", FCaptcha keystroke biometrics) run distribution + autocorrelation
+    tests, and a flat <code>random.uniform()</code> spread is a recognizable fingerprint. The fix isn't "add jitter" — it's
+    <strong>log-normal / fat-tailed</strong> timing. This affects both the fixes we add <em>and</em> the uniform jitter we
+    already use in the scraper.
+  </div>
+
+  <!-- ============ DOING ============ -->
+  <h2><span class="dot" style="background:var(--green)"></span>✅ What we're already doing right</h2>
+
+  <h3>Login velocity — structurally strong</h3>
+  <ul>
+    <li class="g"><span class="t">Warm persistent profile — cookies survive across runs, so most runs skip login entirely.</span>
+      <span class="why">The single biggest lever, and we have it. <span class="tag">core/aeroplan_session.py:78,195-202</span></span></li>
+    <li class="g"><span class="t"><code>ensure_logged_in</code> cheap-checks first and returns without logging in when the session is still alive.</span>
+      <span class="why">Combined with the warm profile, a fresh process often performs <em>zero</em> logins. <span class="tag">core/aeroplan_session.py:249-282</span></span></li>
+    <li class="g"><span class="t">Watch refreshes already pass <code>--max-reauths 1</code>.</span>
+      <span class="why">The highest-frequency automated path is already capped tight. <span class="tag">core/watchlist.py:207</span></span></li>
+    <li class="g"><span class="t">Resume-from-next-unscraped-window — never re-scrapes done windows, minimizing sessions per span.</span>
+      <span class="why"><span class="tag">core/aeroplan_runner.py:50-89,271</span></span></li>
+    <li class="g"><span class="t">Expired-on-final-window short-circuit — skips a pointless re-login when expiry hits the last window.</span>
+      <span class="why"><span class="tag">core/aeroplan_runner.py:87-88,214-217</span></span></li>
+    <li class="g"><span class="t">Scheduler interval floors — 60 min hard floor, ~75 min computed minimum for one Aeroplan route.</span>
+      <span class="why">Caps scheduled login frequency. <span class="tag">core/scheduler.py:37-38,373-374</span></span></li>
+    <li class="g"><span class="t"><code>max_reauths</code> cap + single-route design + <code>max_windows=12</code> ceiling.</span>
+      <span class="why">Bounds worst-case login storms; one login amortized over one route's windows. <span class="tag">runner.py:42,119 · cli.py:645</span></span></li>
+  </ul>
+
+  <h3>Behavioral / scripted input — strong on identity, good instincts</h3>
+  <ul>
+    <li class="g"><span class="t">Real headed system Chrome (not bundled/headless) — authentic input events, fingerprint, TLS.</span>
+      <span class="why">Headless is refused by construction. The dominant realism factor. <span class="tag">core/aeroplan_session.py:113-134,195-202</span></span></li>
+    <li class="g"><span class="t">Detect-and-bail on Arkose — we NEVER submit a synthetic, behavior-empty challenge token.</span>
+      <span class="why">The single worst behavioral tell (empty mouse-array token) is one we structurally never emit. <span class="tag">core/aeroplan_session.py:378-405,538-548</span></span></li>
+    <li class="g"><span class="t">Anti-automation launch flags — <code>navigator.webdriver</code> stripped, automation infobar removed.</span>
+      <span class="why"><span class="tag">core/aeroplan_session.py:200-201</span></span></li>
+    <li class="g"><span class="t">Signal-driven (not fixed) waits around submit — dwell reflects real server latency, so it varies naturally.</span>
+      <span class="why"><span class="tag">core/aeroplan_session.py:554-574</span></span></li>
+    <li class="g"><span class="t">Per-window jitter already present on the scrape loop.</span>
+      <span class="why">Good instinct — but it's <em>uniform</em>; upgrade to log-normal (see "Should Do"). <span class="tag">core/aeroplan_scraper.py:336-340</span></span></li>
+    <li class="g"><span class="t">Ghost cursor deliberately OFF — defensible.</span>
+      <span class="why">Synthetic mouse paths are themselves detectable; since we bail on Arkose we never need a cursor trace. <span class="tag">commit 8e9fa97</span></span></li>
+  </ul>
+
+  <!-- ============ SHOULD DO ============ -->
+  <h2><span class="dot" style="background:var(--accent)"></span>🔵 What we should be doing (add these)</h2>
+  <ul>
+    <li class="b"><span class="t">Default a wall-clock <code>deadline_seconds</code> (~30–40 min) so a span self-terminates near one session.<span class="pill p-hi">high</span></span>
+      <span class="why">Today only <code>max_reauths</code> bounds the loop; there's no time budget. <span class="tag">cli.py:645 · runner.py:121</span></span></li>
+    <li class="b"><span class="t">Add a <strong>log-normal</strong> cooldown before each re-auth (NOT uniform).<span class="pill p-hi">high</span></span>
+      <span class="why">Re-auths currently fire back-to-back; spacing them is the highest-value pacing fix — but sample the delay log-normally, not <code>uniform</code>. <span class="tag">insert before runner.py:247</span></span></li>
+    <li class="b"><span class="t">Type credentials &amp; 2FA with <code>press_sequentially</code>, varied <strong>dwell</strong> + log-normal inter-key delay.<span class="pill p-med">med</span></span>
+      <span class="why">Removes the "pasted not typed" tell. Vary key-hold time too, not just gaps. <span class="tag">session.py:386,411 · login_drive.py:1152</span></span></li>
+    <li class="b"><span class="t">Add a brief human dwell between filling the password and submitting.<span class="pill p-med">med</span></span>
+      <span class="why">Submitting ~0ms after the last keystroke is a tell. <span class="tag">session.py:411→420</span></span></li>
+    <li class="b"><span class="t">Add a <code>--max-windows</code> flag (default ~6) so one login reliably covers a whole span.<span class="pill p-med">med</span></span>
+      <span class="why">Prevents wide spans from silently chaining re-auths. <span class="tag">no flag today; runner default 12</span></span></li>
+    <li class="b"><span class="t">Add a randomized inter-route delay in the multi-route watch loop.<span class="pill p-med">med</span></span>
+      <span class="why">N stale routes currently = N logins in quick succession. <span class="tag">core/watchlist.py:198-218</span></span></li>
+    <li class="b"><span class="t">Persist a last-login timestamp in the profile; enforce a minimum gap across separate process runs.<span class="pill p-low">low</span></span>
+      <span class="why">Each fresh process currently has no memory of the last login time. <span class="tag">new</span></span></li>
+    <li class="b"><span class="t">Upgrade ALL timing (incl. the existing scraper jitter) from uniform to log-normal / fat-tailed; vary session footprint run-to-run.<span class="pill p-med">med</span></span>
+      <span class="why">Defenders fingerprint uniform jitter specifically. <span class="tag">scraper.py:336-340 + everywhere</span></span></li>
+    <li class="b"><span class="t">KEEP one stable profile/fingerprint per account — do not rotate it.<span class="pill p-low">low</span></span>
+      <span class="why">For a logged-in account, consistency lowers the anomaly score; "freshening" identity raises it. (We already do this — just don't break it.)</span></li>
+  </ul>
+
+  <!-- ============ STOP ============ -->
+  <h2><span class="dot" style="background:var(--red)"></span>🔴 What we should stop doing (remove these)</h2>
+  <ul>
+    <li class="r"><span class="t">Stop defaulting interactive <code>max_reauths</code> to 4 — drop to 1–2.<span class="pill p-hi">high</span></span>
+      <span class="why">A single manual search can fire up to 5 logins back-to-back in one span. <span class="tag">runner.py:42 · cli.py:2960</span></span></li>
+    <li class="r"><span class="t">Stop firing re-auths with zero cooldown (back-to-back logins).<span class="pill p-hi">high</span></span>
+      <span class="why">Burst login velocity is the textbook account-freeze trigger. <span class="tag">runner.py:247</span></span></li>
+    <li class="r"><span class="t">Stop the cold-start retry that fires a 2nd login within seconds.<span class="pill p-med">med</span></span>
+      <span class="why">Two logins seconds apart on a slow form render. Add a backoff. <span class="tag">session.py:299-315</span></span></li>
+    <li class="r"><span class="t">Stop <code>.fill()</code>-pasting the member #, password, and 2FA code.<span class="pill p-med">med</span></span>
+      <span class="why">One atomic event, zero keystroke timing = "pasted, not typed." <span class="tag">session.py:386,411 · login_drive.py:1152</span></span></li>
+    <li class="r"><span class="t">Stop the fixed <code>SETTLE_SECONDS = 3</code> between every login step.<span class="pill p-med">med</span></span>
+      <span class="why">Exactly-3.000s boundaries are a clockwork, human-implausible cadence. <span class="tag">login_drive.py:85</span></span></li>
+    <li class="r"><span class="t">Stop relying on <code>random.uniform()</code> as if it were camouflage.<span class="pill p-med">med</span></span>
+      <span class="why">Uniform jitter is an explicit detection target — replace with log-normal. <span class="tag">scraper.py:336-340 + any new jitter</span></span></li>
+    <li class="r"><span class="t">Don't add a ghost cursor / synthetic mouse movement.<span class="pill p-low">low</span></span>
+      <span class="why">Confirmed by research: detectable, low-value, can backfire. Keep it off. <span class="tag">already off</span></span></li>
+  </ul>
+
+  <!-- ============ PRIORITY ============ -->
+  <h2>Priority order (do these first)</h2>
+  <table>
+    <tr><th>#</th><th>Action</th><th>Bucket</th><th>Why it's ranked here</th></tr>
+    <tr><td class="num">1</td><td>Cap interactive <code>max_reauths</code> at 1–2 + add log-normal cooldown before each re-auth</td><td>Stop + Should</td><td>Login velocity is the #1 account-freeze signal; this kills the burst pattern</td></tr>
+    <tr><td class="num">2</td><td>Default <code>deadline_seconds</code> ~30–40 min</td><td>Should</td><td>Hard time budget so a span can't spiral into re-auths</td></tr>
+    <tr><td class="num">3</td><td>Switch credential/2FA entry to <code>press_sequentially</code> (varied dwell + log-normal gaps)</td><td>Stop + Should</td><td>Removes the clearest behavioral tell at the most-scrutinized step</td></tr>
+    <tr><td class="num">4</td><td>Replace uniform jitter with log-normal everywhere; randomize <code>SETTLE_SECONDS</code></td><td>Stop + Should</td><td>Most common self-inflicted mistake; uniform is itself detectable</td></tr>
+    <tr><td class="num">5</td><td><code>--max-windows</code> cap + inter-route delay in the watch loop</td><td>Should</td><td>Prevents wide spans / multi-route runs from chaining logins</td></tr>
+  </table>
+  <p class="callout">Everything in <strong>green</strong> is the high-value foundation we already have. The ranked list above is
+  almost entirely <strong>pacing + input realism</strong> — secondary signals — which is the right place to be: strong on
+  the thing that matters most (rare logins on a warm session), patching the cheaper tells.</p>
+
+  <h2>Sources</h2>
+  <ul style="list-style:none;padding:0">
+    <li class="g" style="border-left-color:var(--muted)"><span class="t">Defender-side (most credible on detection)</span>
+      <span class="why">
+        <a href="https://www.varonis.com/blog/jitter-trap">Varonis — The Jitter-Trap (uniform jitter is a fingerprint)</a> &middot;
+        <a href="https://webdecoy.com/blog/fcaptcha-v1-3-keystroke-cadence-biometrics-playwright-detection/">FCaptcha v1.3 — keystroke cadence biometrics</a> &middot;
+        <a href="https://docs.castle.io/docs/device-fingerprinting">Castle — device fingerprinting</a> &middot;
+        <a href="https://datadome.co/changelog/how-new-ai-models-strengthen-account-security/">DataDome — account security (login velocity)</a> &middot;
+        <a href="https://www.arkoselabs.com/explained/behavioral-biometrics/">Arkose — behavioral biometrics</a>
+      </span></li>
+    <li class="g" style="border-left-color:var(--muted)"><span class="t">Practitioner / bypass-side (tactics; motivated)</span>
+      <span class="why">
+        <a href="https://www.zyte.com/blog/minimizing-website-bans-in-web-scraping/">Zyte — session reuse</a> &middot;
+        <a href="https://roundproxies.com/blog/human-typing-playwright/">roundproxies — human typing in Playwright</a> &middot;
+        <a href="https://scrapfly.io/bypass/datadome">Scrapfly — session + JA4</a>
+      </span></li>
+    <li class="g" style="border-left-color:var(--muted)"><span class="t">Internal</span>
+      <span class="why"><code>core/aeroplan_session.py</code>, <code>core/aeroplan_runner.py</code>, <code>core/watchlist.py</code>, <code>core/aeroplan_scraper.py</code>, <code>core/scheduler.py</code>, <code>scripts/experiments/aeroplan_login_drive.py</code>, commit <code>8e9fa97</code></span></li>
+  </ul>
+
+  <footer>Synthesis of three subagents (login-velocity audit · scripted-input audit · web research) &middot; read-only findings, no code changed &middot; 2026-06-12</footer>
+</div>
+</body>
+</html>
